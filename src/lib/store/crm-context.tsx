@@ -190,7 +190,8 @@ const initialFilterCriteria: CastingFilterCriteria = {
   sports: [],
   roleWillingness: [],
   cities: [],
-  genres: []
+  genres: [],
+  actLevels: []
 };
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -282,17 +283,32 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     function loadLocalSeed() {
       try {
         const storedLeads = localStorage.getItem('act_crm_leads');
-        const storedTalents = localStorage.getItem('act_crm_talents');
+        const storedTalents = localStorage.getItem('act_crm_talents_v3') || localStorage.getItem('act_crm_talents');
+        const rawLeads = (seedData.leads as Lead[]) || [];
+        const rawTalents = (seedData.talents as TalentProfile[]) || [];
 
-        if (storedLeads && storedTalents) {
+        if (storedLeads) {
           setLeads(JSON.parse(storedLeads));
-          setTalents(JSON.parse(storedTalents));
         } else {
-          const rawLeads = (seedData.leads as Lead[]) || [];
-          const rawTalents = (seedData.talents as TalentProfile[]) || [];
           setLeads(rawLeads);
-          setTalents(rawTalents);
           localStorage.setItem('act_crm_leads', JSON.stringify(rawLeads));
+        }
+
+        if (storedTalents) {
+          const parsed = JSON.parse(storedTalents);
+          // Check if parsed talents already have academic_profile
+          const hasAcademic = Array.isArray(parsed) && parsed.some((t: TalentProfile) => t.academic_profile?.highest_act_level);
+          if (hasAcademic && parsed.length >= rawTalents.length) {
+            setTalents(parsed);
+          } else {
+            // Upgrade with academic profiles
+            setTalents(rawTalents);
+            localStorage.setItem('act_crm_talents_v3', JSON.stringify(rawTalents));
+            localStorage.setItem('act_crm_talents', JSON.stringify(rawTalents));
+          }
+        } else {
+          setTalents(rawTalents);
+          localStorage.setItem('act_crm_talents_v3', JSON.stringify(rawTalents));
           localStorage.setItem('act_crm_talents', JSON.stringify(rawTalents));
         }
       } catch (e) {
@@ -555,6 +571,27 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       headshot_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
       fullbody_url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800',
       compcard_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
+      academic_profile: {
+        highest_act_level: 'ACT1',
+        highest_class_code: 'ACT1-Mới',
+        highest_level_status: 'studying',
+        enrollments: [
+          {
+            id: crypto.randomUUID(),
+            level: 'ACT1',
+            class_code: 'ACT1-Mới',
+            term_name: 'Khóa ACT 1 (Mới nhập học)',
+            start_date: new Date().toISOString().slice(0, 10),
+            status: 'studying',
+            instructor: 'Giảng viên ACT Academy',
+            evaluation: 'Học viên mới gia nhập từ phễu tuyển sinh.',
+            grade: 'Đang theo học',
+            certificate_issued: false
+          }
+        ],
+        total_courses_count: 1,
+        specialization_notes: 'Học viên chuyển đổi từ tư vấn tuyển sinh'
+      },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -804,6 +841,17 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       const tCities = talent.willing_work_cities || [];
       const hasCity = filterCriteria.cities.some(fc => tCities.includes(fc));
       if (!hasCity) return false;
+    }
+
+    if (filterCriteria.actLevels && filterCriteria.actLevels.length > 0) {
+      const highest = talent.academic_profile?.highest_act_level;
+      const hasLevel = filterCriteria.actLevels.some(lvl => {
+        if (lvl === 'unassigned') {
+          return !highest;
+        }
+        return highest === lvl || (talent.academic_profile?.enrollments || []).some(e => e.level === lvl);
+      });
+      if (!hasLevel) return false;
     }
 
     return true;

@@ -7,7 +7,12 @@ import {
   FilmRole, 
   CommercialRole, 
   MusicVideoRole,
-  GenderType 
+  GenderType,
+  ACTCourseLevel,
+  EnrollmentStatus,
+  ACTCourseEnrollment,
+  AcademicProfile,
+  ACT_LEVEL_DETAILS
 } from '@/lib/types/crm';
 import { useCRM } from '@/lib/store/crm-context';
 import { calculateAge } from '@/lib/utils';
@@ -24,7 +29,11 @@ import {
   Plus, 
   Trash2, 
   Check, 
-  ArrowLeft 
+  ArrowLeft,
+  GraduationCap,
+  Calendar,
+  BookOpen,
+  Award
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -33,6 +42,29 @@ interface TalentMultiStepFormProps {
   isEdit?: boolean;
 }
 
+const RANK_ORDER: Record<string, number> = { ACT4: 4, ACT3: 3, ACT2: 2, ACT1: 1, SSC: 0.5 };
+
+const recomputeAcademicProfile = (enrollments: ACTCourseEnrollment[]): AcademicProfile => {
+  if (!enrollments || enrollments.length === 0) {
+    return {
+      highest_act_level: null,
+      highest_class_code: undefined,
+      highest_level_status: undefined,
+      enrollments: [],
+      total_courses_count: 0
+    };
+  }
+  const highest = [...enrollments].sort((a, b) => (RANK_ORDER[b.level] || 0) - (RANK_ORDER[a.level] || 0))[0];
+  return {
+    highest_act_level: highest.level,
+    highest_class_code: highest.class_code,
+    highest_level_status: highest.status,
+    enrollments,
+    total_courses_count: enrollments.length,
+    specialization_notes: `Học viên đạt cấp độ đào tạo ${highest.level} (${highest.class_code}) tại ACT Academy`
+  };
+};
+
 const STEPS = [
   { id: 1, title: 'Thông tin cá nhân', icon: User, desc: 'Họ tên, ngày sinh, liên hệ' },
   { id: 2, title: 'Nhân trắc học & Số đo', icon: Ruler, desc: 'Chiều cao, cân nặng, 3 vòng' },
@@ -40,6 +72,7 @@ const STEPS = [
   { id: 4, title: 'Kỹ năng & Ngôn ngữ', icon: Sparkles, desc: 'Giọng nói, ngoại ngữ, võ thuật' },
   { id: 5, title: 'Mức độ sẵn sàng vai', icon: HeartHandshake, desc: 'Cảnh hôn, bikini, địa bàn quay' },
   { id: 6, title: 'Hình ảnh & Mạng xã hội', icon: Camera, desc: 'Headshot, toàn thân, showreel' },
+  { id: 7, title: 'Học trình ACT', icon: GraduationCap, desc: 'Lớp ACT 1-4, Term học, Trạng thái' },
 ];
 
 export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepFormProps) {
@@ -168,6 +201,56 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
     }));
   };
 
+  // Academic Form State
+  const [newEnrLevel, setNewEnrLevel] = useState<ACTCourseLevel>('ACT1');
+  const [newEnrCode, setNewEnrCode] = useState('');
+  const [newEnrTerm, setNewEnrTerm] = useState('');
+  const [newEnrStart, setNewEnrStart] = useState('');
+  const [newEnrEnd, setNewEnrEnd] = useState('');
+  const [newEnrStatus, setNewEnrStatus] = useState<EnrollmentStatus>('completed');
+  const [newEnrInstructor, setNewEnrInstructor] = useState('Giảng viên ACT Academy');
+  const [newEnrEval, setNewEnrEval] = useState('');
+
+  const handleAddEnrollment = () => {
+    if (!newEnrCode.trim()) {
+      alert('Vui lòng nhập Mã lớp học (VD: ACT1-37B, ACT2-38B, ACT3-33...)');
+      return;
+    }
+    const currentEnrs = formData.academic_profile?.enrollments || [];
+    const newEnr: ACTCourseEnrollment = {
+      id: crypto.randomUUID(),
+      level: newEnrLevel,
+      class_code: newEnrCode.trim(),
+      term_name: newEnrTerm.trim() || `Khóa ${newEnrCode.trim()}`,
+      start_date: newEnrStart || undefined,
+      end_date: newEnrEnd || undefined,
+      status: newEnrStatus,
+      instructor: newEnrInstructor.trim() || undefined,
+      evaluation: newEnrEval.trim() || undefined,
+      grade: newEnrStatus === 'completed' ? 'Xuất sắc' : 'Đang học',
+      certificate_issued: newEnrStatus === 'completed'
+    };
+
+    const updated = [...currentEnrs, newEnr];
+    setFormData(p => ({
+      ...p,
+      academic_profile: recomputeAcademicProfile(updated)
+    }));
+
+    setNewEnrCode('');
+    setNewEnrTerm('');
+    setNewEnrEval('');
+  };
+
+  const handleRemoveEnrollment = (id: string) => {
+    const currentEnrs = formData.academic_profile?.enrollments || [];
+    const updated = currentEnrs.filter(e => e.id !== id);
+    setFormData(p => ({
+      ...p,
+      academic_profile: recomputeAcademicProfile(updated)
+    }));
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Top Bar */}
@@ -182,17 +265,17 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
 
         <div className="text-right">
           <span className="text-xs font-semibold text-brand-600">
-            Bước {currentStep} / 6
+            Bước {currentStep} / {STEPS.length}
           </span>
           <h2 className="text-lg font-bold text-foreground">
-            {STEPS[currentStep - 1].title}
+            {STEPS[currentStep - 1]?.title}
           </h2>
         </div>
       </div>
 
       {/* Stepper Progress Indicator */}
       <div className="bg-card rounded-2xl border p-4 shadow-xs">
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-7 gap-2">
           {STEPS.map((s) => {
             const isDone = s.id < currentStep;
             const isCurrent = s.id === currentStep;
@@ -905,6 +988,221 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
           </div>
         )}
 
+        {/* STEP 7: Academic Profile & ACT Courses */}
+        {currentStep === 7 && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+              <div>
+                <h3 className="font-bold text-base text-foreground">
+                  Bước 7: Học Trình Đào Tạo ACT Academy (Academic Profile)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Quản lý các lớp ACT 1, ACT 2, ACT 3, ACT 4 theo từng Term và tự động xác định cấp độ cao nhất
+                </p>
+              </div>
+
+              {formData.academic_profile?.highest_act_level && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/10 text-brand-600 border border-brand-500/20 font-bold text-xs shrink-0">
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Cấp cao nhất: {formData.academic_profile.highest_class_code || formData.academic_profile.highest_act_level}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Add Term Box */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-muted/40 border border-border/80 space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <Plus className="w-4 h-4 text-brand-600" />
+                <span>Thêm Khóa Học / Term Mới Vào Học Trình</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Cấp độ khóa học <span className="text-brand-500">*</span>
+                  </label>
+                  <select
+                    value={newEnrLevel}
+                    onChange={(e) => setNewEnrLevel(e.target.value as ACTCourseLevel)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background font-semibold"
+                  >
+                    <option value="ACT1">ACT 1 - Căn bản & Hình thể</option>
+                    <option value="ACT2">ACT 2 - Tâm lý nhân vật</option>
+                    <option value="ACT3">ACT 3 - Trước ống kính 4K</option>
+                    <option value="ACT4">ACT 4 - Điện ảnh chuyên nghiệp</option>
+                    <option value="SSC">SSC - Khóa kỹ năng bổ trợ</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Mã lớp học <span className="text-brand-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: ACT1-37B, ACT2-38B, ACT4-35..."
+                    value={newEnrCode}
+                    onChange={(e) => setNewEnrCode(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Tên Term / Khóa
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Khóa 37B (11/2025)"
+                    value={newEnrTerm}
+                    onChange={(e) => setNewEnrTerm(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Ngày bắt đầu
+                  </label>
+                  <input
+                    type="date"
+                    value={newEnrStart}
+                    onChange={(e) => setNewEnrStart(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Ngày kết thúc
+                  </label>
+                  <input
+                    type="date"
+                    value={newEnrEnd}
+                    onChange={(e) => setNewEnrEnd(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={newEnrStatus}
+                    onChange={(e) => setNewEnrStatus(e.target.value as EnrollmentStatus)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background font-medium"
+                  >
+                    <option value="completed">Đã tốt nghiệp / Hoàn thành</option>
+                    <option value="studying">Đang theo học</option>
+                    <option value="reserved">Bảo lưu</option>
+                    <option value="cancelled">Chuyển khóa / Dừng học</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Giảng viên phụ trách
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Đạo diễn Vũ Trần"
+                    value={newEnrInstructor}
+                    onChange={(e) => setNewEnrInstructor(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                  Đánh giá / Nhận xét chuyên môn của giảng viên
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Nắm vững kỹ thuật đài từ, biểu cảm tốt trước ống kính..."
+                  value={newEnrEval}
+                  onChange={(e) => setNewEnrEval(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border bg-background text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleAddEnrollment}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold shadow-xs transition-all hover:scale-[1.02]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm Term Này Vào Học Trình</span>
+                </button>
+              </div>
+            </div>
+
+            {/* List of Enrolled Terms */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                Danh Sách Term Đã Tham Gia ({formData.academic_profile?.enrollments?.length || 0})
+              </h4>
+
+              {(!formData.academic_profile?.enrollments || formData.academic_profile.enrollments.length === 0) ? (
+                <div className="p-6 border border-dashed rounded-xl text-center text-xs text-muted-foreground">
+                  Chưa có term nào được thêm. Bạn có thể thêm term học ở khung phía trên.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {formData.academic_profile.enrollments.map((enr) => {
+                    const info = ACT_LEVEL_DETAILS[enr.level] || ACT_LEVEL_DETAILS.ACT1;
+                    return (
+                      <div
+                        key={enr.id}
+                        className="p-3.5 rounded-xl border bg-card flex items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${info.badgeClass}`}>
+                            {enr.level}
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-foreground">{enr.class_code}</span>
+                              <span className="text-[11px] text-muted-foreground">• {enr.term_name}</span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                enr.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                                enr.status === 'studying' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' :
+                                enr.status === 'reserved' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
+                                'bg-slate-100 text-slate-800'
+                              }`}>
+                                {enr.status === 'completed' ? 'Tốt nghiệp' :
+                                 enr.status === 'studying' ? 'Đang học' :
+                                 enr.status === 'reserved' ? 'Bảo lưu' : 'Dừng học'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {enr.instructor ? `GV: ${enr.instructor}` : info.fullName}
+                              {enr.evaluation ? ` — "${enr.evaluation}"` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEnrollment(enr.id)}
+                          className="p-2 text-muted-foreground hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                          title="Xóa khóa này"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Stepper Navigation Buttons */}
         <div className="pt-6 mt-6 border-t flex items-center justify-between">
           <button
@@ -918,7 +1216,7 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
           </button>
 
           <div className="flex items-center gap-3">
-            {currentStep < 6 ? (
+            {currentStep < STEPS.length ? (
               <button
                 type="button"
                 onClick={handleNext}

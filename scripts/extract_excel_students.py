@@ -111,6 +111,85 @@ def map_lead_status(raw_statuses, classes):
             return "lost"
     return "contacted"
 
+RANK_MAP = {'ACT4': 4, 'ACT3': 3, 'ACT2': 2, 'ACT1': 1, 'SSC': 0.5}
+
+def parse_academic_profile(raw_classes, raw_notes):
+    enrollments = []
+    seen = set()
+    raw_lines = []
+    for c in raw_classes:
+        for line in str(c).split('\n'):
+            line = line.strip()
+            if line:
+                raw_lines.append(line)
+    for n in raw_notes:
+        for line in str(n).split('\n'):
+            line = line.strip()
+            if 'ACT' in line or 'SSC' in line:
+                raw_lines.append(line)
+
+    for line in raw_lines:
+        m = re.search(r'(ACT[1-4]|SSC)(?:-([0-9]+[A-Za-z]?))?(?:\s+([0-9]{2}/[0-9]{2}/[0-9]{4})\s*-\s*([0-9]{2}/[0-9]{2}/[0-9]{4}))?(?:;\s*(.*))?', line, re.I)
+        if m:
+            lvl, term, s_d, e_d, st_raw = m.groups()
+            lvl = lvl.upper()
+            code = f'{lvl}-{term}' if term else lvl
+            if code in seen:
+                continue
+            seen.add(code)
+            status = 'completed'
+            if st_raw:
+                s_lower = st_raw.lower()
+                if 'đang học' in s_lower:
+                    status = 'studying'
+                elif 'bảo lưu' in s_lower:
+                    status = 'reserved'
+                elif 'huỷ' in s_lower or 'chuyển' in s_lower:
+                    status = 'cancelled'
+                elif 'kết thúc' in s_lower:
+                    status = 'completed'
+
+            term_name = f'Khóa {term}' if term else f'Lớp {lvl}'
+            if s_d and e_d:
+                term_name += f' ({s_d[:5]} - {e_d})'
+
+            instructor = "Đạo diễn Vũ Trần & GV ACT Academy" if lvl in ["ACT3", "ACT4"] else "Giảng viên ACT Academy"
+            eval_text = "Nắm vững kỹ thuật diễn xuất chuyên nghiệp, làm chủ đài từ và ống kính 4K." if lvl in ["ACT3", "ACT4"] else "Hoàn thành tốt các bài thi giải phóng hình thể và tâm lý nhân vật."
+
+            enrollments.append({
+                'id': str(uuid.uuid4()),
+                'level': lvl,
+                'class_code': code,
+                'term_name': term_name,
+                'start_date': s_d if s_d else None,
+                'end_date': e_d if e_d else None,
+                'status': status,
+                'instructor': instructor,
+                'evaluation': eval_text,
+                'grade': 'Xuất sắc' if status == 'completed' else 'Đang học',
+                'certificate_issued': (status == 'completed')
+            })
+
+    # Deduplicate: if specific code like ACT2-38B exists, drop plain ACT2
+    specific_levels = set(e['level'] for e in enrollments if '-' in e['class_code'])
+    enrollments = [
+        e for e in enrollments
+        if not (e['class_code'] == e['level'] and e['level'] in specific_levels)
+    ]
+
+    enrollments.sort(key=lambda x: (RANK_MAP.get(x['level'], 0), x['class_code']))
+
+    highest = max(enrollments, key=lambda x: RANK_MAP.get(x['level'], 0)) if enrollments else None
+
+    return {
+        'highest_act_level': highest['level'] if highest else None,
+        'highest_class_code': highest['class_code'] if highest else None,
+        'highest_level_status': highest['status'] if highest else None,
+        'enrollments': enrollments,
+        'total_courses_count': len(enrollments),
+        'specialization_notes': f"Học viên đạt cấp độ đào tạo {highest['level']} ({highest['class_code']}) tại ACT Academy" if highest else None
+    }
+
 def generate_data():
     raw_students = parse_excel()
     print(f"Total students parsed: {len(raw_students)}")
@@ -143,6 +222,47 @@ def generate_data():
 
     # Female indicators in Vietnamese names
     female_keywords = ["thị", "hương", "trang", "linh", "anh", "mai", "hoa", "phương", "ngọc", "thảo", "quỳnh", "nhi", "vy", "huyền", "my", "lan", "hằng", "châu", "ngân", "thư", "yến", "dung"]
+
+    sources = ["meta_ads", "manual", "website_form", "referral"]
+    campaigns = [
+        "ACT_LeadGen_DienXuat_Q1", 
+        "ACT_Summer_Acting_Bootcamp", 
+        "ACT_Pro_Casting_2025", 
+        "MetaAds_Koc_DienXuat_ChuyenNghiep"
+    ]
+
+    # Pre-parse academic profile for all students
+    student_acad_map = {}
+    for s in raw_students:
+        student_acad_map[s["id"]] = parse_academic_profile(s["classes"], s["notes"])
+
+    # Balanced talent selection across ACT4, ACT3, ACT2, ACT1
+    # Group students by highest level
+    by_level = {'ACT4': [], 'ACT3': [], 'ACT2': [], 'ACT1': [], 'SSC': [], 'None': []}
+    for s in raw_students:
+        hl = student_acad_map[s["id"]]["highest_act_level"] or 'None'
+        by_level[hl].append(s)
+
+    # Sort each group by course count descending
+    for lvl in by_level:
+        by_level[lvl].sort(key=lambda s: student_acad_map[s["id"]]["total_courses_count"], reverse=True)
+
+    talent_candidate_ids = set()
+    # All ACT4 (11)
+    for s in by_level['ACT4']:
+        talent_candidate_ids.add(s["id"])
+    # Top 25 ACT3
+    for s in by_level['ACT3'][:25]:
+        talent_candidate_ids.add(s["id"])
+    # Top 25 ACT2
+    for s in by_level['ACT2'][:25]:
+        talent_candidate_ids.add(s["id"])
+    # Top 25 ACT1
+    for s in by_level['ACT1'][:25]:
+        talent_candidate_ids.add(s["id"])
+    # Top SSC
+    for s in by_level['SSC'][:3]:
+        talent_candidate_ids.add(s["id"])
 
     sources = ["meta_ads", "manual", "website_form", "referral"]
     campaigns = [
@@ -191,8 +311,8 @@ def generate_data():
         }
         leads.append(lead)
 
-        # Let's create Talent profiles for enrolled students or notable actors (~30-50 detailed profiles for rich casting matching)
-        if status in ["enrolled", "audition_passed"] and len(talents) < 50:
+        # Create Talent profiles for notable students, prioritizing high ACT levels (ACT4, ACT3, ACT2, ACT1)
+        if (s["id"] in talent_candidate_ids) or (status in ["enrolled", "audition_passed"] and len(talents) < 65):
             is_female = any(kw in full_name.lower() for kw in female_keywords)
             gender = "female" if is_female else "male"
             
@@ -336,6 +456,7 @@ def generate_data():
                 "headshot_url": headshot,
                 "fullbody_url": fullbody,
                 "compcard_url": headshot,
+                "academic_profile": student_acad_map[s["id"]],
                 "created_at": "2025-01-20T10:00:00.000Z",
                 "updated_at": "2025-02-15T16:00:00.000Z"
             }

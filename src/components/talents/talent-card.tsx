@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { TalentProfile } from '@/lib/types/crm';
 import { calculateAge } from '@/lib/utils';
-import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic } from 'lucide-react';
+import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic, GraduationCap } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
 
 interface TalentCardProps {
@@ -31,6 +31,9 @@ export function TalentCard({ talent }: TalentCardProps) {
     cut_hair: 'Cắt tóc'
   };
 
+  const highestLevel = talent.academic_profile?.highest_act_level;
+  const highestCode = talent.academic_profile?.highest_class_code || highestLevel;
+
   return (
     <div className="bg-card rounded-2xl border shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col group border-border/80 hover:border-brand-500/40">
       {/* Top Image Card */}
@@ -45,8 +48,9 @@ export function TalentCard({ talent }: TalentCardProps) {
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-        {/* Gender Badge */}
-        <div className="absolute top-3 left-3">
+        {/* Top Badges */}
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+          {/* Gender Badge */}
           <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full backdrop-blur-md shadow-xs ${
             talent.gender === 'female' 
               ? 'bg-rose-500/90 text-white' 
@@ -54,11 +58,26 @@ export function TalentCard({ talent }: TalentCardProps) {
           }`}>
             {talent.gender === 'female' ? 'Nữ' : talent.gender === 'male' ? 'Nam' : 'Khác'}
           </span>
+
+          {/* Highest ACT Level Badge */}
+          {highestLevel && (
+            <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-md border ${
+              highestLevel === 'ACT4'
+                ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white border-purple-400/60 ring-1 ring-white/20'
+                : highestLevel === 'ACT3'
+                ? 'bg-emerald-600 text-white border-emerald-400/60'
+                : highestLevel === 'ACT2'
+                ? 'bg-blue-600 text-white border-blue-400/60'
+                : 'bg-amber-600 text-white border-amber-400/60'
+            }`}>
+              🎓 {highestCode}
+            </span>
+          )}
         </div>
 
         {/* Cities Badge */}
         {talent.willing_work_cities && talent.willing_work_cities.length > 0 && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] font-medium bg-black/60 backdrop-blur-md text-white px-2 py-0.5 rounded-full">
+          <div className="absolute top-10 right-3 flex items-center gap-1 text-[9px] font-medium bg-black/60 backdrop-blur-md text-white/90 px-2 py-0.5 rounded-full">
             <MapPin className="w-2.5 h-2.5 text-rose-400" />
             <span>{talent.willing_work_cities[0]}</span>
           </div>
@@ -94,6 +113,27 @@ export function TalentCard({ talent }: TalentCardProps) {
 
       {/* Card Body */}
       <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-card">
+        {/* Academic Level Info Highlight */}
+        {highestLevel && (
+          <div className="flex items-center justify-between text-[11px] p-2 rounded-xl bg-muted/50 border border-border/60">
+            <div className="flex items-center gap-1.5 font-semibold text-foreground">
+              <GraduationCap className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+              <span className="text-muted-foreground text-[10px]">Lớp cao nhất:</span>
+              <span className={`font-bold text-xs ${
+                highestLevel === 'ACT4' ? 'text-purple-600 dark:text-purple-400' :
+                highestLevel === 'ACT3' ? 'text-emerald-600 dark:text-emerald-400' :
+                highestLevel === 'ACT2' ? 'text-blue-600 dark:text-blue-400' :
+                'text-amber-600 dark:text-amber-400'
+              }`}>
+                {highestCode}
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground bg-background px-1.5 py-0.5 rounded border">
+              {talent.academic_profile?.total_courses_count || 1} Term
+            </span>
+          </div>
+        )}
+
         {/* Skills & Accents Tags */}
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1">

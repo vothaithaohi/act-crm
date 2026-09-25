@@ -77,12 +77,17 @@ export function TalentCompCard({ talent }: TalentCompCardProps) {
               <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded">
                 TALENT POOL
               </span>
+              {talent.academic_profile?.highest_act_level && (
+                <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded tracking-wide">
+                  🎓 {talent.academic_profile.highest_class_code || talent.academic_profile.highest_act_level}
+                </span>
+              )}
             </div>
             <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight mt-1">
               {talent.full_name}
             </h1>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-0.5">
-              Diễn viên Điện ảnh & Truyền hình (Professional Actor)
+              Diễn viên Điện ảnh & Truyền hình • Đào tạo ACT Academy ({talent.academic_profile?.highest_class_code || 'Khóa Diễn Xuất'})
             </p>
           </div>
 
@@ -238,6 +243,33 @@ export function TalentCompCard({ talent }: TalentCompCardProps) {
                     </span>
                   );
                 })}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 border-b pb-1.5 mb-2">
+                Đào Tạo Diễn Xuất Tại ACT Academy
+              </h3>
+              <div className="space-y-1.5 text-slate-700 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">Cấp độ cao nhất:</span>
+                  <span className="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    🎓 {talent.academic_profile?.highest_class_code || talent.academic_profile?.highest_act_level || 'ACT 1'}
+                  </span>
+                </div>
+                <div className="text-slate-500 text-[10px]">
+                  Học trình tích lũy: <strong>{talent.academic_profile?.total_courses_count || 1} Term đào tạo thực chiến</strong>
+                </div>
+                {talent.academic_profile?.enrollments && talent.academic_profile.enrollments.length > 0 && (
+                  <div className="text-slate-600 pt-1 text-[10px] space-y-0.5 border-t border-slate-100">
+                    {talent.academic_profile.enrollments.slice(0, 3).map((enr, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>• {enr.class_code} ({enr.term_name})</span>
+                        <span className="font-semibold text-emerald-700">{enr.status === 'completed' ? 'Tốt nghiệp' : 'Đang học'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

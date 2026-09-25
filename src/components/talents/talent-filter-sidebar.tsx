@@ -31,9 +31,21 @@ export function TalentFilterSidebar() {
     });
   };
 
+  const toggleActLevel = (level: string) => {
+    setFilterCriteria(prev => {
+      const arr = prev.actLevels || [];
+      const exists = arr.includes(level);
+      return {
+        ...prev,
+        actLevels: exists ? arr.filter(i => i !== level) : [...arr, level]
+      };
+    });
+  };
+
   const hasActiveFilters = 
     filterCriteria.gender !== 'all' ||
     Boolean(filterCriteria.searchQuery) ||
+    Boolean(filterCriteria.actLevels && filterCriteria.actLevels.length > 0) ||
     filterCriteria.minAge !== undefined ||
     filterCriteria.maxAge !== undefined ||
     filterCriteria.minHeight !== undefined ||
@@ -83,11 +95,53 @@ export function TalentFilterSidebar() {
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="VD: Nguyễn Nhi, Phúc..."
+              placeholder="VD: Nguyễn Nhi, Long, Phúc..."
               value={filterCriteria.searchQuery}
               onChange={(e) => setFilterCriteria(p => ({ ...p, searchQuery: e.target.value }))}
               className="w-full pl-8 pr-3 py-1.5 rounded-lg border bg-background focus:border-brand-500 outline-none transition-all"
             />
+          </div>
+        </div>
+
+        {/* ACT Academic Level Filter */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
+              Lớp ACT Đã Học
+            </label>
+            {filterCriteria.actLevels && filterCriteria.actLevels.length > 0 && (
+              <span className="text-[10px] text-brand-600 font-semibold">
+                Đã chọn {filterCriteria.actLevels.length}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { id: 'ACT4', label: 'ACT 4', badge: 'Masterclass', color: 'border-purple-300 bg-purple-50 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800' },
+              { id: 'ACT3', label: 'ACT 3', badge: 'Ống kính', color: 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800' },
+              { id: 'ACT2', label: 'ACT 2', badge: 'Tâm lý', color: 'border-blue-300 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800' },
+              { id: 'ACT1', label: 'ACT 1', badge: 'Căn bản', color: 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800' }
+            ].map(item => {
+              const active = (filterCriteria.actLevels || []).includes(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => toggleActLevel(item.id)}
+                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-left transition-all ${
+                    active 
+                      ? `${item.color} font-bold shadow-xs ring-1 ring-brand-500` 
+                      : 'bg-muted/40 hover:bg-muted text-muted-foreground border-border/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs">{item.label}</span>
+                    <span className="text-[9px] opacity-75">{item.badge}</span>
+                  </div>
+                  {active && <Check className="w-3 h-3 text-brand-600 shrink-0" />}
+                </button>
+              );
+            })}
           </div>
         </div>
 
