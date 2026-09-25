@@ -290,32 +290,36 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         const rawLeads = (seedData.leads as unknown as Lead[]) || [];
         const rawTalents = (seedData.talents as unknown as TalentProfile[]) || [];
 
-        const storedLeads = localStorage.getItem('act_crm_leads_v5');
+        // Purge legacy cache keys
+        localStorage.removeItem('act_crm_leads_v5');
+        localStorage.removeItem('act_crm_talents_v5');
+
+        const storedLeads = localStorage.getItem('act_crm_leads_v6');
         if (storedLeads) {
           const parsedLeads = JSON.parse(storedLeads);
           if (Array.isArray(parsedLeads) && parsedLeads.length >= rawLeads.length) {
             setLeads(parsedLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
           } else {
             setLeads(rawLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
-            localStorage.setItem('act_crm_leads_v5', JSON.stringify(rawLeads));
+            localStorage.setItem('act_crm_leads_v6', JSON.stringify(rawLeads));
           }
         } else {
           setLeads(rawLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
-          localStorage.setItem('act_crm_leads_v5', JSON.stringify(rawLeads));
+          localStorage.setItem('act_crm_leads_v6', JSON.stringify(rawLeads));
         }
 
-        const storedTalents = localStorage.getItem('act_crm_talents_v5');
+        const storedTalents = localStorage.getItem('act_crm_talents_v6');
         if (storedTalents) {
           const parsed = JSON.parse(storedTalents);
           if (Array.isArray(parsed) && parsed.length >= rawTalents.length) {
             setTalents(parsed);
           } else {
             setTalents(rawTalents);
-            localStorage.setItem('act_crm_talents_v5', JSON.stringify(rawTalents));
+            localStorage.setItem('act_crm_talents_v6', JSON.stringify(rawTalents));
           }
         } else {
           setTalents(rawTalents);
-          localStorage.setItem('act_crm_talents_v5', JSON.stringify(rawTalents));
+          localStorage.setItem('act_crm_talents_v6', JSON.stringify(rawTalents));
         }
       } catch (e) {
         console.error('Failed to load local CRM data:', e);
@@ -422,7 +426,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const syncLeadsLocal = (newLeads: Lead[]) => {
     setLeads(newLeads);
     try {
-      localStorage.setItem('act_crm_leads_v5', JSON.stringify(newLeads));
+      localStorage.setItem('act_crm_leads_v6', JSON.stringify(newLeads));
     } catch (e) {
       console.error(e);
     }
@@ -431,7 +435,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const syncTalentsLocal = (newTalents: TalentProfile[]) => {
     setTalents(newTalents);
     try {
-      localStorage.setItem('act_crm_talents_v5', JSON.stringify(newTalents));
+      localStorage.setItem('act_crm_talents_v6', JSON.stringify(newTalents));
     } catch (e) {
       console.error(e);
     }

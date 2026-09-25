@@ -331,7 +331,7 @@ export function LeadDetailModal({ lead, isOpen, onClose }: LeadDetailModalProps)
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                 <span className="flex items-center gap-1">
                   <Phone className="w-3 h-3 text-brand-500" />
-                  {formatPhoneNumber(lead.phone)}
+                  {lead.phone ? formatPhoneNumber(lead.phone) : <span className="italic text-muted-foreground/60">Chưa cập nhật SĐT</span>}
                 </span>
                 {lead.email && (
                   <span className="flex items-center gap-1 hidden sm:flex">

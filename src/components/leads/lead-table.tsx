@@ -49,7 +49,7 @@ export function LeadTable({ onEditLead, onSelectLead, searchFilter, sourceFilter
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
       const matchName = l.full_name.toLowerCase().includes(q);
-      const matchPhone = l.phone.toLowerCase().includes(q);
+      const matchPhone = (l.phone || '').toLowerCase().includes(q);
       const matchCourse = (l.course_interest || '').toLowerCase().includes(q);
       if (!matchName && !matchPhone && !matchCourse) return false;
     }
@@ -143,13 +143,13 @@ export function LeadTable({ onEditLead, onSelectLead, searchFilter, sourceFilter
                       <div className="font-semibold text-foreground group-hover:text-brand-600 transition-colors">
                         {lead.full_name}
                       </div>
-                      <div className="text-xs text-muted-foreground">{lead.email || '—'}</div>
+                      {lead.email && <div className="text-xs text-muted-foreground">{lead.email}</div>}
                     </td>
 
                     <td className="py-3 px-4 font-medium text-foreground">
                       <div className="flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-brand-500" />
-                        <span>{formatPhoneNumber(lead.phone)}</span>
+                        <span>{lead.phone ? formatPhoneNumber(lead.phone) : <span className="text-muted-foreground/60 italic text-xs font-normal">Chưa cập nhật SĐT</span>}</span>
                       </div>
                     </td>
 

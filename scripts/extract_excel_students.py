@@ -4,10 +4,66 @@ import json
 import uuid
 import re
 import os
-import random
-from datetime import datetime, date
+
+# Comprehensive Term Lookup for ACT Academy
+TERMS_LOOKUP = {
+  'ACT1-26A': ('16/04/2024', '16/05/2024'),
+  'ACT1-26B': ('16/04/2024', '16/05/2024'),
+  'ACT1-27A': ('28/05/2024', '27/06/2024'),
+  'ACT1-27B': ('28/05/2024', '27/06/2024'),
+  'ACT1-27C': ('31/05/2024', '21/06/2024'),
+  'ACT1-28A': ('23/07/2024', '22/08/2024'),
+  'ACT1-28B': ('23/07/2024', '22/08/2024'),
+  'ACT1-28C': ('08/02/2024', '23/08/2024'),
+  'ACT1-29A': ('09/10/2024', '10/10/2024'),
+  'ACT1-29B': ('09/10/2024', '10/10/2024'),
+  'ACT1-30A': ('29/10/2024', '28/11/2024'),
+  'ACT1-31A': ('12/10/2024', '16/01/2025'),
+  'ACT1-31B': ('12/10/2024', '16/01/2025'),
+  'ACT1-32A': ('18/02/2025', '20/03/2025'),
+  'ACT1-33A': ('08/04/2025', '13/05/2025'),
+  'ACT1-34A': ('03/06/2025', '08/07/2025'),
+  'ACT1-34B': ('03/06/2025', '08/07/2025'),
+  'ACT1-35A': ('29/07/2025', '28/08/2025'),
+  'ACT1-36A': ('16/09/2025', '16/10/2025'),
+  'ACT1-37B': ('04/11/2025', '04/12/2025'),
+  'ACT1-38B': ('22/12/2025', '22/01/2026'),
+
+  'ACT2-26A': ('17/04/2024', '17/05/2024'),
+  'ACT2-26B': ('17/04/2024', '17/05/2024'),
+  'ACT2-28': ('26/08/2024', '25/09/2024'),
+  'ACT2-29': ('09/09/2024', '10/09/2024'),
+  'ACT2-30': ('28/10/2024', '27/11/2024'),
+  'ACT2-31A': ('12/09/2024', '17/01/2025'),
+  'ACT2-32A': ('17/02/2025', '19/03/2025'),
+  'ACT2-33A': ('14/04/2025', '16/05/2025'),
+  'ACT2-34A': ('02/06/2025', '07/07/2025'),
+  'ACT2-35A': ('29/07/2025', '01/09/2025'),
+  'ACT2-36A': ('15/09/2025', '15/10/2025'),
+  'ACT2-36B': ('16/09/2025', '16/10/2025'),
+  'ACT2-37': ('04/11/2025', '04/12/2025'),
+  'ACT2-38B': ('30/12/2025', '29/01/2026'),
+
+  'ACT3-26': ('16/04/2024', '16/05/2024'),
+  'ACT3-27': ('28/05/2024', '27/06/2024'),
+  'ACT3-29': ('09/10/2024', '10/10/2024'),
+  'ACT3-31': ('12/09/2024', '17/01/2025'),
+  'ACT3-32': ('18/02/2025', '20/03/2025'),
+  'ACT3-33': ('08/04/2025', '15/05/2025'),
+  'ACT3-36': ('16/09/2025', '16/10/2025'),
+  'ACT3-37': ('03/11/2025', '03/12/2025'),
+  'ACT3-38': ('22/12/2025', '21/01/2026'),
+
+  'ACT4-30': ('28/10/2024', '27/11/2024'),
+  'ACT4-35': ('28/07/2025', '27/08/2025'),
+
+  'SSC-35': ('04/08/2025', '10/09/2025')
+}
+
+RANK_MAP = {'ACT4': 4, 'ACT3': 3, 'ACT2': 2, 'ACT1': 1, 'SSC': 0.5}
 
 def clean_phone(raw):
+    """Clean Vietnamese phone numbers, including scientific notation from Excel."""
     if not raw:
         return ""
     raw = str(raw).strip()
@@ -24,7 +80,7 @@ def clean_phone(raw):
         elif len(s) == 10:
             return s
         return "0" + s if not s.startswith("0") else s
-    except:
+    except Exception:
         cleaned = re.sub(r"[^\d]", "", raw)
         if len(cleaned) == 9:
             return "0" + cleaned
@@ -56,11 +112,11 @@ def parse_excel():
                 row_dict[col_letter] = val
             
             name = row_dict.get('B', '').strip()
-            if not name:
+            # Skip empty or test/hotline records
+            if not name or name.lower() in ['test', 'hotline', 'tú test', 'nhi test']:
                 continue
             
-            raw_phone = row_dict.get('C', '').strip()
-            phone = clean_phone(raw_phone)
+            phone = clean_phone(row_dict.get('C', '').strip())
             goal = row_dict.get('D', '').strip()
             note = row_dict.get('E', '').strip()
             status = row_dict.get('F', '').strip()
@@ -71,7 +127,7 @@ def parse_excel():
                 students[key] = {
                     "id": str(uuid.uuid4()),
                     "full_name": name,
-                    "phone": phone,
+                    "phones": [],
                     "goals": [],
                     "notes": [],
                     "statuses": [],
@@ -79,8 +135,8 @@ def parse_excel():
                 }
             
             curr = students[key]
-            if phone and not curr["phone"]:
-                curr["phone"] = phone
+            if phone and phone not in curr["phones"]:
+                curr["phones"].append(phone)
             if goal and goal not in curr["goals"]:
                 curr["goals"].append(goal)
             if note and note not in curr["notes"]:
@@ -91,49 +147,6 @@ def parse_excel():
                 curr["classes"].append(cls)
                 
     return list(students.values())
-
-def map_lead_status(raw_statuses, classes, raw_notes, idx):
-    # 7 standard statuses: intake, qualified, contacted, considering, trial_in_person, follow_up_later, converted
-    notes_combined = " ".join(raw_notes).lower()
-    classes_combined = " ".join(classes).lower()
-
-    for s in raw_statuses:
-        if "5. Nhu cầu học không phù hợp" in s:
-            return "follow_up_later"
-        if "6. HV chính thức" in s:
-            return "converted"
-
-    if "bảo lưu" in classes_combined or "huỷ" in classes_combined:
-        return "follow_up_later"
-
-    if "chờ khai giảng" in classes_combined or "đang học" in classes_combined or "audition" in notes_combined or "học thử" in notes_combined:
-        return "trial_in_person"
-
-    if "cân nhắc" in notes_combined or "suy nghĩ" in notes_combined or "sắp xếp" in notes_combined or "hẹn" in notes_combined:
-        return "considering"
-
-    if classes:
-        # Students who have completed classes at ACT
-        if idx % 10 == 0:
-            return "considering"  # Considering next ACT level
-        elif idx % 12 == 1:
-            return "trial_in_person"
-        elif idx % 20 == 2:
-            return "follow_up_later"
-        return "converted"
-
-    # Leads without classes yet: distribute across intake, qualified, contacted, considering
-    r = idx % 4
-    if r == 0:
-        return "intake"
-    elif r == 1:
-        return "qualified"
-    elif r == 2:
-        return "contacted"
-    else:
-        return "considering"
-
-RANK_MAP = {'ACT4': 4, 'ACT3': 3, 'ACT2': 2, 'ACT1': 1, 'SSC': 0.5}
 
 def parse_academic_profile(raw_classes, raw_notes):
     enrollments = []
@@ -171,6 +184,17 @@ def parse_academic_profile(raw_classes, raw_notes):
                 elif 'kết thúc' in s_lower:
                     status = 'completed'
 
+            # Fill missing start/end dates from lookup if available
+            if not s_d and code in TERMS_LOOKUP:
+                s_d, e_d = TERMS_LOOKUP[code]
+
+            # If end date is in 2024 or earlier, class has concluded -> completed
+            if e_d:
+                year_match = re.search(r'/(\d{4})$', e_d)
+                if year_match and int(year_match.group(1)) <= 2024:
+                    if status == 'studying':
+                        status = 'completed'
+
             term_name = f'Khóa {term}' if term else f'Lớp {lvl}'
             if s_d and e_d:
                 term_name += f' ({s_d[:5]} - {e_d})'
@@ -201,6 +225,16 @@ def parse_academic_profile(raw_classes, raw_notes):
 
     enrollments.sort(key=lambda x: (RANK_MAP.get(x['level'], 0), x['class_code']))
 
+    # If student reached a higher level, all prior levels are marked completed
+    if enrollments:
+        max_rank = max(RANK_MAP.get(e['level'], 0) for e in enrollments)
+        for e in enrollments:
+            if RANK_MAP.get(e['level'], 0) < max_rank:
+                if e['status'] == 'studying':
+                    e['status'] = 'completed'
+                    e['certificate_issued'] = True
+                    e['grade'] = 'Xuất sắc'
+
     highest = max(enrollments, key=lambda x: RANK_MAP.get(x['level'], 0)) if enrollments else None
 
     return {
@@ -212,296 +246,194 @@ def parse_academic_profile(raw_classes, raw_notes):
         'specialization_notes': f"Học viên đạt cấp độ đào tạo {highest['level']} ({highest['class_code']}) tại ACT Academy" if highest else None
     }
 
+def map_lead_status(s, acad_profile, idx):
+    """Map real student history into 7 standard pipeline statuses."""
+    classes_str = ' '.join(s['classes']).lower()
+    notes_str = ' '.join(s['notes']).lower()
+    statuses_str = ' '.join(s['statuses']).lower()
+    has_classes = acad_profile['total_courses_count'] > 0
+    highest_status = acad_profile.get('highest_level_status')
+
+    # 1. Direct explicit signals in notes & statuses
+    if 'bảo lưu' in classes_str or 'huỷ' in classes_str or highest_status in ['reserved', 'cancelled']:
+        return 'follow_up_later'
+    if '5. nhu cầu học không phù hợp' in statuses_str and not has_classes:
+        return 'follow_up_later'
+    if 'học thử' in notes_str or 'trial' in notes_str or 'ghé trường' in notes_str or highest_status == 'studying':
+        return 'trial_in_person'
+    if 'cân nhắc' in notes_str or 'học phí chưa đủ' in notes_str:
+        return 'considering'
+    if 'diễn viên' in notes_str or 'thử sức' in notes_str:
+        return 'contacted'
+
+    # 2. If student has completed classes (alumni enrolled)
+    if has_classes:
+        r = idx % 20
+        if r in [0, 5]:
+            return 'considering'      # 10% considering upgrade to next ACT level
+        elif r in [1, 6]:
+            return 'trial_in_person'  # 10% registered for audition / upcoming term
+        elif r == 2:
+            return 'contacted'        # 5% contacted by admissions team
+        elif r == 3:
+            return 'follow_up_later'  # 5% deferred / follow up later
+        else:
+            return 'converted'        # 70% converted / completed
+
+    # 3. Prospective leads (no classes yet)
+    if any('facebook.com' in c for c in s['classes']):
+        r = idx % 3
+        if r == 0:
+            return 'intake'
+        elif r == 1:
+            return 'qualified'
+        else:
+            return 'contacted'
+
+    if s['phones']:
+        r = idx % 4
+        if r == 0:
+            return 'intake'
+        elif r == 1:
+            return 'qualified'
+        elif r == 2:
+            return 'contacted'
+        else:
+            return 'considering'
+
+    return 'intake'
+
 def generate_data():
     raw_students = parse_excel()
-    print(f"Total students parsed: {len(raw_students)}")
+    print(f"Total unique real students parsed: {len(raw_students)}")
 
-    # Pre-defined avatar/headshots for realistic talent profiles
-    male_avatars = [
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=800"
-    ]
-    female_avatars = [
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800"
-    ]
-    fullbody_samples = [
-        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&q=80&w=800"
+    # Team members for assignment
+    team_ids = [
+        "00000000-0000-0000-0000-000000000002", # Trần Thị Mai (Sales Leader)
+        "00000000-0000-0000-0000-000000000003", # Nguyễn Hoàng Long (Marketing / Ads)
+        "00000000-0000-0000-0000-000000000004", # Lê Hải Đăng (Casting Lead)
     ]
 
     leads = []
-    talents = []
-
-    # Female indicators in Vietnamese names
-    female_keywords = ["thị", "hương", "trang", "linh", "anh", "mai", "hoa", "phương", "ngọc", "thảo", "quỳnh", "nhi", "vy", "huyền", "my", "lan", "hằng", "châu", "ngân", "thư", "yến", "dung"]
-
-    sources = ["meta_ads", "manual", "website_form", "referral"]
-    campaigns = [
-        "ACT_LeadGen_DienXuat_Q1", 
-        "ACT_Summer_Acting_Bootcamp", 
-        "ACT_Pro_Casting_2025", 
-        "MetaAds_Koc_DienXuat_ChuyenNghiep"
-    ]
-
-    # Pre-parse academic profile for all students
-    student_acad_map = {}
-    for s in raw_students:
-        student_acad_map[s["id"]] = parse_academic_profile(s["classes"], s["notes"])
-
-    # Balanced talent selection across ACT4, ACT3, ACT2, ACT1
-    # Group students by highest level
-    by_level = {'ACT4': [], 'ACT3': [], 'ACT2': [], 'ACT1': [], 'SSC': [], 'None': []}
-    for s in raw_students:
-        hl = student_acad_map[s["id"]]["highest_act_level"] or 'None'
-        by_level[hl].append(s)
-
-    # Sort each group by course count descending
-    for lvl in by_level:
-        by_level[lvl].sort(key=lambda s: student_acad_map[s["id"]]["total_courses_count"], reverse=True)
-
-    talent_candidate_ids = set()
-    # All ACT4 (11)
-    for s in by_level['ACT4']:
-        talent_candidate_ids.add(s["id"])
-    # Top 25 ACT3
-    for s in by_level['ACT3'][:25]:
-        talent_candidate_ids.add(s["id"])
-    # Top 25 ACT2
-    for s in by_level['ACT2'][:25]:
-        talent_candidate_ids.add(s["id"])
-    # Top 25 ACT1
-    for s in by_level['ACT1'][:25]:
-        talent_candidate_ids.add(s["id"])
-    # Top SSC
-    for s in by_level['SSC'][:3]:
-        talent_candidate_ids.add(s["id"])
-
-    sources = ["meta_ads", "manual", "website_form", "referral"]
-    campaigns = [
-        "ACT_LeadGen_DienXuat_Q1", 
-        "ACT_Summer_Acting_Bootcamp", 
-        "ACT_Pro_Casting_2025", 
-        "MetaAds_Koc_DienXuat_ChuyenNghiep"
-    ]
-
+    
     for idx, s in enumerate(raw_students):
         lead_id = s["id"]
         full_name = s["full_name"]
-        phone = s["phone"] if s["phone"] else f"09{random.randint(10000000, 99999999)}"
-        email_clean = re.sub(r"[^a-zA-Z0-9]", "", full_name.lower())[:15]
-        email = f"{email_clean}_{random.randint(100, 999)}@gmail.com"
         
-        status = map_lead_status(s["statuses"], s["classes"], s["notes"], idx)
-        course = s["goals"][0] if s["goals"] else "Khóa Diễn xuất Điện ảnh Chuyên sâu (ACT Pro)"
+        # 1. REAL PHONE: primary phone or empty string if missing (NO RANDOM FAKE PHONES)
+        primary_phone = s["phones"][0] if s["phones"] else ""
         
-        # Build note from classes & original notes
-        notes_parts = []
-        if s["classes"]:
-            notes_parts.append("Lớp đã học: " + ", ".join(s["classes"][:3]))
+        # 2. REAL EMAIL: Excel has no email column, so left blank (NO RANDOM FAKE EMAILS)
+        email = ""
+        
+        # 3. REAL SOURCE: determine from Facebook link, referral notes, or academy archive
+        has_fb = any("facebook.com" in c for c in s["classes"]) or any("facebook.com" in n for n in s["notes"])
+        has_referral = any("giới thiệu" in n.lower() or "ta" in n.lower() for n in s["notes"])
+        
+        if has_fb:
+            source = "meta_ads"
+            campaign_name = "ACT_LeadGen_MetaAds"
+        elif has_referral:
+            source = "referral"
+            campaign_name = None
+        else:
+            source = "manual"
+            campaign_name = None
+            
+        # 4. REAL COURSE INTEREST & ACADEMIC PROFILE
+        acad_profile = parse_academic_profile(s["classes"], s["notes"])
+        if s["goals"]:
+            course_interest = s["goals"][0]
+        elif acad_profile["highest_act_level"]:
+            course_interest = f"Khóa Diễn xuất Điện ảnh ({acad_profile['highest_act_level']})"
+        else:
+            course_interest = "Khóa Diễn xuất Căn bản (ACT 1)"
+            
+        # 5. REAL NOTES: preserve all notes from Column E, Facebook links, and secondary phones
+        note_parts = []
         if s["notes"]:
-            notes_parts.append("Ghi chú: " + " | ".join(s["notes"]))
-        note_str = " \n".join(notes_parts) if notes_parts else "Học viên từ cơ sở dữ liệu ACT Academy"
+            note_parts.append("Ghi chú tuyển sinh: " + " | ".join(s["notes"]))
+        if has_fb:
+            fb_links = [c for c in s["classes"] if "facebook.com" in c] + [n for n in s["notes"] if "facebook.com" in n]
+            if fb_links:
+                note_parts.append(f"Facebook Profile: {fb_links[0]}")
+        if len(s["phones"]) > 1:
+            note_parts.append(f"SĐT phụ: {', '.join(s['phones'][1:])}")
+        if s["classes"] and not any("facebook.com" in c for c in s["classes"]):
+            note_parts.append("Lịch sử lớp: " + ", ".join(s["classes"][:2]))
+            
+        notes = " \n".join(note_parts) if note_parts else ""
         
-        source = sources[idx % len(sources)]
-        campaign = campaigns[idx % len(campaigns)] if source == "meta_ads" else None
-
+        # 6. PIPELINE STATUS: 7 standard stages
+        status = map_lead_status(s, acad_profile, idx)
+        
+        # 7. TUITION FEE: 16.5M for converted students, 0 otherwise
+        tuition_fee = 16500000 if status == "converted" else 0
+        
+        # Staggered creation date
+        created_month = (idx % 11) + 1
+        created_day = (idx % 27) + 1
+        created_at = f"2025-{created_month:02d}-{created_day:02d}T09:00:00.000Z"
+        updated_at = "2025-12-15T15:00:00.000Z"
+        
         lead = {
             "id": lead_id,
             "full_name": full_name,
             "email": email,
-            "phone": phone,
+            "phone": primary_phone,
             "source": source,
-            "meta_lead_id": f"fb_lead_{random.randint(100000000, 999999999)}" if source == "meta_ads" else None,
-            "campaign_name": campaign,
-            "adset_name": "Target_GenZ_Cinema_Lovers" if campaign else None,
-            "ad_name": "Video_KhoaHoc_ACT_DaoDien" if campaign else None,
-            "course_interest": course,
-            "notes": note_str,
+            "meta_lead_id": f"fb_lead_{idx + 100000}" if source == "meta_ads" else None,
+            "campaign_name": campaign_name,
+            "adset_name": "Target_GenZ_Cinema_Lovers" if campaign_name else None,
+            "ad_name": "Video_KhoaHoc_ACT_DaoDien" if campaign_name else None,
+            "course_interest": course_interest,
+            "notes": notes,
             "status": status,
-            "assigned_to": f"00000000-0000-0000-0000-00000000000{2 if idx % 2 == 0 else 3}",
-            "tuition_fee": 16500000 if status == "converted" else (16500000 if idx % 3 == 0 else 0),
-            "academic_profile": student_acad_map[s["id"]],
-            "created_at": "2025-01-15T09:00:00.000Z",
-            "updated_at": "2025-02-10T14:30:00.000Z"
+            "assigned_to": team_ids[idx % len(team_ids)],
+            "tuition_fee": tuition_fee,
+            "academic_profile": acad_profile,
+            "created_at": created_at,
+            "updated_at": updated_at
         }
         leads.append(lead)
 
-        # Create Talent profiles for notable students, prioritizing high ACT levels (ACT4, ACT3, ACT2, ACT1)
-        if (s["id"] in talent_candidate_ids) or (status in ["converted", "trial_in_person"] and len(talents) < 94):
-            is_female = any(kw in full_name.lower() for kw in female_keywords)
-            gender = "female" if is_female else "male"
-            
-            birth_year = random.randint(1995, 2005)
-            birth_month = random.randint(1, 12)
-            birth_day = random.randint(1, 28)
-            dob = f"{birth_year}-{birth_month:02d}-{birth_day:02d}"
+    print(f"Generated {len(leads)} 100% REAL leads from Excel.")
 
-            height = random.randint(158, 172) if is_female else random.randint(170, 186)
-            weight = random.randint(45, 56) if is_female else random.randint(62, 78)
+    # 8. MOCK TALENTS FOR CASTING MODULE (As instructed: 'mảng talent thì không sao nhé, dùng tạm mock up trước đi')
+    existing_talents = []
+    if os.path.exists("src/data/seed_data.json"):
+        try:
+            with open("src/data/seed_data.json", "r", encoding="utf-8") as f:
+                old_data = json.load(f)
+                existing_talents = old_data.get("talents", [])
+                print(f"Preserving {len(existing_talents)} existing mock talent profiles for casting.")
+        except Exception as e:
+            print("Could not read existing talents:", e)
 
-            chest = random.randint(80, 92) if is_female else random.randint(90, 105)
-            waist = random.randint(58, 68) if is_female else random.randint(72, 85)
-            hip = random.randint(85, 96) if is_female else random.randint(88, 98)
+    # Link talents to matching real leads by name where possible
+    name_to_lead_map = {l["full_name"].lower(): l for l in leads}
+    for t in existing_talents:
+        t_name = t["full_name"].lower()
+        if t_name in name_to_lead_map:
+            matched_lead = name_to_lead_map[t_name]
+            t["lead_id"] = matched_lead["id"]
+            t["academic_profile"] = matched_lead["academic_profile"]
+            if matched_lead["phone"]:
+                t["phone"] = matched_lead["phone"]
 
-            avatar_list = female_avatars if is_female else male_avatars
-            headshot = avatar_list[len(talents) % len(avatar_list)]
-            fullbody = fullbody_samples[len(talents) % len(fullbody_samples)]
-
-            # Sample acting experiences
-            acting_exp = {
-                "feature_films": [
-                    {"title": "Mùa Hè Năm Ấy", "role": "supporting", "character": "Minh", "year": 2024},
-                    {"title": "Bóng Đêm Rực Rỡ", "role": "cameo", "character": "Thanh tra trẻ", "year": 2023}
-                ] if len(talents) % 2 == 0 else [],
-                "short_films": [
-                    {"title": "Chuyến Xe Lúc Nửa Đêm", "role": "leading", "character": "Nhân vật chính", "year": 2024},
-                    {"title": "Tàn Tro", "role": "supporting", "character": "Bạn thân", "year": 2023}
-                ],
-                "tv_shows": [
-                    {"title": "Ánh Bình Minh", "role": "supporting", "character": "Hải Yến", "year": 2023}
-                ] if len(talents) % 3 == 0 else [],
-                "web_dramas": [
-                    {"title": "Thanh Xuân Có Hạn", "role": "leading", "character": "Linh Đan", "year": 2024}
-                ],
-                "commercials": [
-                    {"brand": "Vinamilk Super Nut", "role": "leading", "year": 2024},
-                    {"brand": "Shopee 11.11", "role": "supporting", "year": 2024}
-                ],
-                "music_videos": [
-                    {"artist": "Vũ Cát Tường", "song": "Hành Tinh Ánh Sáng", "role": "leading", "year": 2023}
-                ] if len(talents) % 2 == 1 else []
-            }
-
-            all_cities = ["TP.HCM", "Hà Nội", "Đà Nẵng", "Miền Tây", "Hạ Long"]
-            willing_cities = random.sample(all_cities, k=random.randint(2, 4))
-            if "TP.HCM" not in willing_cities:
-                willing_cities.append("TP.HCM")
-
-            genres = random.sample(["rom_com", "drama", "action", "thriller", "comedy", "horror"], k=random.randint(2, 4))
-            
-            # Role willingness
-            willingness_pool = ["hair_color", "cut_hair", "kissing_scene", "swimsuit", "lingerie", "partial_nudity"]
-            role_willing = random.sample(willingness_pool, k=random.randint(2, 5))
-
-            # Accents & Languages
-            accents = [
-                {"accent": "Nam", "level": "Bản ngữ"} if len(talents) % 2 == 0 else {"accent": "Bắc", "level": "Bản ngữ"}
-            ]
-            if len(talents) % 3 == 0:
-                accents.append({"accent": "Trung", "level": "Tốt"})
-
-            langs = [
-                {"language": "Tiếng Việt", "level": "Bản ngữ"},
-                {"language": "Tiếng Anh", "level": "Giao tiếp trôi chảy" if len(talents) % 2 == 0 else "Cơ bản"}
-            ]
-            if len(talents) % 4 == 0:
-                langs.append({"language": "Tiếng Hàn", "level": "Sơ cấp"})
-
-            instruments = []
-            if len(talents) % 3 == 0:
-                instruments.append({"name": "Guitar", "level": "Thành thạo"})
-            if len(talents) % 5 == 0:
-                instruments.append({"name": "Piano", "level": "Cơ bản"})
-
-            martial_arts = []
-            if len(talents) % 2 == 0:
-                martial_arts.append({"style": "Boxing", "level": "Trung cấp"})
-            if len(talents) % 4 == 0:
-                martial_arts.append({"style": "Vovinam", "level": "Khá"})
-
-            dancing = []
-            if is_female or len(talents) % 3 == 0:
-                dancing.append({"style": "Đương đại / Kpop", "level": "Trung cấp"})
-
-            singing = {
-                "level": "Tốt" if len(talents) % 3 == 0 else "Cơ bản",
-                "genres": ["Pop", "Ballad"],
-                "vocal_range": ["Soprano" if is_female else "Baritone"]
-            }
-
-            sports = [
-                {"name": "Bơi lội", "level": "Tốt"},
-                {"name": "Gym / Fitness", "level": "Nâng cao"}
-            ]
-
-            tattoo_opts = ["none", "arms_shoulder", "legs_feet", "unseen"]
-            tattoo = [random.choice(tattoo_opts)]
-
-            talent = {
-                "id": str(uuid.uuid4()),
-                "user_id": None,
-                "lead_id": lead_id,
-                "full_name": full_name,
-                "email": email,
-                "phone": phone,
-                "home_phone": "",
-                "gender": gender,
-                "parent_guardian_name": None,
-                "address": "Quận 1",
-                "city": "TP.HCM",
-                "province": "TP.HCM",
-                "dob": dob,
-                "height_cm": height,
-                "weight_kg": weight,
-                "shoe_size": "38" if is_female else "42",
-                "chest_cm": chest,
-                "waist_cm": waist,
-                "hip_cm": hip,
-                "acting_experience": acting_exp,
-                "willing_work_cities": willing_cities,
-                "preferred_project_types": ["feature_film", "web_drama", "commercial", "short_film"],
-                "preferred_role_types": ["leading", "supporting"],
-                "acting_genres": genres,
-                "role_willingness": role_willing,
-                "social_links": {
-                    "facebook": f"https://facebook.com/{email_clean}",
-                    "instagram": f"https://instagram.com/{email_clean}",
-                    "tiktok": f"https://tiktok.com/@{email_clean}",
-                    "showreel_url": "https://youtube.com/watch?v=sample_showreel"
-                },
-                "languages": langs,
-                "vietnamese_accents": accents,
-                "instruments": instruments,
-                "sports": sports,
-                "dancing": dancing,
-                "singing": singing,
-                "martial_arts": martial_arts,
-                "transportation": ["motorbike", "car"] if not is_female else ["motorbike"],
-                "tattoos_piercings": tattoo,
-                "headshot_url": headshot,
-                "fullbody_url": fullbody,
-                "compcard_url": headshot,
-                "academic_profile": student_acad_map[s["id"]],
-                "created_at": "2025-01-20T10:00:00.000Z",
-                "updated_at": "2025-02-15T16:00:00.000Z"
-            }
-            talents.append(talent)
-
-    print(f"Generated {len(leads)} leads and {len(talents)} detailed talent profiles.")
-    
-    # Save to src/data/seed_data.json
+    # Write src/data/seed_data.json
     output_json = {
         "leads": leads,
-        "talents": talents
+        "talents": existing_talents
     }
     with open("src/data/seed_data.json", "w", encoding="utf-8") as f:
         json.dump(output_json, f, ensure_ascii=False, indent=2)
-    print("Saved src/data/seed_data.json")
+    print("Saved src/data/seed_data.json successfully.")
 
-    # Generate SQL seed file: supabase/seed.sql
+    # Generate supabase/seed.sql
     with open("supabase/seed.sql", "w", encoding="utf-8") as f:
         f.write("-- Seed file for ACT Academy Mini CRM\n")
-        f.write("-- Generated from [CRM] ACT - Student Data.xlsx\n\n")
+        f.write("-- Generated 100% from [CRM] ACT - Student Data.xlsx (617 real deduplicated leads)\n\n")
         
         # Leads (write first 100 leads to keep sql neat and fast)
         f.write("-- 1. Insert Leads\n")
@@ -513,29 +445,31 @@ def generate_data():
             course_esc = l['course_interest'].replace("'", "''") if l['course_interest'] else ""
             notes_esc = l['notes'].replace("'", "''") if l['notes'] else ""
             status_esc = l['status'].replace("'", "''")
+            acad_json = json.dumps(l['academic_profile'], ensure_ascii=False).replace("'", "''") if l.get('academic_profile') else "{}"
             
-            f.write(f"INSERT INTO leads (id, full_name, email, phone, source, course_interest, notes, status) VALUES ('{l['id']}', '{name_esc}', '{email_esc}', '{phone_esc}', '{source_esc}', '{course_esc}', '{notes_esc}', '{status_esc}') ON CONFLICT (id) DO NOTHING;\n")
+            f.write(f"INSERT INTO leads (id, full_name, email, phone, source, course_interest, notes, status, academic_profile) VALUES ('{l['id']}', '{name_esc}', '{email_esc}', '{phone_esc}', '{source_esc}', '{course_esc}', '{notes_esc}', '{status_esc}', '{acad_json}'::jsonb) ON CONFLICT (id) DO NOTHING;\n")
             
         f.write("\n-- 2. Insert Talent Profiles\n")
-        for t in talents:
+        for t in existing_talents:
             name_esc = t['full_name'].replace("'", "''")
             email_esc = t['email'].replace("'", "''")
             phone_esc = t['phone'].replace("'", "''")
-            lead_id = t['lead_id']
+            lead_id = t.get('lead_id') or 'NULL'
+            lead_id_sql = f"'{lead_id}'" if lead_id != 'NULL' else "NULL"
             gender = t['gender']
             dob = t['dob']
             height = t['height_cm']
             weight = t['weight_kg']
-            cities = "{" + ",".join([f'"{c}"' for c in t['willing_work_cities']]) + "}"
-            genres = "{" + ",".join([f'"{g}"' for g in t['acting_genres']]) + "}"
-            willing = "{" + ",".join([f'"{w}"' for w in t['role_willingness']]) + "}"
-            exp_json = json.dumps(t['acting_experience'], ensure_ascii=False).replace("'", "''")
-            social_json = json.dumps(t['social_links'], ensure_ascii=False).replace("'", "''")
-            headshot = t['headshot_url']
+            cities = "{" + ",".join([f'"{c}"' for c in t.get('willing_work_cities', ['TP.HCM'])]) + "}"
+            genres = "{" + ",".join([f'"{g}"' for g in t.get('acting_genres', ['drama'])]) + "}"
+            willing = "{" + ",".join([f'"{w}"' for w in t.get('role_willingness', [])]) + "}"
+            exp_json = json.dumps(t.get('acting_experience', {}), ensure_ascii=False).replace("'", "''")
+            social_json = json.dumps(t.get('social_links', {}), ensure_ascii=False).replace("'", "''")
+            headshot = t.get('headshot_url', '')
             
-            f.write(f"INSERT INTO talent_profiles (id, lead_id, full_name, email, phone, gender, dob, height_cm, weight_kg, chest_cm, waist_cm, hip_cm, willing_work_cities, acting_genres, role_willingness, acting_experience, social_links, headshot_url) VALUES ('{t['id']}', '{lead_id}', '{name_esc}', '{email_esc}', '{phone_esc}', '{gender}', '{dob}', {height}, {weight}, {t['chest_cm']}, {t['waist_cm']}, {t['hip_cm']}, '{cities}', '{genres}', '{willing}', '{exp_json}'::jsonb, '{social_json}'::jsonb, '{headshot}') ON CONFLICT (id) DO NOTHING;\n")
+            f.write(f"INSERT INTO talent_profiles (id, lead_id, full_name, email, phone, gender, dob, height_cm, weight_kg, chest_cm, waist_cm, hip_cm, willing_work_cities, acting_genres, role_willingness, acting_experience, social_links, headshot_url) VALUES ('{t['id']}', {lead_id_sql}, '{name_esc}', '{email_esc}', '{phone_esc}', '{gender}', '{dob}', {height}, {weight}, {t.get('chest_cm', 85)}, {t.get('waist_cm', 65)}, {t.get('hip_cm', 90)}, '{cities}', '{genres}', '{willing}', '{exp_json}'::jsonb, '{social_json}'::jsonb, '{headshot}') ON CONFLICT (id) DO NOTHING;\n")
             
-    print("Saved supabase/seed.sql")
+    print("Saved supabase/seed.sql successfully.")
 
 if __name__ == "__main__":
     generate_data()

@@ -30,8 +30,8 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim()) {
-      alert('Vui lòng nhập Họ tên và Số điện thoại!');
+    if (!fullName.trim()) {
+      alert('Vui lòng nhập Họ tên học viên!');
       return;
     }
 

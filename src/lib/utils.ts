@@ -37,11 +37,12 @@ export function calculateAge(dob?: string | null): number | null {
   }
 }
 
-export function formatPhoneNumber(phone: string): string {
-  if (!phone) return "";
+export function formatPhoneNumber(phone?: string | null): string {
+  if (!phone || !phone.trim()) return "";
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 10) {
     return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7)}`;
   }
   return phone;
 }
+

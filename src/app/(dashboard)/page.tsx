@@ -196,7 +196,7 @@ export default function DashboardOverviewPage() {
                 <div>
                   <div className="font-bold text-foreground text-sm">{lead.full_name}</div>
                   <div className="text-muted-foreground">
-                    {formatPhoneNumber(lead.phone)} • <span className="text-foreground font-medium">{lead.course_interest || 'Chưa chọn'}</span>
+                    {lead.phone ? `${formatPhoneNumber(lead.phone)} • ` : ''}<span className="text-foreground font-medium">{lead.course_interest || 'Chưa chọn'}</span>
                   </div>
                 </div>
 

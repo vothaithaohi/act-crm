@@ -102,7 +102,7 @@ export function LeadKanban({ onEditLead, onSelectLead, searchFilter, sourceFilte
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
       const matchName = l.full_name.toLowerCase().includes(q);
-      const matchPhone = l.phone.toLowerCase().includes(q);
+      const matchPhone = (l.phone || '').toLowerCase().includes(q);
       const matchCourse = (l.course_interest || '').toLowerCase().includes(q);
       if (!matchName && !matchPhone && !matchCourse) return false;
     }
@@ -241,7 +241,7 @@ export function LeadKanban({ onEditLead, onSelectLead, searchFilter, sourceFilte
                     <div className="space-y-1 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1.5 text-foreground font-medium">
                         <Phone className="w-3.5 h-3.5 text-brand-500" />
-                        <span>{formatPhoneNumber(lead.phone)}</span>
+                        <span>{lead.phone ? formatPhoneNumber(lead.phone) : <span className="text-muted-foreground/60 italic font-normal text-[11px]">Chưa cập nhật SĐT</span>}</span>
                       </div>
 
                       {lead.course_interest && (
