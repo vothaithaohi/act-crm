@@ -27,7 +27,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     phone: '0901234567',
     department: 'Ban Giám Đốc',
     status: 'active',
-    last_login: new Date().toISOString(),
+    last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z'
   },
@@ -39,7 +39,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     phone: '0912345678',
     department: 'Phòng Tuyển Sinh',
     status: 'active',
-    last_login: new Date().toISOString(),
+    last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z'
   },
@@ -51,7 +51,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     phone: '0987654321',
     department: 'Phòng Marketing',
     status: 'active',
-    last_login: new Date().toISOString(),
+    last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z'
   },
@@ -63,7 +63,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     phone: '0934567890',
     department: 'Bộ Phận Tuyển Vai',
     status: 'active',
-    last_login: new Date().toISOString(),
+    last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z'
   },
@@ -75,7 +75,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     phone: '0967890123',
     department: 'Phòng Kỹ Thuật IT',
     status: 'active',
-    last_login: new Date().toISOString(),
+    last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z'
   }
@@ -142,9 +142,12 @@ interface CRMContextType {
   talents: TalentProfile[];
   teamMembers: Profile[];
   webhookLogs: WebhookLog[];
-  currentUser: Profile;
+  currentUser: Profile | null;
+  isAuthenticated: boolean;
   isLoading: boolean;
   isSupabaseConnected: boolean;
+  login: (email: string, password?: string) => Promise<boolean>;
+  logout: () => void;
   addLead: (lead: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateLeadStatus: (leadId: string, status: LeadStatus) => Promise<void>;
   updateLead: (lead: Lead) => Promise<void>;
@@ -192,10 +195,12 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [talents, setTalents] = useState<TalentProfile[]>([]);
   const [teamMembers, setTeamMembers] = useState<Profile[]>(INITIAL_TEAM_MEMBERS);
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>(INITIAL_WEBHOOK_LOGS);
-  const [currentUser, setCurrentUser] = useState<Profile>(INITIAL_TEAM_MEMBERS[0]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState<CastingFilterCriteria>(initialFilterCriteria);
+
+  const isAuthenticated = currentUser !== null;
 
   // Initialize from Supabase or fallback to localStorage / Excel seed data
   useEffect(() => {
@@ -243,7 +248,24 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         loadLocalTeamMembers();
       }
 
+      // Check existing authenticated session
+      checkSession();
+
       setIsLoading(false);
+    }
+
+    function checkSession() {
+      try {
+        const storedUser = localStorage.getItem('act_crm_current_user');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (user && user.role) {
+            setCurrentUser(user);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse current user session:', e);
+      }
     }
 
     function loadLocalSeed() {
@@ -278,14 +300,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
             setTeamMembers(parsed);
           }
         }
-
-        const storedUser = localStorage.getItem('act_crm_current_user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          if (user && user.role) {
-            setCurrentUser(user);
-          }
-        }
       } catch (e) {
         console.error('Failed to load local team members:', e);
       }
@@ -293,6 +307,53 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
     initData();
   }, []);
+
+  const login = async (email: string, password?: string): Promise<boolean> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const member = teamMembers.find(m => m.email.toLowerCase() === cleanEmail);
+
+    if (!member) {
+      toast.error('Tài khoản không tồn tại', {
+        description: `Không tìm thấy tài khoản với email ${email}. Vui lòng thử một trong các email mẫu của ACT.`
+      });
+      return false;
+    }
+
+    if (member.status === 'inactive') {
+      toast.error('Tài khoản đã bị tạm khóa', {
+        description: 'Vui lòng liên hệ Ban Giám Đốc để mở lại quyền truy cập.'
+      });
+      return false;
+    }
+
+    const updatedUser: Profile = {
+      ...member,
+      last_login: new Date().toISOString()
+    };
+
+    setCurrentUser(updatedUser);
+    try {
+      localStorage.setItem('act_crm_current_user', JSON.stringify(updatedUser));
+    } catch (e) {
+      console.error(e);
+    }
+
+    toast.success('Đăng nhập thành công!', {
+      description: `Xin chào ${member.full_name} (${ROLE_DETAILS[member.role]?.label || member.role})`
+    });
+
+    return true;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('act_crm_current_user');
+    } catch (e) {
+      console.error(e);
+    }
+    toast.info('Đã đăng xuất khỏi hệ thống');
+  };
 
   const syncLeadsLocal = (newLeads: Lead[]) => {
     setLeads(newLeads);
@@ -535,7 +596,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     const updated = [newMember, ...teamMembers];
     syncTeamMembersLocal(updated);
     toast.success('Đã thêm nhân sự mới thành công!', {
-      description: `${newMember.full_name} (${ROLE_DETAILS[newMember.role].label})`
+      description: `${newMember.full_name} (${ROLE_DETAILS[newMember.role]?.label || newMember.role})`
     });
 
     const supabase = createClient();
@@ -553,7 +614,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     syncTeamMembersLocal(updated);
 
     // If updating current user, refresh current user state too
-    if (currentUser.id === member.id) {
+    if (currentUser && currentUser.id === member.id) {
       const updatedCurrent = { ...member, updated_at: new Date().toISOString() };
       setCurrentUser(updatedCurrent);
       try {
@@ -576,7 +637,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteTeamMember = async (id: string) => {
-    if (currentUser.id === id) {
+    if (currentUser && currentUser.id === id) {
       toast.error('Không thể xóa tài khoản bạn đang đăng nhập');
       return;
     }
@@ -602,7 +663,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       nextUser = memberWithRole;
     } else {
       nextUser = {
-        ...currentUser,
+        ...(currentUser || INITIAL_TEAM_MEMBERS[0]),
         role
       };
     }
@@ -614,12 +675,13 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       console.error(e);
     }
 
-    toast.success(`Đã chuyển vai trò: ${ROLE_DETAILS[role].label}`, {
-      description: ROLE_DETAILS[role].desc
+    toast.success(`Đã chuyển vai trò: ${ROLE_DETAILS[role]?.label || role}`, {
+      description: ROLE_DETAILS[role]?.desc || ''
     });
   };
 
   const can = (permission: Permission): boolean => {
+    if (!currentUser) return false;
     return hasPermission(currentUser.role, permission);
   };
 
@@ -715,8 +777,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         teamMembers,
         webhookLogs,
         currentUser,
+        isAuthenticated,
         isLoading,
         isSupabaseConnected,
+        login,
+        logout,
         addLead,
         updateLeadStatus,
         updateLead,

@@ -53,7 +53,8 @@ export function PermissionGuard({
   const authorizedRoles = (['super_admin', 'sales', 'marketing', 'casting', 'developer'] as UserRole[])
     .filter(r => requiredPerms.some(p => ROLE_PERMISSIONS[r]?.includes(p)));
 
-  const currentRoleInfo = ROLE_DETAILS[currentUser.role] || ROLE_DETAILS.super_admin;
+  const currentRole = currentUser?.role || 'sales';
+  const currentRoleInfo = ROLE_DETAILS[currentRole] || ROLE_DETAILS.sales;
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">
@@ -82,7 +83,7 @@ export function PermissionGuard({
               <>
                 Tài khoản của bạn hiện đang có vai trò{' '}
                 <strong className="text-foreground font-semibold">{currentRoleInfo.label}</strong>{' '}
-                ({currentUser.department || 'Bộ phận nội bộ'}), không có quyền thực hiện thao tác hoặc truy cập vào trang này.
+                ({currentUser?.department || 'Bộ phận nội bộ'}), không có quyền thực hiện thao tác hoặc truy cập vào trang này.
               </>
             )}
           </p>

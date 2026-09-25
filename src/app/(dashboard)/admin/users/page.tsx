@@ -134,7 +134,7 @@ export default function AdminUsersPage() {
 
         <div className="flex flex-wrap gap-1.5">
           {(['super_admin', 'sales', 'marketing', 'casting', 'developer'] as UserRole[]).map((r) => {
-            const isCurrent = currentUser.role === r;
+            const isCurrent = currentUser?.role === r;
             const details = ROLE_DETAILS[r];
             return (
               <button
@@ -187,7 +187,7 @@ export default function AdminUsersPage() {
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-foreground flex items-center gap-2">
                         <span>{member.full_name}</span>
-                        {member.id === currentUser.id && (
+                        {currentUser && member.id === currentUser.id && (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded">
                             Bạn
                           </span>
@@ -240,7 +240,7 @@ export default function AdminUsersPage() {
                               deleteTeamMember(member.id);
                             }
                           }}
-                          disabled={member.id === currentUser.id}
+                          disabled={currentUser ? member.id === currentUser.id : false}
                           className="p-1.5 hover:bg-rose-50 text-muted-foreground hover:text-rose-600 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Xóa tài khoản"
                         >
