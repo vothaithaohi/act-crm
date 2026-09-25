@@ -261,16 +261,22 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
     function checkSession() {
       try {
-        const storedUser = localStorage.getItem('act_crm_current_user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          if (user && user.role) {
-            setCurrentUser(user);
+        // ALWAYS purge legacy auto-login keys
+        localStorage.removeItem('act_crm_current_user');
+        localStorage.removeItem('act_crm_session');
+
+        const storedSession = localStorage.getItem('act_crm_auth_session_v3');
+        if (storedSession) {
+          const session = JSON.parse(storedSession);
+          if (session && session.email && session.id && session.role) {
+            setCurrentUser(session);
+            return;
           }
         }
       } catch (e) {
         console.error('Failed to parse current user session:', e);
       }
+      setCurrentUser(null);
     }
 
     function loadLocalSeed() {
@@ -302,12 +308,21 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         if (storedMembers) {
           const parsed = JSON.parse(storedMembers);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setTeamMembers(parsed);
+            const merged = parsed.map(m => {
+              const init = INITIAL_TEAM_MEMBERS.find(i => i.email.toLowerCase() === m.email.toLowerCase());
+              return {
+                ...m,
+                password: m.password || init?.password || 'Act@2025'
+              };
+            });
+            setTeamMembers(merged);
+            return;
           }
         }
       } catch (e) {
         console.error('Failed to load local team members:', e);
       }
+      setTeamMembers(INITIAL_TEAM_MEMBERS);
     }
 
     initData();
@@ -356,7 +371,8 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
     setCurrentUser(updatedUser);
     try {
-      localStorage.setItem('act_crm_current_user', JSON.stringify(updatedUser));
+      localStorage.setItem('act_crm_auth_session_v3', JSON.stringify(updatedUser));
+      localStorage.removeItem('act_crm_current_user');
     } catch (e) {
       console.error(e);
     }
@@ -371,7 +387,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setCurrentUser(null);
     try {
+      localStorage.removeItem('act_crm_auth_session_v3');
       localStorage.removeItem('act_crm_current_user');
+      localStorage.removeItem('act_crm_session');
     } catch (e) {
       console.error(e);
     }
@@ -718,7 +736,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     syncLeadsLocal(rawLeads);
     syncTalentsLocal(rawTalents);
     syncTeamMembersLocal(INITIAL_TEAM_MEMBERS);
-    setCurrentUser(INITIAL_TEAM_MEMBERS[0]);
     resetFilters();
     toast.success('Đã khôi phục dữ liệu ban đầu từ file Excel & danh sách nhân sự mẫu!');
   };
