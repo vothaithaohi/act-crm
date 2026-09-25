@@ -1,6 +1,5 @@
 -- ==============================================================================
--- ACT ACADEMY MINI CRM - SUPABASE POSTGRESQL SCHEMA MIGRATION
--- Academy Growth (Tuyển sinh & Bán hàng) & Casting Matching (Talent Pool & Tuyển vai)
+-- ACT ACADEMY MINI CRM - SUPABASE POSTGRESQL SCHEMA MIGRATION (CLEAN & IDEMPOTENT)
 -- ==============================================================================
 
 -- 1. EXTENSIONS
@@ -38,9 +37,9 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
--- 3. PROFILES TABLE (Kế thừa từ auth.users)
+-- 3. PROFILES TABLE
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'student')),
     full_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -90,8 +89,6 @@ CREATE TABLE IF NOT EXISTS public.talent_profiles (
     chest_cm NUMERIC,
     waist_cm NUMERIC,
     hip_cm NUMERIC,
-    
-    -- Kinh nghiệm diễn xuất dạng JSONB
     acting_experience JSONB DEFAULT '{
         "feature_films": [],
         "short_films": [],
@@ -100,23 +97,17 @@ CREATE TABLE IF NOT EXISTS public.talent_profiles (
         "commercials": [],
         "music_videos": []
     }'::jsonb,
-    
-    -- Địa bàn hoạt động & Định hướng vai diễn
     willing_work_cities TEXT[] DEFAULT ARRAY['TP.HCM'],
     preferred_project_types TEXT[] DEFAULT ARRAY['feature_film', 'web_drama'],
     preferred_role_types TEXT[] DEFAULT ARRAY['leading', 'supporting'],
     acting_genres TEXT[] DEFAULT ARRAY['drama'],
     role_willingness TEXT[] DEFAULT ARRAY[]::TEXT[],
-    
-    -- Mạng xã hội & Showreel
     social_links JSONB DEFAULT '{
         "facebook": "",
         "instagram": "",
         "tiktok": "",
         "showreel_url": ""
     }'::jsonb,
-    
-    -- Kỹ năng, Ngôn ngữ & Vùng miền
     languages JSONB DEFAULT '[]'::jsonb,
     vietnamese_accents JSONB DEFAULT '[]'::jsonb,
     instruments JSONB DEFAULT '[]'::jsonb,
@@ -126,12 +117,9 @@ CREATE TABLE IF NOT EXISTS public.talent_profiles (
     martial_arts JSONB DEFAULT '[]'::jsonb,
     transportation TEXT[] DEFAULT ARRAY['motorbike'],
     tattoos_piercings TEXT[] DEFAULT ARRAY['none'],
-    
-    -- Media URLs
     headshot_url TEXT,
     fullbody_url TEXT,
     compcard_url TEXT,
-    
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
@@ -165,62 +153,31 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.talent_profiles ENABLE ROW LEVEL SECURITY;
 
--- Helper function to check role of current user
-CREATE OR REPLACE FUNCTION public.get_current_user_role()
-RETURNS TEXT AS $$
-    SELECT role FROM public.profiles WHERE id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER;
-
--- Profiles Policies
-DROP POLICY IF EXISTS "Admins and Staff can view all profiles" ON public.profiles;
-CREATE POLICY "Admins and Staff can view all profiles" ON public.profiles
-    FOR SELECT TO authenticated
-    USING (public.get_current_user_role() IN ('admin', 'staff') OR id = auth.uid());
-
-DROP POLICY IF EXISTS "Admins can update profiles" ON public.profiles;
-CREATE POLICY "Admins can update profiles" ON public.profiles
-    FOR ALL TO authenticated
-    USING (public.get_current_user_role() = 'admin' OR id = auth.uid());
-
--- Leads Policies
-DROP POLICY IF EXISTS "Staff and Admin full access on leads" ON public.leads;
-CREATE POLICY "Staff and Admin full access on leads" ON public.leads
-    FOR ALL TO authenticated
-    USING (public.get_current_user_role() IN ('admin', 'staff'));
-
-DROP POLICY IF EXISTS "Service role & webhook insert on leads" ON public.leads;
-CREATE POLICY "Service role & webhook insert on leads" ON public.leads
-    FOR INSERT TO anon, service_role
+-- Allow anon and authenticated full read/write for CRM operations
+DROP POLICY IF EXISTS "Public and auth access to profiles" ON public.profiles;
+CREATE POLICY "Public and auth access to profiles" ON public.profiles
+    FOR ALL TO public
+    USING (true)
     WITH CHECK (true);
 
--- Talent Profiles Policies
-DROP POLICY IF EXISTS "Staff and Admin full access on talent_profiles" ON public.talent_profiles;
-CREATE POLICY "Staff and Admin full access on talent_profiles" ON public.talent_profiles
-    FOR ALL TO authenticated
-    USING (public.get_current_user_role() IN ('admin', 'staff'));
+DROP POLICY IF EXISTS "Public and auth access to leads" ON public.leads;
+CREATE POLICY "Public and auth access to leads" ON public.leads
+    FOR ALL TO public
+    USING (true)
+    WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Talents can view and edit own profile" ON public.talent_profiles;
-CREATE POLICY "Talents can view and edit own profile" ON public.talent_profiles
-    FOR ALL TO authenticated
-    USING (user_id = auth.uid() OR public.get_current_user_role() IN ('admin', 'staff'));
+DROP POLICY IF EXISTS "Public and auth access to talent_profiles" ON public.talent_profiles;
+CREATE POLICY "Public and auth access to talent_profiles" ON public.talent_profiles
+    FOR ALL TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- 8. STORAGE BUCKET FOR TALENT MEDIA
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('talent-media', 'talent-media', true)
-ON CONFLICT (id) DO NOTHING;
-
--- Storage RLS Policies
-DROP POLICY IF EXISTS "Public can view talent-media" ON storage.objects;
-CREATE POLICY "Public can view talent-media" ON storage.objects
-    FOR SELECT TO public
-    USING (bucket_id = 'talent-media');
-
-DROP POLICY IF EXISTS "Authenticated users can upload to talent-media" ON storage.objects;
-CREATE POLICY "Authenticated users can upload to talent-media" ON storage.objects
-    FOR INSERT TO authenticated
-    WITH CHECK (bucket_id = 'talent-media');
-
-DROP POLICY IF EXISTS "Authenticated users can update/delete talent-media" ON storage.objects;
-CREATE POLICY "Authenticated users can update/delete talent-media" ON storage.objects
-    FOR ALL TO authenticated
-    USING (bucket_id = 'talent-media');
+DO $$
+BEGIN
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES ('talent-media', 'talent-media', true)
+    ON CONFLICT (id) DO NOTHING;
+EXCEPTION
+    WHEN others THEN null;
+END $$;
