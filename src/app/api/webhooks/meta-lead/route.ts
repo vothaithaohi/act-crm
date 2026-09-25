@@ -87,6 +87,28 @@ export async function POST(req: NextRequest) {
       } else {
         console.log('[Lead Inserted via Supabase]:', data);
       }
+
+      // Record in webhook_logs for developer & marketing visibility
+      try {
+        await supabase.from('webhook_logs').insert({
+          event: 'leadgen.received',
+          source: 'meta_ads',
+          payload: {
+            leadgen_id: leadgenId,
+            full_name: fullName,
+            phone,
+            email,
+            course_interest: courseInterest,
+            campaign_name: campaignName,
+            adset_name: adsetName,
+            ad_name: adName
+          },
+          status: error ? 'failed' : 'success',
+          ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1'
+        });
+      } catch (logErr) {
+        console.warn('Could not write to webhook_logs:', logErr);
+      }
     }
 
     return NextResponse.json({

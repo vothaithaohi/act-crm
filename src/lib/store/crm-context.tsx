@@ -1,15 +1,148 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Lead, TalentProfile, LeadStatus, CastingFilterCriteria } from '@/lib/types/crm';
+import { 
+  Lead, 
+  TalentProfile, 
+  LeadStatus, 
+  CastingFilterCriteria, 
+  Profile, 
+  UserRole, 
+  Permission, 
+  WebhookLog,
+  hasPermission, 
+  ROLE_DETAILS 
+} from '@/lib/types/crm';
 import seedData from '@/data/seed_data.json';
 import { calculateAge } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
+export const INITIAL_TEAM_MEMBERS: Profile[] = [
+  {
+    id: '00000000-0000-0000-0000-000000000001',
+    role: 'super_admin',
+    full_name: 'Ban Giám Đốc ACT',
+    email: 'admin@act.edu.vn',
+    phone: '0901234567',
+    department: 'Ban Giám Đốc',
+    status: 'active',
+    last_login: new Date().toISOString(),
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000002',
+    role: 'sales',
+    full_name: 'Trần Thảo My (Tư Vấn)',
+    email: 'sales@act.edu.vn',
+    phone: '0912345678',
+    department: 'Phòng Tuyển Sinh',
+    status: 'active',
+    last_login: new Date().toISOString(),
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000003',
+    role: 'marketing',
+    full_name: 'Nguyễn Hoàng Long (Ads)',
+    email: 'mkt@act.edu.vn',
+    phone: '0987654321',
+    department: 'Phòng Marketing',
+    status: 'active',
+    last_login: new Date().toISOString(),
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000004',
+    role: 'casting',
+    full_name: 'Lê Hải Đăng (Casting Lead)',
+    email: 'casting@act.edu.vn',
+    phone: '0934567890',
+    department: 'Bộ Phận Tuyển Vai',
+    status: 'active',
+    last_login: new Date().toISOString(),
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000005',
+    role: 'developer',
+    full_name: 'Võ Thái Thao (Kỹ Thuật)',
+    email: 'dev@act.edu.vn',
+    phone: '0967890123',
+    department: 'Phòng Kỹ Thuật IT',
+    status: 'active',
+    last_login: new Date().toISOString(),
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z'
+  }
+];
+
+export const INITIAL_WEBHOOK_LOGS: WebhookLog[] = [
+  {
+    id: 'log-001',
+    event: 'leadgen.received',
+    source: 'meta_ads',
+    status: 'success',
+    ip: '31.13.115.12',
+    created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    payload: {
+      leadgen_id: '109283746501234',
+      form_id: '492817263541',
+      form_name: 'ACT_Casting_KhoaDienXuat_MuaHe_2025',
+      campaign_name: 'ACT_Growth_ChieuSinh_Q3',
+      adset_name: 'Target_HocVien_GenZ_HCM',
+      ad_name: 'Video_Interview_HocVien_KhoaTruoc',
+      full_name: 'Nguyễn Văn Minh',
+      phone: '0918882233',
+      email: 'minh.nguyen99@gmail.com',
+      course_interest: 'Diễn xuất Điện ảnh Chuyên nghiệp (ACT Pro)'
+    }
+  },
+  {
+    id: 'log-002',
+    event: 'leadgen.received',
+    source: 'meta_ads',
+    status: 'success',
+    ip: '31.13.115.8',
+    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    payload: {
+      leadgen_id: '109283746501235',
+      form_id: '492817263541',
+      form_name: 'ACT_Casting_KhoaDienXuat_MuaHe_2025',
+      campaign_name: 'ACT_Growth_ChieuSinh_Q3',
+      adset_name: 'Target_HocVien_GenZ_HCM',
+      ad_name: 'Poster_KhoaHoc_ACT_Pro',
+      full_name: 'Phạm Thuỳ Dung',
+      phone: '0937654321',
+      email: 'dung.pham@gmail.com',
+      course_interest: 'Khóa Kỹ thuật Giải phóng Hình thể & Giọng nói'
+    }
+  },
+  {
+    id: 'log-003',
+    event: 'webhook.verify_token',
+    source: 'meta_ads',
+    status: 'success',
+    ip: '31.13.115.1',
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    payload: {
+      hub_mode: 'subscribe',
+      hub_challenge: '1158204918',
+      result: 'challenge_returned_200_ok'
+    }
+  }
+];
+
 interface CRMContextType {
   leads: Lead[];
   talents: TalentProfile[];
+  teamMembers: Profile[];
+  webhookLogs: WebhookLog[];
+  currentUser: Profile;
   isLoading: boolean;
   isSupabaseConnected: boolean;
   addLead: (lead: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
@@ -20,6 +153,11 @@ interface CRMContextType {
   getTalentById: (id: string) => TalentProfile | undefined;
   saveTalent: (talent: TalentProfile) => Promise<void>;
   deleteTalent: (id: string) => Promise<void>;
+  addTeamMember: (member: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateTeamMember: (member: Profile) => Promise<void>;
+  deleteTeamMember: (id: string) => Promise<void>;
+  switchRole: (role: UserRole) => void;
+  can: (permission: Permission) => boolean;
   filterCriteria: CastingFilterCriteria;
   setFilterCriteria: React.Dispatch<React.SetStateAction<CastingFilterCriteria>>;
   resetFilters: () => void;
@@ -52,6 +190,9 @@ const CRMContext = createContext<CRMContextType | undefined>(undefined);
 export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [talents, setTalents] = useState<TalentProfile[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Profile[]>(INITIAL_TEAM_MEMBERS);
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>(INITIAL_WEBHOOK_LOGS);
+  const [currentUser, setCurrentUser] = useState<Profile>(INITIAL_TEAM_MEMBERS[0]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [filterCriteria, setFilterCriteria] = useState<CastingFilterCriteria>(initialFilterCriteria);
@@ -63,10 +204,12 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
       if (supabase) {
         try {
-          // Fetch leads & talents from Supabase live
-          const [leadsRes, talentsRes] = await Promise.all([
+          // Fetch leads, talents, profiles, webhook logs from Supabase
+          const [leadsRes, talentsRes, profilesRes, logsRes] = await Promise.all([
             supabase.from('leads').select('*').order('created_at', { ascending: false }),
-            supabase.from('talent_profiles').select('*').order('created_at', { ascending: false })
+            supabase.from('talent_profiles').select('*').order('created_at', { ascending: false }),
+            supabase.from('profiles').select('*').order('created_at', { ascending: true }),
+            supabase.from('webhook_logs').select('*').order('created_at', { ascending: false })
           ]);
 
           if (!leadsRes.error && leadsRes.data && leadsRes.data.length > 0) {
@@ -80,12 +223,24 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
             setTalents(talentsRes.data as TalentProfile[]);
             setIsSupabaseConnected(true);
           }
+
+          if (!profilesRes.error && profilesRes.data && profilesRes.data.length > 0) {
+            setTeamMembers(profilesRes.data as Profile[]);
+          } else {
+            loadLocalTeamMembers();
+          }
+
+          if (!logsRes.error && logsRes.data && logsRes.data.length > 0) {
+            setWebhookLogs(logsRes.data as WebhookLog[]);
+          }
         } catch (err) {
-          console.warn('Supabase query failed, falling back to local seed data:', err);
+          console.warn('Supabase query failed, falling back to local data:', err);
           loadLocalSeed();
+          loadLocalTeamMembers();
         }
       } else {
         loadLocalSeed();
+        loadLocalTeamMembers();
       }
 
       setIsLoading(false);
@@ -114,6 +269,28 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    function loadLocalTeamMembers() {
+      try {
+        const storedMembers = localStorage.getItem('act_crm_team_members');
+        if (storedMembers) {
+          const parsed = JSON.parse(storedMembers);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTeamMembers(parsed);
+          }
+        }
+
+        const storedUser = localStorage.getItem('act_crm_current_user');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (user && user.role) {
+            setCurrentUser(user);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load local team members:', e);
+      }
+    }
+
     initData();
   }, []);
 
@@ -130,6 +307,15 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     setTalents(newTalents);
     try {
       localStorage.setItem('act_crm_talents', JSON.stringify(newTalents));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const syncTeamMembersLocal = (newMembers: Profile[]) => {
+    setTeamMembers(newMembers);
+    try {
+      localStorage.setItem('act_crm_team_members', JSON.stringify(newMembers));
     } catch (e) {
       console.error(e);
     }
@@ -337,6 +523,106 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // RBAC Team Management
+  const addTeamMember = async (memberData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
+    const newMember: Profile = {
+      ...memberData,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const updated = [newMember, ...teamMembers];
+    syncTeamMembersLocal(updated);
+    toast.success('Đã thêm nhân sự mới thành công!', {
+      description: `${newMember.full_name} (${ROLE_DETAILS[newMember.role].label})`
+    });
+
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').insert(newMember);
+      } catch (err) {
+        console.error('Failed to sync new member to Supabase:', err);
+      }
+    }
+  };
+
+  const updateTeamMember = async (member: Profile) => {
+    const updated = teamMembers.map(m => m.id === member.id ? { ...member, updated_at: new Date().toISOString() } : m);
+    syncTeamMembersLocal(updated);
+
+    // If updating current user, refresh current user state too
+    if (currentUser.id === member.id) {
+      const updatedCurrent = { ...member, updated_at: new Date().toISOString() };
+      setCurrentUser(updatedCurrent);
+      try {
+        localStorage.setItem('act_crm_current_user', JSON.stringify(updatedCurrent));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    toast.success('Đã cập nhật thông tin nhân sự');
+
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').update(member).eq('id', member.id);
+      } catch (err) {
+        console.error('Failed to sync member update to Supabase:', err);
+      }
+    }
+  };
+
+  const deleteTeamMember = async (id: string) => {
+    if (currentUser.id === id) {
+      toast.error('Không thể xóa tài khoản bạn đang đăng nhập');
+      return;
+    }
+    const updated = teamMembers.filter(m => m.id !== id);
+    syncTeamMembersLocal(updated);
+    toast.info('Đã xóa nhân sự khỏi hệ thống');
+
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').delete().eq('id', id);
+      } catch (err) {
+        console.error('Failed to delete member from Supabase:', err);
+      }
+    }
+  };
+
+  const switchRole = (role: UserRole) => {
+    const memberWithRole = teamMembers.find(m => m.role === role);
+    let nextUser: Profile;
+
+    if (memberWithRole) {
+      nextUser = memberWithRole;
+    } else {
+      nextUser = {
+        ...currentUser,
+        role
+      };
+    }
+
+    setCurrentUser(nextUser);
+    try {
+      localStorage.setItem('act_crm_current_user', JSON.stringify(nextUser));
+    } catch (e) {
+      console.error(e);
+    }
+
+    toast.success(`Đã chuyển vai trò: ${ROLE_DETAILS[role].label}`, {
+      description: ROLE_DETAILS[role].desc
+    });
+  };
+
+  const can = (permission: Permission): boolean => {
+    return hasPermission(currentUser.role, permission);
+  };
+
   const resetFilters = () => {
     setFilterCriteria(initialFilterCriteria);
   };
@@ -346,8 +632,10 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     const rawTalents = (seedData.talents as TalentProfile[]) || [];
     syncLeadsLocal(rawLeads);
     syncTalentsLocal(rawTalents);
+    syncTeamMembersLocal(INITIAL_TEAM_MEMBERS);
+    setCurrentUser(INITIAL_TEAM_MEMBERS[0]);
     resetFilters();
-    toast.success('Đã khôi phục dữ liệu ban đầu từ file Excel!');
+    toast.success('Đã khôi phục dữ liệu ban đầu từ file Excel & danh sách nhân sự mẫu!');
   };
 
   // Dynamic filter for Casting Matching
@@ -424,6 +712,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       value={{
         leads,
         talents,
+        teamMembers,
+        webhookLogs,
+        currentUser,
         isLoading,
         isSupabaseConnected,
         addLead,
@@ -434,6 +725,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         getTalentById,
         saveTalent,
         deleteTalent,
+        addTeamMember,
+        updateTeamMember,
+        deleteTeamMember,
+        switchRole,
+        can,
         filterCriteria,
         setFilterCriteria,
         resetFilters,

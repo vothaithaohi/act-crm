@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { TalentProfile } from '@/lib/types/crm';
 import { calculateAge } from '@/lib/utils';
 import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic } from 'lucide-react';
+import { useCRM } from '@/lib/store/crm-context';
 
 interface TalentCardProps {
   talent: TalentProfile;
 }
 
 export function TalentCard({ talent }: TalentCardProps) {
+  const { can } = useCRM();
   const age = calculateAge(talent.dob);
 
   // Key skills highlight
@@ -130,22 +132,26 @@ export function TalentCard({ talent }: TalentCardProps) {
             <span>Xem Hồ Sơ</span>
           </Link>
 
-          <Link
-            href={`/talents/${talent.id}#compcard`}
-            className="px-2.5 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1"
-            title="Xuất Comp-Card"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">Comp-Card</span>
-          </Link>
+          {can('talents:export') && (
+            <Link
+              href={`/talents/${talent.id}#compcard`}
+              className="px-2.5 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1"
+              title="Xuất Comp-Card"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden sm:inline">Comp-Card</span>
+            </Link>
+          )}
 
-          <Link
-            href={`/talents/${talent.id}/edit`}
-            className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg border transition-colors"
-            title="Sửa hồ sơ"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-          </Link>
+          {can('talents:write') && (
+            <Link
+              href={`/talents/${talent.id}/edit`}
+              className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg border transition-colors"
+              title="Sửa hồ sơ"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
       </div>
     </div>

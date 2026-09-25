@@ -1,4 +1,75 @@
-export type UserRole = 'admin' | 'staff' | 'student';
+export type UserRole = 'super_admin' | 'sales' | 'marketing' | 'casting' | 'developer';
+
+export type Permission = 
+  | 'leads:read'
+  | 'leads:write'
+  | 'leads:delete'
+  | 'leads:convert'
+  | 'leads:export'
+  | 'talents:read'
+  | 'talents:write'
+  | 'talents:delete'
+  | 'talents:export'
+  | 'users:manage'
+  | 'webhooks:manage'
+  | 'system:settings';
+
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  super_admin: [
+    'leads:read', 'leads:write', 'leads:delete', 'leads:convert', 'leads:export',
+    'talents:read', 'talents:write', 'talents:delete', 'talents:export',
+    'users:manage', 'webhooks:manage', 'system:settings'
+  ],
+  sales: [
+    'leads:read', 'leads:write', 'leads:convert',
+    'talents:read'
+  ],
+  marketing: [
+    'leads:read', 'leads:write',
+    'talents:read',
+    'webhooks:manage'
+  ],
+  casting: [
+    'talents:read', 'talents:write', 'talents:export',
+    'leads:read'
+  ],
+  developer: [
+    'webhooks:manage', 'system:settings',
+    'leads:read', 'talents:read'
+  ]
+};
+
+export function hasPermission(role: UserRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}
+
+export const ROLE_DETAILS: Record<UserRole, { label: string; badge: string; desc: string }> = {
+  super_admin: {
+    label: 'Super Admin',
+    badge: 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300',
+    desc: 'Toàn quyền kiểm soát, quản lý tài khoản & phân quyền'
+  },
+  sales: {
+    label: 'Tư Vấn Tuyển Sinh (Sales)',
+    badge: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300',
+    desc: 'Chăm sóc phễu lead, gọi điện, xếp lịch audition, chốt nhập học'
+  },
+  marketing: {
+    label: 'Marketing & Ads',
+    badge: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300',
+    desc: 'Giám sát Meta Ads, tối ưu CPL và chất lượng nguồn lead'
+  },
+  casting: {
+    label: 'Casting Director',
+    badge: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300',
+    desc: 'Tuyển vai diễn viên, lọc hồ sơ, xuất comp-card gửi NSX'
+  },
+  developer: {
+    label: 'Developer / IT',
+    badge: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300',
+    desc: 'Kỹ thuật hệ thống, cấu hình Webhook, API Meta & Supabase'
+  }
+};
 
 export interface Profile {
   id: string;
@@ -7,6 +78,9 @@ export interface Profile {
   email: string;
   phone?: string;
   avatar_url?: string;
+  department?: string;
+  status: 'active' | 'inactive';
+  last_login?: string;
   created_at: string;
   updated_at: string;
 }
@@ -80,12 +154,12 @@ export interface SocialLinks {
 
 export interface LanguageItem {
   language: string;
-  level: string; // Bản ngữ, Thành thạo, Giao tiếp, Cơ bản
+  level: string;
 }
 
 export interface AccentItem {
-  accent: string; // Bắc, Nam, Trung, Huế, Miền Tây
-  level: string; // Bản ngữ, Tốt, Cơ bản
+  accent: string;
+  level: string;
 }
 
 export interface SkillItem {
@@ -113,7 +187,7 @@ export interface TalentProfile {
   address?: string;
   city?: string;
   province?: string;
-  dob?: string; // YYYY-MM-DD
+  dob?: string;
   height_cm?: number;
   weight_kg?: number;
   shoe_size?: string;
@@ -126,7 +200,7 @@ export interface TalentProfile {
   preferred_project_types: string[];
   preferred_role_types: string[];
   acting_genres: string[];
-  role_willingness: string[]; // hair_color, cut_hair, kissing_scene, swimsuit, lingerie, partial_nudity
+  role_willingness: string[];
   
   social_links: SocialLinks;
   languages: LanguageItem[];
@@ -149,7 +223,7 @@ export interface TalentProfile {
 
 export interface CastingFilterCriteria {
   searchQuery: string;
-  gender: string; // all, male, female, other
+  gender: string;
   minAge?: number;
   maxAge?: number;
   minHeight?: number;
@@ -165,4 +239,14 @@ export interface CastingFilterCriteria {
   roleWillingness: string[];
   cities: string[];
   genres: string[];
+}
+
+export interface WebhookLog {
+  id: string;
+  event: string;
+  source: string;
+  payload: any;
+  status: 'success' | 'failed';
+  ip?: string;
+  created_at: string;
 }

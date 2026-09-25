@@ -35,7 +35,7 @@ const STATUS_LABELS: Record<LeadStatus, { label: string; badge: string }> = {
 };
 
 export function LeadTable({ onEditLead, searchFilter, sourceFilter }: LeadTableProps) {
-  const { leads, updateLeadStatus, deleteLead, convertToTalent } = useCRM();
+  const { leads, updateLeadStatus, deleteLead, convertToTalent, can } = useCRM();
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
@@ -180,39 +180,46 @@ export function LeadTable({ onEditLead, searchFilter, sourceFilter }: LeadTableP
 
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {lead.status !== 'enrolled' ? (
-                          <button
-                            onClick={() => handleConvert(lead.id)}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60 rounded-md text-xs font-semibold transition-colors"
-                            title="Chuyển thành Diễn viên / Học viên"
-                          >
-                            <Sparkles className="w-3 h-3 text-amber-600" />
-                            <span>Convert</span>
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-rose-600 font-semibold px-2 py-0.5 bg-rose-50 rounded">
-                            Diễn viên
-                          </span>
+                        {can('leads:convert') && (
+                          lead.status !== 'enrolled' ? (
+                            <button
+                              onClick={() => handleConvert(lead.id)}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60 rounded-md text-xs font-semibold transition-colors"
+                              title="Chuyển thành Diễn viên / Học viên"
+                            >
+                              <Sparkles className="w-3 h-3 text-amber-600" />
+                              <span>Convert</span>
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-rose-600 font-semibold px-2 py-0.5 bg-rose-50 rounded">
+                              Diễn viên
+                            </span>
+                          )
                         )}
 
-                        <button
-                          onClick={() => onEditLead(lead)}
-                          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md transition-colors"
-                          title="Sửa thông tin"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Bạn có chắc muốn xóa lead ${lead.full_name}?`)) {
-                              deleteLead(lead.id);
-                            }
-                          }}
-                          className="p-1.5 hover:bg-rose-50 text-muted-foreground hover:text-rose-600 rounded-md transition-colors"
-                          title="Xóa lead"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {can('leads:write') && (
+                          <button
+                            onClick={() => onEditLead(lead)}
+                            className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                            title="Sửa thông tin"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {can('leads:delete') && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Bạn có chắc muốn xóa lead ${lead.full_name}?`)) {
+                                deleteLead(lead.id);
+                              }
+                            }}
+                            className="p-1.5 hover:bg-rose-50 text-muted-foreground hover:text-rose-600 rounded-md transition-colors"
+                            title="Xóa lead"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
