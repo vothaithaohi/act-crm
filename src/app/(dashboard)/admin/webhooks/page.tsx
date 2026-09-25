@@ -10,9 +10,10 @@ import {
   Facebook, 
   CheckCircle2, 
   Clock, 
-  ShieldAlert, 
+  MessageSquare,
+  Sparkles,
   Code2,
-  RefreshCw 
+  ExternalLink
 } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
 import { formatDate } from '@/lib/utils';
@@ -24,12 +25,13 @@ export default function AdminWebhooksPage() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
   const [isSendingMock, setIsSendingMock] = useState(false);
+  const [isSendingMockMessage, setIsSendingMockMessage] = useState(false);
   const [selectedPayload, setSelectedPayload] = useState<any | null>(null);
 
   const webhookUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/api/webhooks/meta-lead`
-    : 'https://act-crm.vercel.app/api/webhooks/meta-lead';
-  const verifyToken = 'act_crm_meta_token_secret_2025';
+    : 'https://crm.timviecremote.com/api/webhooks/meta-lead';
+  const verifyToken = 'act_secret_verify_token_2026';
 
   const copyToClipboard = (text: string, type: 'url' | 'token') => {
     navigator.clipboard.writeText(text);
@@ -48,7 +50,7 @@ export default function AdminWebhooksPage() {
     try {
       const mockLead = {
         leadgen_id: `mock_meta_${Date.now()}`,
-        full_name: 'Phan Minh Khang (Lead Test Meta)',
+        full_name: 'Phan Minh Khang (Lead Test Meta Ads)',
         phone: '0978123456',
         email: 'khang.phan@gmail.com',
         course_interest: 'Khóa Diễn xuất Điện ảnh (ACT Pro)',
@@ -75,6 +77,49 @@ export default function AdminWebhooksPage() {
     }
   };
 
+  const sendMockFanpageMessage = async () => {
+    setIsSendingMockMessage(true);
+    try {
+      const randomId = Math.floor(1000 + Math.random() * 9000);
+      const mockMessagePayload = {
+        object: 'page',
+        entry: [
+          {
+            id: 'page_act_academy',
+            time: Date.now(),
+            messaging: [
+              {
+                sender: { id: `psid_849${randomId}` },
+                recipient: { id: 'page_act_academy' },
+                timestamp: Date.now(),
+                message: {
+                  mid: `mid_${Date.now()}`,
+                  text: 'Em muốn tư vấn khóa học diễn xuất ACT 1 và học phí tháng tới ạ. SĐT em là 0908' + randomId
+                }
+              }
+            ]
+          }
+        ]
+      };
+
+      const res = await fetch('/api/webhooks/meta-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mockMessagePayload)
+      });
+
+      if (res.ok) {
+        toast.success('Bắn thử tin nhắn Fanpage thành công! Lead đã được tạo trong cột Intake.');
+      } else {
+        toast.error('Lỗi khi gửi webhook test tin nhắn');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Lỗi kết nối API');
+    } finally {
+      setIsSendingMockMessage(false);
+    }
+  };
+
   return (
     <PermissionGuard
       permission="webhooks:manage"
@@ -87,35 +132,57 @@ export default function AdminWebhooksPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <Terminal className="w-6 h-6 text-slate-800 dark:text-slate-200" />
-            <span>Kỹ Thuật & Giám Sát Webhook Meta Ads</span>
+            <span>Kỹ Thuật & Giám Sát Webhook Meta (Ads & Fanpage)</span>
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Dành cho Developer & Marketing: Cấu hình bắt tay (handshake) với Meta Developer và theo dõi log tiếp nhận
+            Dành cho Developer & Marketing: Cấu hình bắt tay (handshake) với Meta Developer để tự động kéo Tin nhắn Fanpage & Lead Form về CRM
           </p>
         </div>
 
-        <button
-          onClick={sendMockMetaLead}
-          disabled={isSendingMock}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:scale-[1.02] disabled:opacity-50"
-        >
-          <Send className="w-4 h-4" />
-          <span>{isSendingMock ? 'Đang gửi...' : 'Gửi Thử Nghiệm Lead Meta Ads'}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={sendMockFanpageMessage}
+            disabled={isSendingMockMessage}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:scale-[1.02] disabled:opacity-50"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>{isSendingMockMessage ? 'Đang gửi...' : 'Test Tin Nhắn Fanpage'}</span>
+          </button>
+
+          <button
+            onClick={sendMockMetaLead}
+            disabled={isSendingMock}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:scale-[1.02] disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+            <span>{isSendingMock ? 'Đang gửi...' : 'Test Form Lead Ads'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Connection Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-card rounded-2xl border p-6 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-            <Facebook className="w-4 h-4 text-blue-600" />
-            <span>Thông Số Kết Nối Meta Developer Portal</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Facebook className="w-4 h-4 text-blue-600" />
+              <span>Thông Số Kết Nối Meta Developer Portal</span>
+            </div>
+            <a 
+              href="https://developers.facebook.com/apps" 
+              target="_blank" 
+              rel="noreferrer"
+              className="text-[11px] font-semibold text-brand-600 hover:underline flex items-center gap-1"
+            >
+              <span>Mở Meta Apps</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
           <div className="space-y-3 text-xs">
             <div>
               <label className="text-muted-foreground font-semibold block mb-1">
-                Callback URL (Dán vào Webhooks &gt; Page &gt; leadgen):
+                Callback URL (Dán vào Webhooks &gt; Page / Messenger):
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -154,6 +221,18 @@ export default function AdminWebhooksPage() {
                 </button>
               </div>
             </div>
+
+            <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl space-y-1 text-[11px] text-blue-900 dark:text-blue-300">
+              <div className="font-bold flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>Các trường cần đăng ký (Subscribed Fields) trên Meta:</span>
+              </div>
+              <ul className="list-disc list-inside space-y-0.5 text-blue-800 dark:text-blue-400 pl-1 font-mono text-[10px]">
+                <li><strong className="text-foreground">messages</strong> (Bắt tin nhắn nhắn tới Fanpage)</li>
+                <li><strong className="text-foreground">messaging_postbacks</strong> (Bắt tương tác nút bấm chat)</li>
+                <li><strong className="text-foreground">leadgen</strong> (Bắt form đăng ký quảng cáo Meta Ads)</li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -177,8 +256,17 @@ export default function AdminWebhooksPage() {
             </div>
 
             <div className="flex items-center justify-between p-2.5 bg-muted/40 rounded-lg">
-              <span className="font-medium text-foreground">Graph API Ingestion:</span>
-              <span className="text-blue-600 font-bold">Ready</span>
+              <span className="font-medium text-foreground">Xử lý Tin nhắn Messenger:</span>
+              <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Đã sẵn sàng (Ready)
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-2.5 bg-muted/40 rounded-lg">
+              <span className="font-medium text-foreground">Xử lý Lead Ads Form:</span>
+              <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Đã sẵn sàng (Ready)
+              </span>
             </div>
           </div>
         </div>
