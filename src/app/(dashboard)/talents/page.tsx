@@ -14,34 +14,42 @@ import {
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentFilterSidebar } from '@/components/talents/talent-filter-sidebar';
 import { TalentCard } from '@/components/talents/talent-card';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function TalentsPage() {
-  const { filteredTalents, talents, resetFilters } = useCRM();
+  const { filteredTalents, talents, resetFilters, can } = useCRM();
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-            <Sparkles className="w-6 h-6 text-amber-500" />
-            <span>Casting Matching Engine (Talent Directory)</span>
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Bộ lọc đa tiêu chí nhân trắc học, kỹ năng, giọng nói và mức độ sẵn sàng vai diễn cho Đạo diễn & Nhà sản xuất
-          </p>
-        </div>
+    <PermissionGuard
+      permission="talents:read"
+      customTitle="Kho Diễn Viên & Casting Matching"
+      customMessage="Bạn không có quyền truy cập vào Talent Pool và hồ sơ diễn viên của ACT Academy."
+    >
+      <div className="space-y-6">
+        {/* Top Banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+              <Sparkles className="w-6 h-6 text-amber-500" />
+              <span>Casting Matching Engine (Talent Directory)</span>
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              Bộ lọc đa tiêu chí nhân trắc học, kỹ năng, giọng nói và mức độ sẵn sàng vai diễn cho Đạo diễn & Nhà sản xuất
+            </p>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/talents/new"
-            className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-700 hover:to-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>+ Tạo Hồ Sơ Casting Mới</span>
-          </Link>
+          {can('talents:write') && (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/talents/new"
+                className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-700 hover:to-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Tạo Hồ Sơ Casting Mới</span>
+              </Link>
+            </div>
+          )}
         </div>
-      </div>
 
       {/* Main Casting Engine Layout */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -93,5 +101,6 @@ export default function TalentsPage() {
         </div>
       </div>
     </div>
+    </PermissionGuard>
   );
 }

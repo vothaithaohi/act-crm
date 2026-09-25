@@ -17,6 +17,7 @@ import {
 import { useCRM } from '@/lib/store/crm-context';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function AdminWebhooksPage() {
   const { webhookLogs } = useCRM();
@@ -75,8 +76,13 @@ export default function AdminWebhooksPage() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Top Banner */}
+    <PermissionGuard
+      permission="webhooks:manage"
+      customTitle="Phân Hệ Giám Sát Webhook & Kỹ Thuật"
+      customMessage="Trang giám sát webhook Meta Ads và API logs chỉ dành cho Kỹ Thuật (Developer), Marketing và Ban Giám Đốc."
+    >
+      <div className="space-y-8">
+        {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
@@ -255,5 +261,6 @@ export default function AdminWebhooksPage() {
         </div>
       )}
     </div>
+    </PermissionGuard>
   );
 }

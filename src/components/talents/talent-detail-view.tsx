@@ -37,7 +37,7 @@ interface TalentDetailViewProps {
 }
 
 export function TalentDetailView({ talent }: TalentDetailViewProps) {
-  const { deleteTalent } = useCRM();
+  const { deleteTalent, can } = useCRM();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'profile' | 'compcard'>('profile');
 
@@ -101,32 +101,38 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
               <User className="w-3.5 h-3.5" />
               <span>Hồ Sơ 6 Phần</span>
             </button>
-            <button
-              onClick={() => setActiveTab('compcard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                activeTab === 'compcard' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Xuất Comp-Card</span>
-            </button>
+            {can('talents:export') && (
+              <button
+                onClick={() => setActiveTab('compcard')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  activeTab === 'compcard' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Xuất Comp-Card</span>
+              </button>
+            )}
           </div>
 
-          <Link
-            href={`/talents/${talent.id}/edit`}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Sửa Hồ Sơ</span>
-          </Link>
+          {can('talents:write') && (
+            <Link
+              href={`/talents/${talent.id}/edit`}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Sửa Hồ Sơ</span>
+            </Link>
+          )}
 
-          <button
-            onClick={handleDelete}
-            className="p-2 hover:bg-rose-50 text-muted-foreground hover:text-rose-600 rounded-lg border transition-colors"
-            title="Xóa hồ sơ"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {can('talents:delete') && (
+            <button
+              onClick={handleDelete}
+              className="p-2 hover:bg-rose-50 text-muted-foreground hover:text-rose-600 rounded-lg border transition-colors"
+              title="Xóa hồ sơ"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

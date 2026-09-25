@@ -19,6 +19,7 @@ import { LeadKanban } from '@/components/leads/lead-kanban';
 import { LeadTable } from '@/components/leads/lead-table';
 import { LeadDialog } from '@/components/leads/lead-dialog';
 import { Lead } from '@/lib/types/crm';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function LeadsPage() {
   const { leads } = useCRM();
@@ -45,8 +46,13 @@ export default function LeadsPage() {
   const scheduledLeads = leads.filter(l => l.status === 'audition_scheduled' || l.status === 'audition_passed').length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Header */}
+    <PermissionGuard
+      permission="leads:read"
+      customTitle="Phân Hệ Tuyển Sinh & Bán Hàng"
+      customMessage="Bạn không có quyền truy cập vào phễu dữ liệu tuyển sinh và danh sách Lead của ACT Academy."
+    >
+      <div className="space-y-6">
+        {/* Top Banner & Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
@@ -192,5 +198,6 @@ export default function LeadsPage() {
         leadToEdit={leadToEdit}
       />
     </div>
+    </PermissionGuard>
   );
 }

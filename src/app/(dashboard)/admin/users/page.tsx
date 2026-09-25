@@ -22,6 +22,7 @@ import { useCRM } from '@/lib/store/crm-context';
 import { Profile, UserRole, ROLE_DETAILS } from '@/lib/types/crm';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function AdminUsersPage() {
   const { teamMembers, currentUser, addTeamMember, updateTeamMember, deleteTeamMember, switchRole } = useCRM();
@@ -92,8 +93,13 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <PermissionGuard 
+      permission="users:manage"
+      customTitle="Phân Hệ Quản Trị Nhân Sự & Phân Quyền (RBAC)"
+      customMessage="Trang quản lý tài khoản và ma trận phân quyền chỉ dành riêng cho Ban Giám Đốc (Super Admin) nhằm bảo vệ tính bảo mật hệ thống."
+    >
+      <div className="space-y-8">
+        {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
@@ -464,5 +470,6 @@ export default function AdminUsersPage() {
         </div>
       )}
     </div>
+    </PermissionGuard>
   );
 }
