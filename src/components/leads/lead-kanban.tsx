@@ -1,0 +1,273 @@
+'use client';
+
+import React, { useState } from 'react';
+import { 
+  Phone, 
+  Sparkles, 
+  MoreHorizontal, 
+  Trash2, 
+  Edit3, 
+  Calendar, 
+  BookOpen, 
+  Share2, 
+  Compass, 
+  Layers,
+  Facebook,
+  Globe,
+  Headphones
+} from 'lucide-react';
+import { Lead, LeadStatus, LeadSource } from '@/lib/types/crm';
+import { useCRM } from '@/lib/store/crm-context';
+import { formatDate, formatPhoneNumber } from '@/lib/utils';
+import confetti from 'canvas-confetti';
+import { useRouter } from 'next/navigation';
+
+interface LeadKanbanProps {
+  onEditLead: (lead: Lead) => void;
+  searchFilter: string;
+  sourceFilter: string;
+}
+
+const COLUMNS: { id: LeadStatus; label: string; color: string; badgeColor: string }[] = [
+  { 
+    id: 'new', 
+    label: '1. Mới tiếp nhận', 
+    color: 'border-t-blue-500 bg-blue-50/20 dark:bg-blue-950/10',
+    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+  },
+  { 
+    id: 'contacted', 
+    label: '2. Đã liên hệ', 
+    color: 'border-t-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10',
+    badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+  },
+  { 
+    id: 'audition_scheduled', 
+    label: '3. Hẹn Audition', 
+    color: 'border-t-amber-500 bg-amber-50/20 dark:bg-amber-950/10',
+    badgeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+  },
+  { 
+    id: 'audition_passed', 
+    label: '4. Đạt Audition', 
+    color: 'border-t-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10',
+    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+  },
+  { 
+    id: 'enrolled', 
+    label: '5. Đã nhập học', 
+    color: 'border-t-rose-500 bg-rose-50/20 dark:bg-rose-950/10',
+    badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
+  },
+  { 
+    id: 'lost', 
+    label: '6. Không phù hợp', 
+    color: 'border-t-slate-400 bg-slate-50/30 dark:bg-slate-900/10',
+    badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+  }
+];
+
+export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanbanProps) {
+  const { leads, updateLeadStatus, deleteLead, convertToTalent } = useCRM();
+  const router = useRouter();
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+
+  // Filter leads
+  const filteredLeads = leads.filter(l => {
+    if (searchFilter) {
+      const q = searchFilter.toLowerCase();
+      const matchName = l.full_name.toLowerCase().includes(q);
+      const matchPhone = l.phone.toLowerCase().includes(q);
+      const matchCourse = (l.course_interest || '').toLowerCase().includes(q);
+      if (!matchName && !matchPhone && !matchCourse) return false;
+    }
+    if (sourceFilter !== 'all') {
+      if (l.source !== sourceFilter) return false;
+    }
+    return true;
+  });
+
+  const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    setDraggedLeadId(leadId);
+    e.dataTransfer.setData('text/plain', leadId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStatus: LeadStatus) => {
+    e.preventDefault();
+    const leadId = e.dataTransfer.getData('text/plain') || draggedLeadId;
+    if (leadId) {
+      updateLeadStatus(leadId, targetStatus);
+    }
+    setDraggedLeadId(null);
+  };
+
+  const handleConvert = (leadId: string) => {
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+      const talentId = convertToTalent(leadId);
+      setTimeout(() => {
+        router.push(`/talents/${talentId}`);
+      }, 500);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi chuyển đổi lead');
+    }
+  };
+
+  const renderSourceBadge = (source: LeadSource) => {
+    switch (source) {
+      case 'meta_ads':
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+            <Facebook className="w-2.5 h-2.5" /> Meta Ads
+          </span>
+        );
+      case 'website_form':
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+            <Globe className="w-2.5 h-2.5" /> Website
+          </span>
+        );
+      case 'referral':
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+            <Share2 className="w-2.5 h-2.5" /> Giới thiệu
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
+            <Headphones className="w-2.5 h-2.5" /> Trực tiếp / Hotline
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-6 pt-2 select-none min-h-[calc(100vh-230px)]">
+      {COLUMNS.map((col) => {
+        const columnLeads = filteredLeads.filter(l => l.status === col.id);
+
+        return (
+          <div
+            key={col.id}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, col.id)}
+            className={`w-80 shrink-0 flex flex-col rounded-xl border border-t-4 bg-card/60 backdrop-blur-sm ${col.color} transition-all`}
+          >
+            {/* Column Header */}
+            <div className="p-3.5 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-xs uppercase tracking-wide">
+                  {col.label}
+                </span>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${col.badgeColor}`}>
+                  {columnLeads.length}
+                </span>
+              </div>
+            </div>
+
+            {/* Column Cards List */}
+            <div className="p-2.5 flex-1 space-y-2.5 overflow-y-auto max-h-[calc(100vh-290px)]">
+              {columnLeads.length === 0 ? (
+                <div className="h-28 rounded-lg border border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-xs text-muted-foreground">
+                  <span>Kéo thả thẻ lead vào đây</span>
+                </div>
+              ) : (
+                columnLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, lead.id)}
+                    className="p-3.5 bg-card hover:bg-card/90 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative space-y-2.5"
+                  >
+                    {/* Top Row: Name & Source */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-bold text-sm text-foreground line-clamp-1 group-hover:text-brand-600 transition-colors">
+                        {lead.full_name}
+                      </div>
+                      {renderSourceBadge(lead.source)}
+                    </div>
+
+                    {/* Phone & Course */}
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 text-foreground font-medium">
+                        <Phone className="w-3.5 h-3.5 text-brand-500" />
+                        <span>{formatPhoneNumber(lead.phone)}</span>
+                      </div>
+
+                      {lead.course_interest && (
+                        <div className="flex items-start gap-1.5 line-clamp-2">
+                          <BookOpen className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                          <span className="text-[11px] text-muted-foreground">{lead.course_interest}</span>
+                        </div>
+                      )}
+
+                      {lead.notes && (
+                        <div className="p-2 bg-muted/50 rounded-lg text-[11px] text-muted-foreground line-clamp-2 italic border border-border/40">
+                          {lead.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Action Bar */}
+                    <div className="pt-2 border-t flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground text-[10px]">
+                        {formatDate(lead.created_at)}
+                      </span>
+
+                      <div className="flex items-center gap-1">
+                        {lead.status !== 'enrolled' ? (
+                          <button
+                            onClick={() => handleConvert(lead.id)}
+                            className="flex items-center gap-1 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60 rounded-md font-semibold transition-colors shadow-2xs"
+                            title="Tạo hồ sơ Casting Diễn viên từ học viên này"
+                          >
+                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            <span>Convert</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-rose-600 font-semibold px-2 py-0.5 bg-rose-50 rounded">
+                            Đã là Diễn viên
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => onEditLead(lead)}
+                          className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors"
+                          title="Sửa"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Bạn có chắc chắn muốn xóa lead ${lead.full_name}?`)) {
+                              deleteLead(lead.id);
+                            }
+                          }}
+                          className="p-1 hover:bg-rose-50 text-muted-foreground hover:text-rose-600 rounded transition-colors"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
