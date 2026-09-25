@@ -4,14 +4,17 @@ import React from 'react';
 import Link from 'next/link';
 import { TalentProfile } from '@/lib/types/crm';
 import { calculateAge } from '@/lib/utils';
-import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic, GraduationCap } from 'lucide-react';
+import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
 
 interface TalentCardProps {
   talent: TalentProfile;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  selectable?: boolean;
 }
 
-export function TalentCard({ talent }: TalentCardProps) {
+export function TalentCard({ talent, isSelected = false, onToggleSelect, selectable = true }: TalentCardProps) {
   const { can } = useCRM();
   const age = calculateAge(talent.dob);
 
@@ -35,7 +38,11 @@ export function TalentCard({ talent }: TalentCardProps) {
   const highestCode = talent.academic_profile?.highest_class_code || highestLevel;
 
   return (
-    <div className="bg-card rounded-2xl border shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col group border-border/80 hover:border-brand-500/40">
+    <div className={`bg-card rounded-2xl border shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col group relative ${
+      isSelected 
+        ? 'ring-2 ring-brand-500 border-brand-500 shadow-md bg-brand-50/5 dark:bg-brand-950/20' 
+        : 'border-border/80 hover:border-brand-500/40'
+    }`}>
       {/* Top Image Card */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-muted">
         <img
@@ -49,15 +56,35 @@ export function TalentCard({ talent }: TalentCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
         {/* Top Badges */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-          {/* Gender Badge */}
-          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full backdrop-blur-md shadow-xs ${
-            talent.gender === 'female' 
-              ? 'bg-rose-500/90 text-white' 
-              : 'bg-blue-600/90 text-white'
-          }`}>
-            {talent.gender === 'female' ? 'Nữ' : talent.gender === 'male' ? 'Nam' : 'Khác'}
-          </span>
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
+          <div className="flex items-center gap-1.5">
+            {selectable && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSelect?.(talent.id);
+                }}
+                className={`w-6 h-6 rounded-md flex items-center justify-center transition-all shadow-md ${
+                  isSelected
+                    ? 'bg-brand-500 text-white ring-2 ring-white/80'
+                    : 'bg-black/50 hover:bg-black/70 text-white/70 hover:text-white border border-white/30 backdrop-blur-md'
+                }`}
+                title={isSelected ? 'Bỏ chọn' : 'Chọn diễn viên này'}
+              >
+                {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </button>
+            )}
+
+            {/* Gender Badge */}
+            <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full backdrop-blur-md shadow-xs ${
+              talent.gender === 'female' 
+                ? 'bg-rose-500/90 text-white' 
+                : 'bg-blue-600/90 text-white'
+            }`}>
+              {talent.gender === 'female' ? 'Nữ' : talent.gender === 'male' ? 'Nam' : 'Khác'}
+            </span>
+          </div>
 
           {/* Highest ACT Level Badge */}
           {highestLevel && (

@@ -50,12 +50,17 @@ export function TalentFilterSidebar() {
     filterCriteria.maxAge !== undefined ||
     filterCriteria.minHeight !== undefined ||
     filterCriteria.maxHeight !== undefined ||
+    filterCriteria.minWeight !== undefined ||
+    filterCriteria.maxWeight !== undefined ||
     filterCriteria.accents.length > 0 ||
     filterCriteria.languages.length > 0 ||
     filterCriteria.instruments.length > 0 ||
     filterCriteria.martialArts.length > 0 ||
+    filterCriteria.danceStyles.length > 0 ||
+    filterCriteria.sports.length > 0 ||
     filterCriteria.roleWillingness.length > 0 ||
-    filterCriteria.cities.length > 0;
+    filterCriteria.cities.length > 0 ||
+    (filterCriteria.tattoos && filterCriteria.tattoos !== 'all');
 
   return (
     <div className="w-80 shrink-0 bg-card rounded-2xl border p-5 shadow-xs space-y-6 h-fit sticky top-20">
@@ -219,6 +224,30 @@ export function TalentFilterSidebar() {
           </div>
         </div>
 
+        {/* Weight Range */}
+        <div>
+          <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+            Cân nặng (kg)
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="Min kg (VD: 45)"
+              value={filterCriteria.minWeight ?? ''}
+              onChange={(e) => setFilterCriteria(p => ({ ...p, minWeight: e.target.value ? Number(e.target.value) : undefined }))}
+              className="w-1/2 px-2.5 py-1.5 rounded-lg border bg-background text-xs outline-none focus:border-brand-500"
+            />
+            <span className="text-muted-foreground">-</span>
+            <input
+              type="number"
+              placeholder="Max kg (VD: 75)"
+              value={filterCriteria.maxWeight ?? ''}
+              onChange={(e) => setFilterCriteria(p => ({ ...p, maxWeight: e.target.value ? Number(e.target.value) : undefined }))}
+              className="w-1/2 px-2.5 py-1.5 rounded-lg border bg-background text-xs outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
+
         {/* 5. Accents */}
         <div>
           <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
@@ -315,6 +344,82 @@ export function TalentFilterSidebar() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Vũ đạo & Nhảy */}
+        <div>
+          <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+            Kỹ năng Vũ đạo & Nhảy
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {['Kpop', 'Contemporary', 'Hip-hop', 'Ballet'].map(dance => {
+              const active = filterCriteria.danceStyles.includes(dance);
+              return (
+                <button
+                  key={dance}
+                  onClick={() => toggleArrayItem('danceStyles', dance)}
+                  className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-all ${
+                    active
+                      ? 'bg-rose-500 text-white border-rose-500'
+                      : 'bg-background hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {dance}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Thể thao */}
+        <div>
+          <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+            Kỹ năng Thể thao
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {['Bơi lội', 'Điền kinh', 'Cầu lông', 'Bắn súng'].map(sp => {
+              const active = filterCriteria.sports.includes(sp);
+              return (
+                <button
+                  key={sp}
+                  onClick={() => toggleArrayItem('sports', sp)}
+                  className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-all ${
+                    active
+                      ? 'bg-cyan-600 text-white border-cyan-600'
+                      : 'bg-background hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {sp}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Hình xăm */}
+        <div>
+          <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+            Vị trí Hình xăm
+          </label>
+          <div className="grid grid-cols-3 gap-1 bg-muted/60 p-1 rounded-lg border text-[11px]">
+            {[
+              { id: 'all', label: 'Tất cả' },
+              { id: 'none', label: 'Không hình xăm' },
+              { id: 'has_tattoo', label: 'Có hình xăm' },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setFilterCriteria(p => ({ ...p, tattoos: t.id as any }))}
+                className={`py-1 px-1 rounded text-center font-medium transition-all truncate ${
+                  (filterCriteria.tattoos || 'all') === t.id
+                    ? 'bg-card text-brand-600 font-bold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
 

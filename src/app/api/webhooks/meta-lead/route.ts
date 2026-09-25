@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
-// GET: Meta Webhook Verification Challenge
+// GET: Meta Webhook Verification Challenge (hub.mode, hub.verify_token, hub.challenge)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode = searchParams.get('hub.mode');
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
-  const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'act_crm_meta_token_secret_2025';
+  const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN || 'act_secret_verify_token_2026';
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('[Meta Webhook Verified]');
+    console.log('[Meta Webhook Verified Successfully]');
     return new NextResponse(challenge, { status: 200 });
   }
 
-  console.warn('[Meta Webhook Verification Failed]', { mode, token });
+  console.warn('[Meta Webhook Verification Failed]', { mode, token, expected: VERIFY_TOKEN });
   return NextResponse.json({ error: 'Verification failed. Token mismatch.' }, { status: 403 });
 }
 
@@ -40,32 +40,52 @@ export async function POST(req: NextRequest) {
     let campaignName = body.campaign_name || 'Meta_Ads_ACT_LeadGen';
     let adsetName = body.adset_name || 'GenZ_Cinema_Cast';
     let adName = body.ad_name || 'Video_HuongDan_DienXuat';
+    const auxiliaryQuestions: Record<string, any> = {};
 
-    // If Meta Page Access Token is provided, fetch lead details from Graph API
+    // If Meta Page Access Token is provided, fetch lead details from Graph API v20.0
     const pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN;
     if (pageAccessToken && leadgenId && !body.full_name) {
       try {
         const graphRes = await fetch(
-          `https://graph.facebook.com/v19.0/${leadgenId}?access_token=${pageAccessToken}`
+          `https://graph.facebook.com/v20.0/${leadgenId}?fields=created_time,field_data&access_token=${pageAccessToken}`
         );
         if (graphRes.ok) {
           const leadData = await graphRes.json();
           if (leadData.field_data) {
             for (const field of leadData.field_data) {
-              const name = field.name?.toLowerCase();
+              const name = (field.name || '').toLowerCase();
               const val = field.values?.[0];
-              if (name.includes('name') || name.includes('họ_tên')) fullName = val;
-              if (name.includes('phone') || name.includes('số_điện_thoại')) phone = val;
-              if (name.includes('email')) email = val;
-              if (name.includes('course') || name.includes('khóa_học')) courseInterest = val;
+              if (name.includes('name') || name.includes('họ_tên') || name === 'full_name') {
+                fullName = val;
+              } else if (name.includes('phone') || name.includes('số_điện_thoại') || name === 'phone_number') {
+                phone = val;
+              } else if (name.includes('email')) {
+                email = val;
+              } else if (name.includes('course') || name.includes('khóa_học')) {
+                courseInterest = val;
+              } else {
+                auxiliaryQuestions[field.name] = field.values?.length === 1 ? field.values[0] : field.values;
+              }
             }
           }
+        } else {
+          console.warn('[Meta Graph API Error]:', await graphRes.text());
         }
       } catch (graphError) {
-        console.error('Failed to fetch from Meta Graph API:', graphError);
+        console.error('Failed to fetch from Meta Graph API v20.0:', graphError);
       }
     }
 
+    const notesPayload = {
+      source: 'meta_ads',
+      form_id: formId,
+      page_id: pageId || null,
+      leadgen_id: leadgenId,
+      questions: auxiliaryQuestions,
+      auto_imported_at: new Date().toISOString()
+    };
+
+    // Insert directly into leads using Supabase Service Role Key
     const supabase = createServiceClient();
     if (supabase) {
       const { data, error } = await supabase.from('leads').insert({
@@ -78,14 +98,14 @@ export async function POST(req: NextRequest) {
         adset_name: adsetName,
         ad_name: adName,
         course_interest: courseInterest,
-        notes: `Tự động nhận qua Meta Webhook (Form ID: ${formId}, Page ID: ${pageId || 'N/A'})`,
+        notes: notesPayload,
         status: 'new'
       }).select().single();
 
       if (error) {
         console.error('[Supabase Insert Error]:', error);
       } else {
-        console.log('[Lead Inserted via Supabase]:', data);
+        console.log('[Lead Inserted via Supabase Service Role]:', data);
       }
 
       // Record in webhook_logs for developer & marketing visibility
@@ -101,7 +121,8 @@ export async function POST(req: NextRequest) {
             course_interest: courseInterest,
             campaign_name: campaignName,
             adset_name: adsetName,
-            ad_name: adName
+            ad_name: adName,
+            notes: notesPayload
           },
           status: error ? 'failed' : 'success',
           ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1'
@@ -111,6 +132,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Return HTTP 200 immediately
     return NextResponse.json({
       success: true,
       message: 'Meta Lead processed successfully',
@@ -120,7 +142,8 @@ export async function POST(req: NextRequest) {
         phone,
         email,
         source: 'meta_ads',
-        status: 'new'
+        status: 'new',
+        notes: notesPayload
       }
     }, { status: 200 });
 

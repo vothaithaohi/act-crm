@@ -110,6 +110,7 @@ export interface Lead {
   notes?: string;
   status: LeadStatus;
   assigned_to?: string;
+  tuition_fee?: number;
   created_at: string;
   updated_at: string;
 }
@@ -329,9 +330,11 @@ export interface CastingFilterCriteria {
   martialArts: string[];
   danceStyles: string[];
   sports: string[];
+  singingStyles: string[];
   roleWillingness: string[];
   cities: string[];
   genres: string[];
+  tattoos?: 'all' | 'none' | 'has_tattoo';
 }
 
 export interface WebhookLog {

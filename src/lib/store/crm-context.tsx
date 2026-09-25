@@ -188,10 +188,12 @@ const initialFilterCriteria: CastingFilterCriteria = {
   martialArts: [],
   danceStyles: [],
   sports: [],
+  singingStyles: [],
   roleWillingness: [],
   cities: [],
   genres: [],
-  actLevels: []
+  actLevels: [],
+  tattoos: 'all'
 };
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -829,6 +831,31 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       const tArts = (talent.martial_arts || []).map(m => (m.style || m.name || '').toLowerCase());
       const hasArt = filterCriteria.martialArts.some(fa => tArts.some(ta => ta.includes(fa.toLowerCase())));
       if (!hasArt) return false;
+    }
+
+    if (filterCriteria.danceStyles && filterCriteria.danceStyles.length > 0) {
+      const tDance = (talent.dancing || []).map(d => (d.style || d.name || '').toLowerCase());
+      const hasDance = filterCriteria.danceStyles.some(fd => tDance.some(td => td.includes(fd.toLowerCase())));
+      if (!hasDance) return false;
+    }
+
+    if (filterCriteria.sports && filterCriteria.sports.length > 0) {
+      const tSports = (talent.sports || []).map(s => (s.name || s.style || '').toLowerCase());
+      const hasSport = filterCriteria.sports.some(fs => tSports.some(ts => ts.includes(fs.toLowerCase())));
+      if (!hasSport) return false;
+    }
+
+    if (filterCriteria.singingStyles && filterCriteria.singingStyles.length > 0) {
+      const tSinging = (talent.singing?.genres || []).map(g => g.toLowerCase());
+      const hasSinging = filterCriteria.singingStyles.some(fs => tSinging.some(ts => ts.includes(fs.toLowerCase())));
+      if (!hasSinging) return false;
+    }
+
+    if (filterCriteria.tattoos && filterCriteria.tattoos !== 'all') {
+      const tTattoos = talent.tattoos_piercings || ['none'];
+      const hasTattoo = !tTattoos.includes('none') && tTattoos.length > 0;
+      if (filterCriteria.tattoos === 'none' && hasTattoo) return false;
+      if (filterCriteria.tattoos === 'has_tattoo' && !hasTattoo) return false;
     }
 
     if (filterCriteria.roleWillingness.length > 0) {

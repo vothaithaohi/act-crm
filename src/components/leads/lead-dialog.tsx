@@ -12,7 +12,7 @@ interface LeadDialogProps {
 }
 
 export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
-  const { addLead, updateLead } = useCRM();
+  const { addLead, updateLead, teamMembers } = useCRM();
 
   const [fullName, setFullName] = useState(leadToEdit?.full_name || '');
   const [phone, setPhone] = useState(leadToEdit?.phone || '');
@@ -23,6 +23,8 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
   const [source, setSource] = useState<LeadSource>(leadToEdit?.source || 'manual');
   const [notes, setNotes] = useState(leadToEdit?.notes || '');
   const [status, setStatus] = useState<LeadStatus>(leadToEdit?.status || 'new');
+  const [assignedTo, setAssignedTo] = useState(leadToEdit?.assigned_to || '');
+  const [tuitionFee, setTuitionFee] = useState<number>(Number(leadToEdit?.tuition_fee) || 16500000);
 
   if (!isOpen) return null;
 
@@ -42,7 +44,9 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
         course_interest: courseInterest,
         source,
         notes,
-        status
+        status,
+        assigned_to: assignedTo || undefined,
+        tuition_fee: tuitionFee
       });
     } else {
       addLead({
@@ -52,7 +56,9 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
         course_interest: courseInterest,
         source,
         notes,
-        status
+        status,
+        assigned_to: assignedTo || undefined,
+        tuition_fee: tuitionFee
       });
     }
 
@@ -167,6 +173,40 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
                 <option value="enrolled">5. Đã nhập học</option>
                 <option value="lost">6. Huỷ / Không phù hợp</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Nhân viên phụ trách tư vấn
+              </label>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-lg border bg-background focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+              >
+                <option value="">-- Chưa phân công --</option>
+                {teamMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name} ({m.department || m.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Học phí dự kiến / ghi nhận (VNĐ)
+              </label>
+              <input
+                type="number"
+                step="500000"
+                placeholder="16500000"
+                value={tuitionFee}
+                onChange={(e) => setTuitionFee(Number(e.target.value))}
+                className="w-full px-3.5 py-2 rounded-lg border bg-background focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+              />
             </div>
           </div>
 

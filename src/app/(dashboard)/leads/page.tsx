@@ -20,6 +20,8 @@ import { LeadTable } from '@/components/leads/lead-table';
 import { LeadDialog } from '@/components/leads/lead-dialog';
 import { Lead } from '@/lib/types/crm';
 import { PermissionGuard } from '@/components/auth/permission-guard';
+import { AIReportModal } from '@/components/ai/ai-report-modal';
+import { Bot, DollarSign, TrendingUp } from 'lucide-react';
 
 export default function LeadsPage() {
   const { leads } = useCRM();
@@ -28,6 +30,13 @@ export default function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
+  const [isAiReportOpen, setIsAiReportOpen] = useState(false);
+  const [aiReportType, setAiReportType] = useState<'ads_optimization' | 'finance'>('ads_optimization');
+
+  const openAiReport = (type: 'ads_optimization' | 'finance') => {
+    setAiReportType(type);
+    setIsAiReportOpen(true);
+  };
 
   const handleEditLead = (lead: Lead) => {
     setLeadToEdit(lead);
@@ -64,7 +73,30 @@ export default function LeadsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Claude AI Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => openAiReport('ads_optimization')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-xs transition-all hover:scale-[1.02]"
+              title="Phân tích hiệu quả Meta Ads bằng Claude 3.5"
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Claude: Tối ưu Ads</span>
+              <span className="sm:hidden">Ads AI</span>
+            </button>
+
+            <button
+              onClick={() => openAiReport('finance')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all hover:scale-[1.02]"
+              title="Báo cáo tài chính & doanh thu học phí bằng Claude 3.5"
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Claude: Tài chính Lead</span>
+              <span className="sm:hidden">Finance AI</span>
+            </button>
+          </div>
+
           {/* Switch View Mode */}
           <div className="flex items-center bg-muted p-1 rounded-lg border">
             <button
@@ -196,6 +228,13 @@ export default function LeadsPage() {
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         leadToEdit={leadToEdit}
+      />
+
+      {/* Claude AI Report Modal */}
+      <AIReportModal
+        isOpen={isAiReportOpen}
+        onClose={() => setIsAiReportOpen(false)}
+        initialType={aiReportType}
       />
     </div>
     </PermissionGuard>

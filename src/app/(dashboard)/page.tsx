@@ -21,9 +21,18 @@ import {
 import { useCRM } from '@/lib/store/crm-context';
 import { formatPhoneNumber, formatDate } from '@/lib/utils';
 import { TalentCard } from '@/components/talents/talent-card';
+import { AIReportModal } from '@/components/ai/ai-report-modal';
+import { Bot, DollarSign } from 'lucide-react';
 
 export default function DashboardOverviewPage() {
   const { leads, talents } = useCRM();
+  const [isAiReportOpen, setIsAiReportOpen] = React.useState(false);
+  const [aiReportType, setAiReportType] = React.useState<'ads_optimization' | 'finance'>('ads_optimization');
+
+  const openAiReport = (type: 'ads_optimization' | 'finance') => {
+    setAiReportType(type);
+    setIsAiReportOpen(true);
+  };
 
   const totalLeads = leads.length;
   const newLeads = leads.filter(l => l.status === 'new').length;
@@ -125,6 +134,40 @@ export default function DashboardOverviewPage() {
         </div>
       </div>
 
+      {/* Claude AI Report Action Section */}
+      <div className="p-6 rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-amber-400" />
+            <span className="font-extrabold text-base tracking-tight text-white">
+              Báo Cáo AI Claude 3.5 Sonnet (Growth & Finance Intelligence)
+            </span>
+            <span className="text-[10px] bg-amber-400/20 text-amber-300 font-mono px-2 py-0.5 rounded-full border border-amber-400/30">
+              Live AI
+            </span>
+          </div>
+          <p className="text-xs text-slate-300">
+            Khai phá dữ liệu {leads.length} lead và {talents.length} diễn viên ACT Academy để xuất báo cáo tối ưu hoá và tài chính tức thì.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => openAiReport('ads_optimization')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <span>🤖 Claude: Phân tích Tối ưu Ads</span>
+          </button>
+
+          <button
+            onClick={() => openAiReport('finance')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <span>📊 Claude: Báo cáo Tài chính Lead</span>
+          </button>
+        </div>
+      </div>
+
       {/* Two Column Section: Recent Leads & Featured Talents */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left: Recent Leads */}
@@ -222,6 +265,13 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Report Modal */}
+      <AIReportModal
+        isOpen={isAiReportOpen}
+        onClose={() => setIsAiReportOpen(false)}
+        initialType={aiReportType}
+      />
     </div>
   );
 }

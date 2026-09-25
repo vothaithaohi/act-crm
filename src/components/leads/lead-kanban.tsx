@@ -14,7 +14,9 @@ import {
   Layers,
   Facebook,
   Globe,
-  Headphones
+  Headphones,
+  UserCheck,
+  DollarSign
 } from 'lucide-react';
 import { Lead, LeadStatus, LeadSource } from '@/lib/types/crm';
 import { useCRM } from '@/lib/store/crm-context';
@@ -68,7 +70,7 @@ const COLUMNS: { id: LeadStatus; label: string; color: string; badgeColor: strin
 ];
 
 export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanbanProps) {
-  const { leads, updateLeadStatus, deleteLead, convertToTalent, can } = useCRM();
+  const { leads, updateLeadStatus, deleteLead, convertToTalent, can, teamMembers } = useCRM();
   const router = useRouter();
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
 
@@ -217,6 +219,25 @@ export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanba
                           {lead.notes}
                         </div>
                       )}
+
+                      {/* Assigned Staff & Tuition Fee Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        {lead.assigned_to && (
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border">
+                            <UserCheck className="w-3 h-3 text-brand-600" />
+                            <span>
+                              {teamMembers.find(m => m.id === lead.assigned_to)?.full_name || 'Phụ trách'}
+                            </span>
+                          </div>
+                        )}
+
+                        {lead.tuition_fee && Number(lead.tuition_fee) > 0 && (
+                          <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200/50">
+                            <DollarSign className="w-3 h-3 text-emerald-600" />
+                            <span>{new Intl.NumberFormat('vi-VN').format(Number(lead.tuition_fee))} ₫</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Bottom Action Bar */}
