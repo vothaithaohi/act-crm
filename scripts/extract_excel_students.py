@@ -92,24 +92,46 @@ def parse_excel():
                 
     return list(students.values())
 
-def map_lead_status(raw_statuses, classes):
-    # 'new', 'contacted', 'audition_scheduled', 'audition_passed', 'enrolled', 'lost'
+def map_lead_status(raw_statuses, classes, raw_notes, idx):
+    # 7 standard statuses: intake, qualified, contacted, considering, trial_in_person, follow_up_later, converted
+    notes_combined = " ".join(raw_notes).lower()
+    classes_combined = " ".join(classes).lower()
+
     for s in raw_statuses:
-        if "6. HV chính thức" in s:
-            return "enrolled"
         if "5. Nhu cầu học không phù hợp" in s:
-            return "lost"
-    # If student has completed or taken classes:
-    for c in classes:
-        if "Kết thúc" in c or "Đang học" in c or "ACT" in c or "SSC" in c:
-            return "enrolled"
-        if "Chờ khai giảng" in c:
-            return "audition_passed"
-        if "Bảo lưu" in c:
-            return "audition_passed"
-        if "Huỷ" in c:
-            return "lost"
-    return "contacted"
+            return "follow_up_later"
+        if "6. HV chính thức" in s:
+            return "converted"
+
+    if "bảo lưu" in classes_combined or "huỷ" in classes_combined:
+        return "follow_up_later"
+
+    if "chờ khai giảng" in classes_combined or "đang học" in classes_combined or "audition" in notes_combined or "học thử" in notes_combined:
+        return "trial_in_person"
+
+    if "cân nhắc" in notes_combined or "suy nghĩ" in notes_combined or "sắp xếp" in notes_combined or "hẹn" in notes_combined:
+        return "considering"
+
+    if classes:
+        # Students who have completed classes at ACT
+        if idx % 10 == 0:
+            return "considering"  # Considering next ACT level
+        elif idx % 12 == 1:
+            return "trial_in_person"
+        elif idx % 20 == 2:
+            return "follow_up_later"
+        return "converted"
+
+    # Leads without classes yet: distribute across intake, qualified, contacted, considering
+    r = idx % 4
+    if r == 0:
+        return "intake"
+    elif r == 1:
+        return "qualified"
+    elif r == 2:
+        return "contacted"
+    else:
+        return "considering"
 
 RANK_MAP = {'ACT4': 4, 'ACT3': 3, 'ACT2': 2, 'ACT1': 1, 'SSC': 0.5}
 
@@ -279,7 +301,7 @@ def generate_data():
         email_clean = re.sub(r"[^a-zA-Z0-9]", "", full_name.lower())[:15]
         email = f"{email_clean}_{random.randint(100, 999)}@gmail.com"
         
-        status = map_lead_status(s["statuses"], s["classes"])
+        status = map_lead_status(s["statuses"], s["classes"], s["notes"], idx)
         course = s["goals"][0] if s["goals"] else "Khóa Diễn xuất Điện ảnh Chuyên sâu (ACT Pro)"
         
         # Build note from classes & original notes
@@ -306,13 +328,16 @@ def generate_data():
             "course_interest": course,
             "notes": note_str,
             "status": status,
+            "assigned_to": f"00000000-0000-0000-0000-00000000000{2 if idx % 2 == 0 else 3}",
+            "tuition_fee": 16500000 if status == "converted" else (16500000 if idx % 3 == 0 else 0),
+            "academic_profile": student_acad_map[s["id"]],
             "created_at": "2025-01-15T09:00:00.000Z",
             "updated_at": "2025-02-10T14:30:00.000Z"
         }
         leads.append(lead)
 
         # Create Talent profiles for notable students, prioritizing high ACT levels (ACT4, ACT3, ACT2, ACT1)
-        if (s["id"] in talent_candidate_ids) or (status in ["enrolled", "audition_passed"] and len(talents) < 65):
+        if (s["id"] in talent_candidate_ids) or (status in ["converted", "trial_in_person"] and len(talents) < 94):
             is_female = any(kw in full_name.lower() for kw in female_keywords)
             gender = "female" if is_female else "male"
             

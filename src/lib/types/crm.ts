@@ -89,12 +89,84 @@ export interface Profile {
 export type LeadSource = 'meta_ads' | 'manual' | 'website_form' | 'referral';
 
 export type LeadStatus =
-  | 'new'
+  | 'intake'
+  | 'qualified'
   | 'contacted'
-  | 'audition_scheduled'
-  | 'audition_passed'
-  | 'enrolled'
-  | 'lost';
+  | 'considering'
+  | 'trial_in_person'
+  | 'follow_up_later'
+  | 'converted';
+
+export const LEAD_STATUS_DETAILS: Record<LeadStatus, {
+  label: string;
+  shortLabel: string;
+  badgeColor: string;
+  columnColor: string;
+  desc: string;
+}> = {
+  intake: {
+    label: 'Intake (Tiếp nhận ban đầu)',
+    shortLabel: 'Tiếp nhận',
+    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    columnColor: 'border-t-blue-500 bg-blue-50/20 dark:bg-blue-950/10',
+    desc: 'Lead mới đổ về hệ thống từ quảng cáo hoặc đăng ký form, chưa qua xử lý.'
+  },
+  qualified: {
+    label: 'Qualified (Đạt tiêu chuẩn)',
+    shortLabel: 'Tiềm năng',
+    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    columnColor: 'border-t-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10',
+    desc: 'Lead đã được sàng lọc thông tin cơ bản (đúng độ tuổi, khu vực, nhu cầu học thật) và đáp ứng tiêu chuẩn của học viện.'
+  },
+  contacted: {
+    label: 'Contacted (Đã liên hệ)',
+    shortLabel: 'Đã liên hệ',
+    badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+    columnColor: 'border-t-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10',
+    desc: 'Đội ngũ tư vấn đã thực hiện gọi điện, nhắn tin hoặc gửi email tư vấn bước đầu.'
+  },
+  considering: {
+    label: 'Considering (Đang cân nhắc)',
+    shortLabel: 'Đang cân nhắc',
+    badgeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    columnColor: 'border-t-amber-500 bg-amber-50/20 dark:bg-amber-950/10',
+    desc: 'Học viên đã nhận tư vấn/báo giá nhưng cần thêm thời gian suy nghĩ, sắp xếp lịch trình cá nhân hoặc tài chính.'
+  },
+  trial_in_person: {
+    label: 'Trial / In Person (Học thử / Audition)',
+    shortLabel: 'Học thử / Test',
+    badgeColor: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    columnColor: 'border-t-purple-500 bg-purple-50/20 dark:bg-purple-950/10',
+    desc: 'Học viên đã hẹn hoặc đang tham gia buổi học thử, audition đầu vào, hoặc đến tư vấn trực tiếp tại studio.'
+  },
+  follow_up_later: {
+    label: 'Follow up later (Chăm sóc lại sau)',
+    shortLabel: 'Chăm sóc sau',
+    badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    columnColor: 'border-t-slate-400 bg-slate-50/30 dark:bg-slate-900/10',
+    desc: 'Học viên chưa đăng ký ngay ở thời điểm này (bận việc, chưa đủ tiền, chờ khóa sau), cần đặt lịch chăm sóc lại vào một thời điểm cụ thể.'
+  },
+  converted: {
+    label: 'Converted (Đã nhập học)',
+    shortLabel: 'Đã nhập học',
+    badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+    columnColor: 'border-t-rose-500 bg-rose-50/20 dark:bg-rose-950/10',
+    desc: 'Học viên đã đóng học phí và chính thức nhập học thành công (sẵn sàng chuyển thành Student/Talent Profile).'
+  }
+};
+
+export function normalizeLeadStatus(rawStatus?: string | null): LeadStatus {
+  if (!rawStatus) return 'intake';
+  const s = rawStatus.toLowerCase().trim();
+  if (s === 'new') return 'intake';
+  if (s === 'audition_scheduled' || s === 'audition_passed') return 'trial_in_person';
+  if (s === 'enrolled') return 'converted';
+  if (s === 'lost') return 'follow_up_later';
+  if (['intake', 'qualified', 'contacted', 'considering', 'trial_in_person', 'follow_up_later', 'converted'].includes(s)) {
+    return s as LeadStatus;
+  }
+  return 'intake';
+}
 
 export interface Lead {
   id: string;
@@ -111,6 +183,7 @@ export interface Lead {
   status: LeadStatus;
   assigned_to?: string;
   tuition_fee?: number;
+  academic_profile?: AcademicProfile;
   created_at: string;
   updated_at: string;
 }
@@ -313,6 +386,69 @@ export const ACT_LEVEL_DETAILS: Record<ACTCourseLevel, {
     description: 'Khóa chuyên đề ngắn hạn, luyện giọng lồng tiếng, diễn xuất hình thể hoặc kỹ thuật audition tuyển vai.'
   }
 };
+
+export interface ACTTermMaster {
+  code: string;
+  term_label: string;
+  level: ACTCourseLevel;
+  start_date: string;
+  end_date: string;
+  time_display: string;
+  year: number;
+  instructor_default?: string;
+}
+
+export const ACT_TERMS_DATABASE: ACTTermMaster[] = [
+  // ACT 1 Terms
+  { code: 'ACT1-26A', term_label: 'Term 26A', level: 'ACT1', start_date: '16/04/2024', end_date: '16/05/2024', time_display: 'Tháng 04/2024 - 05/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-26B', term_label: 'Term 26B', level: 'ACT1', start_date: '16/04/2024', end_date: '16/05/2024', time_display: 'Tháng 04/2024 - 05/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-27A', term_label: 'Term 27A', level: 'ACT1', start_date: '28/05/2024', end_date: '27/06/2024', time_display: 'Tháng 05/2024 - 06/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-27B', term_label: 'Term 27B', level: 'ACT1', start_date: '28/05/2024', end_date: '27/06/2024', time_display: 'Tháng 05/2024 - 06/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-28A', term_label: 'Term 28A', level: 'ACT1', start_date: '23/07/2024', end_date: '22/08/2024', time_display: 'Tháng 07/2024 - 08/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-28B', term_label: 'Term 28B', level: 'ACT1', start_date: '23/07/2024', end_date: '22/08/2024', time_display: 'Tháng 07/2024 - 08/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-29A', term_label: 'Term 29A', level: 'ACT1', start_date: '09/10/2024', end_date: '10/10/2024', time_display: 'Tháng 10/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-30A', term_label: 'Term 30A', level: 'ACT1', start_date: '29/10/2024', end_date: '28/11/2024', time_display: 'Tháng 10/2024 - 11/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-31A', term_label: 'Term 31A', level: 'ACT1', start_date: '12/10/2024', end_date: '16/01/2025', time_display: 'Tháng 10/2024 - 01/2025', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-32A', term_label: 'Term 32A', level: 'ACT1', start_date: '18/02/2025', end_date: '20/03/2025', time_display: 'Tháng 02/2025 - 03/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-33A', term_label: 'Term 33A', level: 'ACT1', start_date: '08/04/2025', end_date: '13/05/2025', time_display: 'Tháng 04/2025 - 05/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-34A', term_label: 'Term 34A', level: 'ACT1', start_date: '03/06/2025', end_date: '08/07/2025', time_display: 'Tháng 06/2025 - 07/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-35A', term_label: 'Term 35A', level: 'ACT1', start_date: '29/07/2025', end_date: '28/08/2025', time_display: 'Tháng 07/2025 - 08/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-36A', term_label: 'Term 36A', level: 'ACT1', start_date: '16/09/2025', end_date: '16/10/2025', time_display: 'Tháng 09/2025 - 10/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-37B', term_label: 'Term 37B', level: 'ACT1', start_date: '04/11/2025', end_date: '04/12/2025', time_display: 'Tháng 11/2025 - 12/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT1-38B', term_label: 'Term 38B', level: 'ACT1', start_date: '22/12/2025', end_date: '22/01/2026', time_display: 'Tháng 12/2025 - 01/2026', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+
+  // ACT 2 Terms
+  { code: 'ACT2-26A', term_label: 'Term 26A', level: 'ACT2', start_date: '17/04/2024', end_date: '17/05/2024', time_display: 'Tháng 04/2024 - 05/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-28', term_label: 'Term 28', level: 'ACT2', start_date: '26/08/2024', end_date: '25/09/2024', time_display: 'Tháng 08/2024 - 09/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-29', term_label: 'Term 29', level: 'ACT2', start_date: '09/09/2024', end_date: '10/09/2024', time_display: 'Tháng 09/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-30', term_label: 'Term 30', level: 'ACT2', start_date: '28/10/2024', end_date: '27/11/2024', time_display: 'Tháng 10/2024 - 11/2024', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-31A', term_label: 'Term 31A', level: 'ACT2', start_date: '12/09/2024', end_date: '17/01/2025', time_display: 'Tháng 09/2024 - 01/2025', year: 2024, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-32A', term_label: 'Term 32A', level: 'ACT2', start_date: '17/02/2025', end_date: '19/03/2025', time_display: 'Tháng 02/2025 - 03/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-33A', term_label: 'Term 33A', level: 'ACT2', start_date: '14/04/2025', end_date: '16/05/2025', time_display: 'Tháng 04/2025 - 05/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-34A', term_label: 'Term 34A', level: 'ACT2', start_date: '02/06/2025', end_date: '07/07/2025', time_display: 'Tháng 06/2025 - 07/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-35A', term_label: 'Term 35A', level: 'ACT2', start_date: '29/07/2025', end_date: '01/09/2025', time_display: 'Tháng 07/2025 - 09/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-36B', term_label: 'Term 36B', level: 'ACT2', start_date: '16/09/2025', end_date: '16/10/2025', time_display: 'Tháng 09/2025 - 10/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-37', term_label: 'Term 37', level: 'ACT2', start_date: '04/11/2025', end_date: '04/12/2025', time_display: 'Tháng 11/2025 - 12/2025', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+  { code: 'ACT2-38B', term_label: 'Term 38B', level: 'ACT2', start_date: '30/12/2025', end_date: '29/01/2026', time_display: 'Tháng 12/2025 - 01/2026', year: 2025, instructor_default: 'Giảng viên ACT Academy' },
+
+  // ACT 3 Terms
+  { code: 'ACT3-26', term_label: 'Term 26', level: 'ACT3', start_date: '16/04/2024', end_date: '16/05/2024', time_display: 'Tháng 04/2024 - 05/2024', year: 2024, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-27', term_label: 'Term 27', level: 'ACT3', start_date: '28/05/2024', end_date: '27/06/2024', time_display: 'Tháng 05/2024 - 06/2024', year: 2024, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-29', term_label: 'Term 29', level: 'ACT3', start_date: '09/10/2024', end_date: '10/10/2024', time_display: 'Tháng 10/2024', year: 2024, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-31', term_label: 'Term 31', level: 'ACT3', start_date: '12/09/2024', end_date: '17/01/2025', time_display: 'Tháng 09/2024 - 01/2025', year: 2024, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-32', term_label: 'Term 32', level: 'ACT3', start_date: '18/02/2025', end_date: '20/03/2025', time_display: 'Tháng 02/2025 - 03/2025', year: 2025, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-33', term_label: 'Term 33', level: 'ACT3', start_date: '08/04/2025', end_date: '15/05/2025', time_display: 'Tháng 04/2025 - 05/2025', year: 2025, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-36', term_label: 'Term 36', level: 'ACT3', start_date: '16/09/2025', end_date: '16/10/2025', time_display: 'Tháng 09/2025 - 10/2025', year: 2025, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-37', term_label: 'Term 37', level: 'ACT3', start_date: '03/11/2025', end_date: '03/12/2025', time_display: 'Tháng 11/2025 - 12/2025', year: 2025, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+  { code: 'ACT3-38', term_label: 'Term 38', level: 'ACT3', start_date: '22/12/2025', end_date: '21/01/2026', time_display: 'Tháng 12/2025 - 01/2026', year: 2025, instructor_default: 'Đạo diễn Vũ Trần & GV ACT' },
+
+  // ACT 4 Terms
+  { code: 'ACT4-30', term_label: 'Term 30', level: 'ACT4', start_date: '28/10/2024', end_date: '27/11/2024', time_display: 'Tháng 10/2024 - 11/2024', year: 2024, instructor_default: 'Đạo diễn Vũ Trần & Hội đồng ACT' },
+  { code: 'ACT4-35', term_label: 'Term 35', level: 'ACT4', start_date: '28/07/2025', end_date: '27/08/2025', time_display: 'Tháng 07/2025 - 08/2025', year: 2025, instructor_default: 'Đạo diễn Vũ Trần & Hội đồng ACT' },
+
+  // SSC Terms
+  { code: 'SSC-35', term_label: 'Term 35', level: 'SSC', start_date: '04/08/2025', end_date: '10/09/2025', time_display: 'Tháng 08/2025 - 09/2025', year: 2025, instructor_default: 'Giảng viên Chuyên đề ACT' }
+];
 
 export interface CastingFilterCriteria {
   searchQuery: string;

@@ -5,6 +5,8 @@ import {
   Lead, 
   TalentProfile, 
   LeadStatus, 
+  normalizeLeadStatus,
+  AcademicProfile,
   CastingFilterCriteria, 
   Profile, 
   UserRole, 
@@ -157,6 +159,7 @@ interface CRMContextType {
   updateLeadStatus: (leadId: string, status: LeadStatus) => Promise<void>;
   updateLead: (lead: Lead) => Promise<void>;
   deleteLead: (leadId: string) => Promise<void>;
+  updateLeadAcademicProfile: (leadId: string, profile: AcademicProfile) => Promise<void>;
   convertToTalent: (leadId: string) => Promise<string>;
   getTalentById: (id: string) => TalentProfile | undefined;
   saveTalent: (talent: TalentProfile) => Promise<void>;
@@ -284,39 +287,41 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
     function loadLocalSeed() {
       try {
-        const storedLeads = localStorage.getItem('act_crm_leads');
-        const storedTalents = localStorage.getItem('act_crm_talents_v3') || localStorage.getItem('act_crm_talents');
-        const rawLeads = (seedData.leads as Lead[]) || [];
-        const rawTalents = (seedData.talents as TalentProfile[]) || [];
+        const rawLeads = (seedData.leads as unknown as Lead[]) || [];
+        const rawTalents = (seedData.talents as unknown as TalentProfile[]) || [];
 
+        const storedLeads = localStorage.getItem('act_crm_leads_v5');
         if (storedLeads) {
-          setLeads(JSON.parse(storedLeads));
+          const parsedLeads = JSON.parse(storedLeads);
+          if (Array.isArray(parsedLeads) && parsedLeads.length >= rawLeads.length) {
+            setLeads(parsedLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
+          } else {
+            setLeads(rawLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
+            localStorage.setItem('act_crm_leads_v5', JSON.stringify(rawLeads));
+          }
         } else {
-          setLeads(rawLeads);
-          localStorage.setItem('act_crm_leads', JSON.stringify(rawLeads));
+          setLeads(rawLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
+          localStorage.setItem('act_crm_leads_v5', JSON.stringify(rawLeads));
         }
 
+        const storedTalents = localStorage.getItem('act_crm_talents_v5');
         if (storedTalents) {
           const parsed = JSON.parse(storedTalents);
-          // Check if parsed talents already have academic_profile
-          const hasAcademic = Array.isArray(parsed) && parsed.some((t: TalentProfile) => t.academic_profile?.highest_act_level);
-          if (hasAcademic && parsed.length >= rawTalents.length) {
+          if (Array.isArray(parsed) && parsed.length >= rawTalents.length) {
             setTalents(parsed);
           } else {
-            // Upgrade with academic profiles
             setTalents(rawTalents);
-            localStorage.setItem('act_crm_talents_v3', JSON.stringify(rawTalents));
-            localStorage.setItem('act_crm_talents', JSON.stringify(rawTalents));
+            localStorage.setItem('act_crm_talents_v5', JSON.stringify(rawTalents));
           }
         } else {
           setTalents(rawTalents);
-          localStorage.setItem('act_crm_talents_v3', JSON.stringify(rawTalents));
-          localStorage.setItem('act_crm_talents', JSON.stringify(rawTalents));
+          localStorage.setItem('act_crm_talents_v5', JSON.stringify(rawTalents));
         }
       } catch (e) {
         console.error('Failed to load local CRM data:', e);
-        setLeads((seedData.leads as Lead[]) || []);
-        setTalents((seedData.talents as TalentProfile[]) || []);
+        const rawLeads = (seedData.leads as unknown as Lead[]) || [];
+        setLeads(rawLeads.map(l => ({ ...l, status: normalizeLeadStatus(l.status) })));
+        setTalents((seedData.talents as unknown as TalentProfile[]) || []);
       }
     }
 
@@ -417,7 +422,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const syncLeadsLocal = (newLeads: Lead[]) => {
     setLeads(newLeads);
     try {
-      localStorage.setItem('act_crm_leads', JSON.stringify(newLeads));
+      localStorage.setItem('act_crm_leads_v5', JSON.stringify(newLeads));
     } catch (e) {
       console.error(e);
     }
@@ -426,7 +431,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const syncTalentsLocal = (newTalents: TalentProfile[]) => {
     setTalents(newTalents);
     try {
-      localStorage.setItem('act_crm_talents', JSON.stringify(newTalents));
+      localStorage.setItem('act_crm_talents_v5', JSON.stringify(newTalents));
     } catch (e) {
       console.error(e);
     }
@@ -511,6 +516,23 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateLeadAcademicProfile = async (leadId: string, profile: AcademicProfile) => {
+    const updated = leads.map(l => 
+      l.id === leadId ? { ...l, academic_profile: profile, updated_at: new Date().toISOString() } : l
+    );
+    syncLeadsLocal(updated);
+    toast.success('Đã cập nhật lộ trình đào tạo ACT của học viên');
+
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        await supabase.from('leads').update({ academic_profile: profile, updated_at: new Date().toISOString() }).eq('id', leadId);
+      } catch (err) {
+        console.error('Failed to sync academic profile to Supabase:', err);
+      }
+    }
+  };
+
   const convertToTalent = async (leadId: string): Promise<string> => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead) throw new Error('Lead không tồn tại');
@@ -573,7 +595,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       headshot_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
       fullbody_url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800',
       compcard_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
-      academic_profile: {
+      academic_profile: lead.academic_profile || {
         highest_act_level: 'ACT1',
         highest_class_code: 'ACT1-Mới',
         highest_level_status: 'studying',
@@ -598,7 +620,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       updated_at: new Date().toISOString()
     };
 
-    await updateLeadStatus(leadId, 'enrolled');
+    await updateLeadStatus(leadId, 'converted');
     syncTalentsLocal([newTalent, ...talents]);
     toast.success('Chuyển đổi thành công!', {
       description: `Đã tạo hồ sơ Talent cho ${lead.full_name}`
@@ -901,6 +923,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         updateLeadStatus,
         updateLead,
         deleteLead,
+        updateLeadAcademicProfile,
         convertToTalent,
         getTalentById,
         saveTalent,

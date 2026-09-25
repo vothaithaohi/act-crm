@@ -23,53 +23,76 @@ import { useCRM } from '@/lib/store/crm-context';
 import { formatDate, formatPhoneNumber } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { useRouter } from 'next/navigation';
+import { LEAD_STATUS_DETAILS, ACT_LEVEL_DETAILS } from '@/lib/types/crm';
+import { GraduationCap, Eye } from 'lucide-react';
 
 interface LeadKanbanProps {
   onEditLead: (lead: Lead) => void;
+  onSelectLead?: (lead: Lead) => void;
   searchFilter: string;
   sourceFilter: string;
 }
 
-const COLUMNS: { id: LeadStatus; label: string; color: string; badgeColor: string }[] = [
+const COLUMNS: { id: LeadStatus; label: string; shortLabel: string; color: string; badgeColor: string; desc: string }[] = [
   { 
-    id: 'new', 
-    label: '1. Mới tiếp nhận', 
+    id: 'intake', 
+    label: '1. Tiếp nhận ban đầu (Intake)',
+    shortLabel: 'Tiếp nhận',
     color: 'border-t-blue-500 bg-blue-50/20 dark:bg-blue-950/10',
-    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    desc: 'Lead mới từ Ads/form chưa xử lý'
+  },
+  { 
+    id: 'qualified', 
+    label: '2. Đạt tiêu chuẩn (Qualified)',
+    shortLabel: 'Tiềm năng',
+    color: 'border-t-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10',
+    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    desc: 'Đúng độ tuổi, khu vực & nhu cầu học'
   },
   { 
     id: 'contacted', 
-    label: '2. Đã liên hệ', 
+    label: '3. Đã liên hệ (Contacted)',
+    shortLabel: 'Đã liên hệ',
     color: 'border-t-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10',
-    badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+    badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+    desc: 'Đã gọi điện, gửi tin nhắn tư vấn'
   },
   { 
-    id: 'audition_scheduled', 
-    label: '3. Hẹn Audition', 
+    id: 'considering', 
+    label: '4. Đang cân nhắc (Considering)',
+    shortLabel: 'Đang cân nhắc',
     color: 'border-t-amber-500 bg-amber-50/20 dark:bg-amber-950/10',
-    badgeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+    badgeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    desc: 'Cần sắp xếp lịch trình hoặc tài chính'
   },
   { 
-    id: 'audition_passed', 
-    label: '4. Đạt Audition', 
-    color: 'border-t-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10',
-    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+    id: 'trial_in_person', 
+    label: '5. Học thử / Audition (Trial)',
+    shortLabel: 'Học thử / Test',
+    color: 'border-t-purple-500 bg-purple-50/20 dark:bg-purple-950/10',
+    badgeColor: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    desc: 'Đã hẹn/tham gia học thử hoặc casting'
   },
   { 
-    id: 'enrolled', 
-    label: '5. Đã nhập học', 
-    color: 'border-t-rose-500 bg-rose-50/20 dark:bg-rose-950/10',
-    badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-  },
-  { 
-    id: 'lost', 
-    label: '6. Không phù hợp', 
+    id: 'follow_up_later', 
+    label: '6. Chăm sóc lại sau (Follow up)',
+    shortLabel: 'Chăm sóc sau',
     color: 'border-t-slate-400 bg-slate-50/30 dark:bg-slate-900/10',
-    badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+    badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    desc: 'Hẹn lại thời điểm phù hợp hơn'
+  },
+  { 
+    id: 'converted', 
+    label: '7. Đã nhập học (Converted)',
+    shortLabel: 'Đã nhập học',
+    color: 'border-t-rose-500 bg-rose-50/20 dark:bg-rose-950/10',
+    badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+    desc: 'Đã đóng học phí thành công'
   }
 ];
 
-export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanbanProps) {
+export function LeadKanban({ onEditLead, onSelectLead, searchFilter, sourceFilter }: LeadKanbanProps) {
   const { leads, updateLeadStatus, deleteLead, convertToTalent, can, teamMembers } = useCRM();
   const router = useRouter();
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
@@ -190,7 +213,8 @@ export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanba
                     key={lead.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, lead.id)}
-                    className="p-3.5 bg-card hover:bg-card/90 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative space-y-2.5"
+                    onClick={() => onSelectLead?.(lead)}
+                    className="p-3.5 bg-card hover:bg-card/90 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group relative space-y-2.5 hover:border-brand-500/40"
                   >
                     {/* Top Row: Name & Source */}
                     <div className="flex items-start justify-between gap-2">
@@ -199,6 +223,19 @@ export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanba
                       </div>
                       {renderSourceBadge(lead.source)}
                     </div>
+
+                    {/* Highest ACT Level Badge */}
+                    {lead.academic_profile?.highest_act_level && (
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs ${ACT_LEVEL_DETAILS[lead.academic_profile.highest_act_level]?.badgeClass || 'bg-amber-100 text-amber-800'}`}>
+                          <GraduationCap className="w-3 h-3" />
+                          <span>Lớp {lead.academic_profile.highest_act_level}</span>
+                          {lead.academic_profile.highest_class_code && (
+                            <span className="opacity-80">({lead.academic_profile.highest_class_code})</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Phone & Course */}
                     <div className="space-y-1 text-xs text-muted-foreground">
@@ -248,9 +285,12 @@ export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanba
 
                       <div className="flex items-center gap-1">
                         {can('leads:convert') && (
-                          lead.status !== 'enrolled' ? (
+                          lead.status !== 'converted' ? (
                             <button
-                              onClick={() => handleConvert(lead.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleConvert(lead.id);
+                              }}
                               className="flex items-center gap-1 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/60 rounded-md font-semibold transition-colors shadow-2xs"
                               title="Tạo hồ sơ Casting Diễn viên từ học viên này"
                             >
@@ -259,14 +299,28 @@ export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanba
                             </button>
                           ) : (
                             <span className="text-[10px] text-rose-600 font-semibold px-2 py-0.5 bg-rose-50 rounded">
-                              Đã là Diễn viên
+                              Đã nhập học
                             </span>
                           )
                         )}
 
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectLead ? onSelectLead(lead) : onEditLead(lead);
+                          }}
+                          className="p-1 hover:bg-brand-50 text-muted-foreground hover:text-brand-600 rounded transition-colors"
+                          title="Xem hồ sơ & lộ trình học viên"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+
                         {can('leads:write') && (
                           <button
-                            onClick={() => onEditLead(lead)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditLead(lead);
+                            }}
                             className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors"
                             title="Sửa"
                           >
@@ -276,7 +330,8 @@ export function LeadKanban({ onEditLead, searchFilter, sourceFilter }: LeadKanba
 
                         {can('leads:delete') && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (confirm(`Bạn có chắc chắn muốn xóa lead ${lead.full_name}?`)) {
                                 deleteLead(lead.id);
                               }

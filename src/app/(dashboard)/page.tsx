@@ -23,6 +23,7 @@ import { formatPhoneNumber, formatDate } from '@/lib/utils';
 import { TalentCard } from '@/components/talents/talent-card';
 import { AIReportModal } from '@/components/ai/ai-report-modal';
 import { Bot, DollarSign } from 'lucide-react';
+import { LEAD_STATUS_DETAILS } from '@/lib/types/crm';
 
 export default function DashboardOverviewPage() {
   const { leads, talents } = useCRM();
@@ -35,9 +36,9 @@ export default function DashboardOverviewPage() {
   };
 
   const totalLeads = leads.length;
-  const newLeads = leads.filter(l => l.status === 'new').length;
-  const enrolledLeads = leads.filter(l => l.status === 'enrolled').length;
-  const passedAudition = leads.filter(l => l.status === 'audition_passed').length;
+  const newLeads = leads.filter(l => l.status === 'intake').length;
+  const enrolledLeads = leads.filter(l => l.status === 'converted').length;
+  const passedAudition = leads.filter(l => l.status === 'trial_in_person').length;
   const metaLeads = leads.filter(l => l.source === 'meta_ads').length;
 
   const conversionRate = totalLeads > 0 ? ((enrolledLeads / totalLeads) * 100).toFixed(1) : '0';
@@ -201,13 +202,9 @@ export default function DashboardOverviewPage() {
 
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${
-                    lead.status === 'enrolled' 
-                      ? 'bg-rose-100 text-rose-700' 
-                      : lead.status === 'new'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-muted text-muted-foreground'
+                    LEAD_STATUS_DETAILS[lead.status]?.badgeColor || 'bg-muted text-muted-foreground'
                   }`}>
-                    {lead.status === 'enrolled' ? 'Đã nhập học' : lead.status === 'new' ? 'Mới' : lead.status}
+                    {LEAD_STATUS_DETAILS[lead.status]?.shortLabel || lead.status}
                   </span>
                 </div>
               </div>

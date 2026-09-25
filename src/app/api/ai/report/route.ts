@@ -53,28 +53,31 @@ export async function POST(req: NextRequest) {
 
     // 2. Compute aggregate metrics
     const totalLeads = leads.length;
-    const newLeads = leads.filter(l => l.status === 'new').length;
+    const intakeLeads = leads.filter(l => l.status === 'intake' || l.status === 'new').length;
+    const qualifiedLeads = leads.filter(l => l.status === 'qualified').length;
     const contactedLeads = leads.filter(l => l.status === 'contacted').length;
-    const scheduledLeads = leads.filter(l => l.status === 'audition_scheduled').length;
-    const passedAudition = leads.filter(l => l.status === 'audition_passed').length;
-    const enrolledLeads = leads.filter(l => l.status === 'enrolled').length;
-    const lostLeads = leads.filter(l => l.status === 'lost').length;
+    const consideringLeads = leads.filter(l => l.status === 'considering').length;
+    const trialLeads = leads.filter(l => l.status === 'trial_in_person' || l.status === 'audition_scheduled' || l.status === 'audition_passed').length;
+    const followUpLeads = leads.filter(l => l.status === 'follow_up_later' || l.status === 'lost').length;
+    const convertedLeads = leads.filter(l => l.status === 'converted' || l.status === 'enrolled').length;
 
     const metaAdsLeads = leads.filter(l => l.source === 'meta_ads').length;
     const manualLeads = leads.filter(l => l.source === 'manual').length;
     const websiteLeads = leads.filter(l => l.source === 'website_form').length;
     const referralLeads = leads.filter(l => l.source === 'referral').length;
 
-    const leadToAuditionRate = totalLeads > 0 ? (((scheduledLeads + passedAudition + enrolledLeads) / totalLeads) * 100).toFixed(1) : '0';
-    const auditionToEnrollRate = (scheduledLeads + passedAudition + enrolledLeads) > 0 
-      ? ((enrolledLeads / (scheduledLeads + passedAudition + enrolledLeads)) * 100).toFixed(1) 
+    const leadToTrialRate = totalLeads > 0 ? (((trialLeads + convertedLeads) / totalLeads) * 100).toFixed(1) : '0';
+    const trialToConvertRate = (trialLeads + convertedLeads) > 0 
+      ? ((convertedLeads / (trialLeads + convertedLeads)) * 100).toFixed(1) 
       : '0';
-    const overallConversionRate = totalLeads > 0 ? ((enrolledLeads / totalLeads) * 100).toFixed(1) : '0';
+    const overallConversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0';
+    const enrolledLeads = convertedLeads;
+    const auditionToEnrollRate = trialToConvertRate;
 
     // Total tuition estimation (approx 16,500,000 VND standard tuition per course)
     const averageTuition = 16500000;
     const recordedTuition = leads
-      .filter(l => l.status === 'enrolled')
+      .filter(l => l.status === 'converted' || l.status === 'enrolled')
       .reduce((sum, l) => sum + (Number(l.tuition_fee) || averageTuition), 0);
 
     const act1Count = talents.filter(t => t.academic_profile?.highest_act_level === 'ACT1').length;
@@ -86,12 +89,13 @@ export async function POST(req: NextRequest) {
       period: '30 ngày qua (hoặc dữ liệu toàn chu kỳ)',
       totalLeads,
       statusBreakdown: {
-        new: newLeads,
+        intake: intakeLeads,
+        qualified: qualifiedLeads,
         contacted: contactedLeads,
-        audition_scheduled: scheduledLeads,
-        audition_passed: passedAudition,
-        enrolled: enrolledLeads,
-        lost: lostLeads
+        considering: consideringLeads,
+        trial_in_person: trialLeads,
+        follow_up_later: followUpLeads,
+        converted: convertedLeads
       },
       sourceBreakdown: {
         meta_ads: metaAdsLeads,
@@ -100,12 +104,14 @@ export async function POST(req: NextRequest) {
         referral: referralLeads
       },
       conversionMetrics: {
-        leadToAuditionRate: `${leadToAuditionRate}%`,
-        auditionToEnrollRate: `${auditionToEnrollRate}%`,
+        leadToTrialRate: `${leadToTrialRate}%`,
+        trialToConvertRate: `${trialToConvertRate}%`,
+        leadToAuditionRate: `${leadToTrialRate}%`,
+        auditionToEnrollRate: `${trialToConvertRate}%`,
         overallConversionRate: `${overallConversionRate}%`
       },
       financialMetrics: {
-        enrolledCount: enrolledLeads,
+        enrolledCount: convertedLeads,
         estimatedRevenueVND: recordedTuition,
         averageTuitionVND: averageTuition
       },
@@ -214,11 +220,11 @@ Hãy lập Báo Cáo Phân Tích Tài Chính & Doanh Thu Học Phí (CFO Financi
 
 | Giai Đoạn Phễu (Funnel Stage) | Số Lượng Học Viên | Tỷ Lệ Chuyển Đổi | Nhận Định Chuyên Sâu |
 | :--- | :---: | :---: | :--- |
-| **Tổng Lead Thu Thập** | **${totalLeads}** | 100% | Quy mô tệp lead đáp ứng tốt nhu cầu tuyển sinh định kỳ. |
-| **Mới Tiếp Nhận (New)** | **${newLeads}** | ${(newLeads / totalLeads * 100).toFixed(1)}% | Tốc độ liên hệ trong 15 phút đầu quyết định 70% tỷ lệ chốt hẹn. |
-| **Đã Hẹn Audition / Test** | **${scheduledLeads + passedAudition}** | **${leadToAuditionRate}%** | Tỷ lệ chuyển sang bước Audition khá ổn định, cần rút ngắn thời gian chờ. |
-| **Đã Nhập Học (Enrolled)** | **${enrolledLeads}** | **${overallConversionRate}%** | Tỷ lệ chốt nhập học sau Audition đạt **${auditionToEnrollRate}%**, đây là chỉ số rất tốt. |
-| **Không Phù Hợp / Rớt (Lost)** | **${lostLeads}** | ${(lostLeads / totalLeads * 100).toFixed(1)}% | Đa phần do lệch khung giờ học hoặc chưa đủ điều kiện tài chính. |
+| **Tổng Lead Tiếp Nhận** | **${totalLeads}** | 100% | Quy mô tệp lead đáp ứng tốt nhu cầu tuyển sinh định kỳ. |
+| **Tiếp Nhận Ban Đầu (Intake)** | **${intakeLeads}** | ${totalLeads > 0 ? (intakeLeads / totalLeads * 100).toFixed(1) : 0}% | Tốc độ liên hệ trong 15 phút đầu quyết định 70% tỷ lệ chốt hẹn. |
+| **Học Thử / Test Casting (Trial)** | **${trialLeads}** | **${leadToTrialRate}%** | Tỷ lệ chuyển sang bước Audition khá ổn định, cần rút ngắn thời gian chờ. |
+| **Đã Nhập Học (Converted)** | **${convertedLeads}** | **${overallConversionRate}%** | Tỷ lệ chốt nhập học đạt **${trialToConvertRate}%**, đây là chỉ số rất tốt. |
+| **Chăm Sóc Lại Sau (Follow up)** | **${followUpLeads}** | ${totalLeads > 0 ? (followUpLeads / totalLeads * 100).toFixed(1) : 0}% | Đa phần do lệch khung giờ học hoặc cần chăm sóc lại vào các khóa kế tiếp. |
 
 > [!IMPORTANT]
 > **Điểm gãy lớn nhất (Bottleneck):** Nằm ở bước **Chuyển từ Lead Mới ➔ Xác nhận lịch Audition**. Khoảng 40% lead chưa được tư vấn kịp thời khi họ vừa điền form trên Meta Ads. Cần tích hợp Zalo ZNS hoặc gọi ngay trong 30 phút.
@@ -271,7 +277,7 @@ Hãy lập Báo Cáo Phân Tích Tài Chính & Doanh Thu Học Phí (CFO Financi
 | :--- | :---: | :--- |
 | **Tổng Doanh Thu Học Phí Ước Tính** | **${formattedRevenue}** | Dựa trên ${enrolledLeads} học viên hoàn tất nhập học. |
 | **Học Phí Trung Bình / Khóa (AOV)** | **16.500.000 ₫** | Mức chuẩn cho khóa đào tạo diễn xuất chuyên sâu. |
-| **Doanh Thu Tiềm Năng Chờ Chốt** | **${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(scheduledLeads * 16500000)}** | ${scheduledLeads} lead đang trong giai đoạn hẹn Audition. |
+| **Doanh Thu Tiềm Năng Chờ Chốt** | **${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trialLeads * 16500000)}** | ${trialLeads} lead đang trong giai đoạn học thử / phỏng vấn. |
 | **Tỷ Suất Chuyển Đổi Sang Doanh Thu** | **${overallConversionRate}%** | Tỷ lệ lead sinh ra doanh thu thực tế. |
 
 > [!TIP]

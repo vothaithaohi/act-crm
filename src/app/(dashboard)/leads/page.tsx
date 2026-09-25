@@ -18,6 +18,7 @@ import { useCRM } from '@/lib/store/crm-context';
 import { LeadKanban } from '@/components/leads/lead-kanban';
 import { LeadTable } from '@/components/leads/lead-table';
 import { LeadDialog } from '@/components/leads/lead-dialog';
+import { LeadDetailModal } from '@/components/leads/lead-detail-modal';
 import { Lead } from '@/lib/types/crm';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { AIReportModal } from '@/components/ai/ai-report-modal';
@@ -30,6 +31,8 @@ export default function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
+  const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<Lead | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAiReportOpen, setIsAiReportOpen] = useState(false);
   const [aiReportType, setAiReportType] = useState<'ads_optimization' | 'finance'>('ads_optimization');
 
@@ -43,16 +46,21 @@ export default function LeadsPage() {
     setIsDialogOpen(true);
   };
 
+  const handleSelectLead = (lead: Lead) => {
+    setSelectedLeadForDetail(lead);
+    setIsDetailOpen(true);
+  };
+
   const handleCreateNew = () => {
     setLeadToEdit(null);
     setIsDialogOpen(true);
   };
 
-  // Quick stats
+  // Quick stats matching 7 pipeline stages
   const totalLeads = leads.length;
-  const newLeads = leads.filter(l => l.status === 'new').length;
-  const enrolledLeads = leads.filter(l => l.status === 'enrolled').length;
-  const scheduledLeads = leads.filter(l => l.status === 'audition_scheduled' || l.status === 'audition_passed').length;
+  const newIntakeLeads = leads.filter(l => l.status === 'intake').length;
+  const trialAuditionLeads = leads.filter(l => l.status === 'trial_in_person').length;
+  const convertedLeads = leads.filter(l => l.status === 'converted').length;
 
   return (
     <PermissionGuard
@@ -147,8 +155,8 @@ export default function LeadsPage() {
 
         <div className="p-4 bg-card rounded-xl border shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs text-muted-foreground font-medium">Lead Mới Chờ Liên Hệ</div>
-            <div className="text-2xl font-bold text-blue-600 mt-0.5">{newLeads}</div>
+            <div className="text-xs text-muted-foreground font-medium">Tiếp Nhận Ban Đầu</div>
+            <div className="text-2xl font-bold text-blue-600 mt-0.5">{newIntakeLeads}</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
             <Clock className="w-5 h-5" />
@@ -157,18 +165,18 @@ export default function LeadsPage() {
 
         <div className="p-4 bg-card rounded-xl border shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs text-muted-foreground font-medium">Audition / Phỏng Vấn</div>
-            <div className="text-2xl font-bold text-amber-600 mt-0.5">{scheduledLeads}</div>
+            <div className="text-xs text-muted-foreground font-medium">Học Thử / Test Casting</div>
+            <div className="text-2xl font-bold text-purple-600 mt-0.5">{trialAuditionLeads}</div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
         </div>
 
         <div className="p-4 bg-card rounded-xl border shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs text-muted-foreground font-medium">Đã Nhập Học (Enrolled)</div>
-            <div className="text-2xl font-bold text-rose-600 mt-0.5">{enrolledLeads}</div>
+            <div className="text-xs text-muted-foreground font-medium">Đã Nhập Học (Converted)</div>
+            <div className="text-2xl font-bold text-rose-600 mt-0.5">{convertedLeads}</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 flex items-center justify-center">
             <UserCheck className="w-5 h-5" />
@@ -212,12 +220,14 @@ export default function LeadsPage() {
       {viewMode === 'kanban' ? (
         <LeadKanban
           onEditLead={handleEditLead}
+          onSelectLead={handleSelectLead}
           searchFilter={searchFilter}
           sourceFilter={sourceFilter}
         />
       ) : (
         <LeadTable
           onEditLead={handleEditLead}
+          onSelectLead={handleSelectLead}
           searchFilter={searchFilter}
           sourceFilter={sourceFilter}
         />
@@ -228,6 +238,13 @@ export default function LeadsPage() {
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         leadToEdit={leadToEdit}
+      />
+
+      {/* Standalone Lead Detail View (Independent from Talent Profile) */}
+      <LeadDetailModal
+        lead={selectedLeadForDetail}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
       />
 
       {/* Claude AI Report Modal */}

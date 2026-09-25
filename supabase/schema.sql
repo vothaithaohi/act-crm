@@ -36,12 +36,14 @@ CREATE TABLE IF NOT EXISTS public.leads (
   adset_name TEXT,
   ad_name TEXT,
   course_interest TEXT,
-  notes JSONB DEFAULT '{}'::jsonb,
-  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN (
-    'new', 'contacted', 'audition_scheduled', 'audition_passed', 'enrolled', 'lost'
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'intake' CHECK (status IN (
+    'intake', 'qualified', 'contacted', 'considering', 'trial_in_person', 'follow_up_later', 'converted',
+    'new', 'audition_scheduled', 'audition_passed', 'enrolled', 'lost'
   )),
   assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   tuition_fee NUMERIC DEFAULT 0,
+  academic_profile JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );

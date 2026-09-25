@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, UserPlus, Phone, Mail, BookOpen, FileText } from 'lucide-react';
-import { Lead, LeadSource, LeadStatus } from '@/lib/types/crm';
+import { Lead, LeadSource, LeadStatus, normalizeLeadStatus } from '@/lib/types/crm';
 import { useCRM } from '@/lib/store/crm-context';
 
 interface LeadDialogProps {
@@ -22,7 +22,7 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
   );
   const [source, setSource] = useState<LeadSource>(leadToEdit?.source || 'manual');
   const [notes, setNotes] = useState(leadToEdit?.notes || '');
-  const [status, setStatus] = useState<LeadStatus>(leadToEdit?.status || 'new');
+  const [status, setStatus] = useState<LeadStatus>(normalizeLeadStatus(leadToEdit?.status));
   const [assignedTo, setAssignedTo] = useState(leadToEdit?.assigned_to || '');
   const [tuitionFee, setTuitionFee] = useState<number>(Number(leadToEdit?.tuition_fee) || 16500000);
 
@@ -166,12 +166,13 @@ export function LeadDialog({ isOpen, onClose, leadToEdit }: LeadDialogProps) {
                 onChange={(e) => setStatus(e.target.value as LeadStatus)}
                 className="w-full px-3.5 py-2 rounded-lg border bg-background focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
               >
-                <option value="new">1. Mới tiếp nhận</option>
-                <option value="contacted">2. Đã liên hệ</option>
-                <option value="audition_scheduled">3. Đã hẹn Audition</option>
-                <option value="audition_passed">4. Đạt Audition</option>
-                <option value="enrolled">5. Đã nhập học</option>
-                <option value="lost">6. Huỷ / Không phù hợp</option>
+                <option value="intake">1. Tiếp nhận ban đầu (Intake)</option>
+                <option value="qualified">2. Đạt tiêu chuẩn (Qualified)</option>
+                <option value="contacted">3. Đã liên hệ (Contacted)</option>
+                <option value="considering">4. Đang cân nhắc (Considering)</option>
+                <option value="trial_in_person">5. Học thử / Audition (Trial)</option>
+                <option value="follow_up_later">6. Chăm sóc lại sau (Follow up)</option>
+                <option value="converted">7. Đã nhập học (Converted)</option>
               </select>
             </div>
           </div>
