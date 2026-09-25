@@ -116,12 +116,12 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
           {isRoleDropdownOpen && (
             <div className="absolute right-0 mt-2 w-72 bg-popover border border-border rounded-xl shadow-xl py-2 z-50 animate-in fade-in-0 zoom-in-95">
               {/* Profile Card Header */}
-              <div className="px-3.5 py-2.5 border-b border-border/60 space-y-1">
+              <div className="px-3.5 py-3 border-b border-border/60 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-foreground uppercase tracking-wider">
                     Tài Khoản Đăng Nhập
                   </span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.2 rounded border ${activeRoleInfo.badge}`}>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${activeRoleInfo.badge}`}>
                     {activeRoleInfo.label}
                   </span>
                 </div>
@@ -131,57 +131,30 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
                 <p className="text-[11px] text-muted-foreground truncate font-mono">
                   {currentUser?.email}
                 </p>
-              </div>
-
-              {/* Quick Role Switcher for Testing */}
-              <div className="py-2 border-b border-border/60">
-                <div className="px-3.5 pb-1 text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1">
-                  <Shield className="w-3 h-3 text-brand-600" />
-                  <span>Đổi vai trò kiểm thử:</span>
-                </div>
-                <div className="space-y-0.5 mt-1">
-                  {rolesList.map((r) => {
-                    const roleMeta = ROLE_DETAILS[r];
-                    const isCurrent = currentUser?.role === r;
-
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => {
-                          switchRole(r);
-                          setIsRoleDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-3.5 py-1.5 text-xs flex items-center justify-between transition-colors ${
-                          isCurrent ? 'bg-brand-50 dark:bg-brand-950/40 font-semibold text-brand-600' : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <span className="truncate">{roleMeta.label}</span>
-                        {isCurrent && <Check className="w-3.5 h-3.5 text-brand-600 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Phòng ban: <span className="font-medium text-foreground">{currentUser?.department || 'ACT Academy'}</span>
+                </p>
               </div>
 
               {/* Admin Links */}
               {can('users:manage') && (
-                <div className="px-2 pt-1 pb-1">
+                <div className="px-2 pt-1.5 pb-1">
                   <Link 
                     href="/admin/users" 
                     onClick={() => setIsRoleDropdownOpen(false)}
-                    className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg font-medium transition-colors"
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg font-medium transition-colors"
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-                    <span>Quản trị tài khoản & RBAC</span>
+                    <span>Quản trị tài khoản & Phân quyền</span>
                   </Link>
                 </div>
               )}
 
               {/* Logout Button */}
-              <div className="px-2 pt-1 border-t border-border/60">
+              <div className="px-2 pt-1 pb-1 border-t border-border/60">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-2 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Đăng Xuất Khỏi Hệ Thống</span>

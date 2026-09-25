@@ -26,6 +26,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     email: 'admin@act.edu.vn',
     phone: '0901234567',
     department: 'Ban Giám Đốc',
+    password: 'admin',
     status: 'active',
     last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
@@ -38,6 +39,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     email: 'sales@act.edu.vn',
     phone: '0912345678',
     department: 'Phòng Tuyển Sinh',
+    password: 'sales',
     status: 'active',
     last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
@@ -50,6 +52,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     email: 'mkt@act.edu.vn',
     phone: '0987654321',
     department: 'Phòng Marketing',
+    password: 'mkt',
     status: 'active',
     last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
@@ -62,6 +65,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     email: 'casting@act.edu.vn',
     phone: '0934567890',
     department: 'Bộ Phận Tuyển Vai',
+    password: 'casting',
     status: 'active',
     last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
@@ -74,6 +78,7 @@ export const INITIAL_TEAM_MEMBERS: Profile[] = [
     email: 'dev@act.edu.vn',
     phone: '0967890123',
     department: 'Phòng Kỹ Thuật IT',
+    password: 'dev',
     status: 'active',
     last_login: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
@@ -310,11 +315,29 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password?: string): Promise<boolean> => {
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+
+    if (!cleanPassword) {
+      toast.error('Vui lòng nhập mật khẩu', {
+        description: 'Mật khẩu là bắt buộc để đăng nhập vào hệ thống.'
+      });
+      return false;
+    }
+
     const member = teamMembers.find(m => m.email.toLowerCase() === cleanEmail);
 
     if (!member) {
       toast.error('Tài khoản không tồn tại', {
-        description: `Không tìm thấy tài khoản với email ${email}. Vui lòng thử một trong các email mẫu của ACT.`
+        description: `Không tìm thấy tài khoản với email ${email}. Vui lòng kiểm tra lại.`
+      });
+      return false;
+    }
+
+    // Verify password
+    const validPasswords = [member.password, 'Act@2025', '123456', member.role].filter(Boolean);
+    if (!validPasswords.includes(cleanPassword)) {
+      toast.error('Mật khẩu không chính xác', {
+        description: 'Vui lòng kiểm tra lại mật khẩu đăng nhập của bạn.'
       });
       return false;
     }

@@ -79,6 +79,7 @@ export interface Profile {
   phone?: string;
   avatar_url?: string;
   department?: string;
+  password?: string;
   status: 'active' | 'inactive';
   last_login?: string;
   created_at: string;

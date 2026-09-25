@@ -33,6 +33,7 @@ export default function AdminUsersPage() {
   // Form fields
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('Phòng Tuyển Sinh');
   const [role, setRole] = useState<UserRole>('sales');
@@ -42,6 +43,7 @@ export default function AdminUsersPage() {
     setEditingMember(null);
     setFullName('');
     setEmail('');
+    setPassword('Act@2025');
     setPhone('');
     setDepartment('Phòng Tuyển Sinh');
     setRole('sales');
@@ -53,6 +55,7 @@ export default function AdminUsersPage() {
     setEditingMember(member);
     setFullName(member.full_name);
     setEmail(member.email);
+    setPassword(member.password || 'Act@2025');
     setPhone(member.phone || '');
     setDepartment(member.department || 'Phòng Tuyển Sinh');
     setRole(member.role);
@@ -72,6 +75,7 @@ export default function AdminUsersPage() {
         ...editingMember,
         full_name: fullName,
         email,
+        password: password.trim() || editingMember.password || 'Act@2025',
         phone,
         department,
         role,
@@ -81,6 +85,7 @@ export default function AdminUsersPage() {
       addTeamMember({
         full_name: fullName,
         email,
+        password: password.trim() || 'Act@2025',
         phone,
         department,
         role,
@@ -118,40 +123,6 @@ export default function AdminUsersPage() {
           <UserPlus className="w-4 h-4" />
           <span>+ Thêm Nhân Viên Mới</span>
         </button>
-      </div>
-
-      {/* Role Switcher Demo Bar */}
-      <div className="p-4 bg-muted/60 border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-        <div>
-          <span className="font-bold text-foreground flex items-center gap-1.5">
-            <KeyRound className="w-4 h-4 text-amber-500" />
-            <span>Trải nghiệm nhanh giao diện theo từng Vai Trò:</span>
-          </span>
-          <p className="text-muted-foreground mt-0.5">
-            Click vào nút dưới đây để đổi góc nhìn của từng bộ phận nhân sự
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {(['super_admin', 'sales', 'marketing', 'casting', 'developer'] as UserRole[]).map((r) => {
-            const isCurrent = currentUser?.role === r;
-            const details = ROLE_DETAILS[r];
-            return (
-              <button
-                key={r}
-                onClick={() => switchRole(r)}
-                className={`px-3 py-1.5 rounded-lg font-semibold border transition-all text-xs flex items-center gap-1.5 ${
-                  isCurrent 
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
-                    : 'bg-card text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                <span>{details.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Team Members Table */}
@@ -382,6 +353,20 @@ export default function AdminUsersPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg border bg-background focus:border-brand-500 outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold uppercase text-muted-foreground mb-1">
+                  Mật khẩu đăng nhập <span className="text-brand-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nhập mật khẩu (ví dụ: Act@2025)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-lg border bg-background focus:border-brand-500 outline-none text-sm font-mono"
                 />
               </div>
 
