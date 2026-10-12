@@ -69,7 +69,7 @@ export function useProjects() {
 
     const supabase = createClient();
     const channel = supabase
-      ?.channel('casting_projects_changes')
+      ?.channel(`casting_projects_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_applications' }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'casting_projects' }, () => refresh())
       .subscribe();

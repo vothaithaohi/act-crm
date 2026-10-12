@@ -406,7 +406,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
     if (!supabase) return;
     const channel = supabase
-      .channel('talent_profiles_changes')
+      .channel(`talent_profiles_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'talent_profiles' }, payload => {
         const incoming = payload.new as TalentProfile;
         if (!incoming?.id) return;
