@@ -249,51 +249,61 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = currentUser !== null;
 
+  /** Tìm hồ sơ nhân sự đang hoạt động theo email đăng nhập. */
+  async function fetchStaffProfile(supabase: NonNullable<ReturnType<typeof createClient>>, email: string): Promise<Profile | null> {
+    const { data, error } = await supabase.from('profiles').select('*').ilike('email', email).limit(1);
+    if (error || !data || data.length === 0) return null;
+    const profile = data[0] as Profile;
+    return profile.status === 'active' ? profile : null;
+  }
+
+  /** Tải toàn bộ dữ liệu CRM từ Supabase (sau khi đã đăng nhập). */
+  async function loadSupabaseData(supabase: NonNullable<ReturnType<typeof createClient>>) {
+    const [leadsRes, talentsRes, profilesRes, logsRes] = await Promise.all([
+      supabase.from('leads').select('*').order('created_at', { ascending: false }),
+      supabase.from('talent_profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*').order('created_at', { ascending: true }),
+      supabase.from('webhook_logs').select('*').order('created_at', { ascending: false })
+    ]);
+    if (!leadsRes.error) setLeads((leadsRes.data || []).map(l => ({ ...l, status: normalizeLeadStatus(l.status) })) as Lead[]);
+    if (!talentsRes.error) setTalents(sortByNewest((talentsRes.data || []) as TalentProfile[]));
+    if (!profilesRes.error && profilesRes.data && profilesRes.data.length > 0) setTeamMembers(profilesRes.data as Profile[]);
+    if (!logsRes.error) setWebhookLogs((logsRes.data || []) as WebhookLog[]);
+    setIsSupabaseConnected(!leadsRes.error && !talentsRes.error);
+    const firstError = leadsRes.error || talentsRes.error;
+    if (firstError) {
+      toast.error('Không tải được dữ liệu từ Supabase', { description: firstError.message });
+    }
+  }
+
   // Initialize from Supabase or fallback to localStorage / Excel seed data
   useEffect(() => {
     async function initData() {
       const supabase = createClient();
 
       if (supabase) {
+        // Chế độ Supabase: chỉ tải dữ liệu khi có phiên đăng nhập của nhân sự (RLS chặn mọi truy cập khác)
         try {
-          // Fetch leads, talents, profiles, webhook logs from Supabase
-          const [leadsRes, talentsRes, profilesRes, logsRes] = await Promise.all([
-            supabase.from('leads').select('*').order('created_at', { ascending: false }),
-            supabase.from('talent_profiles').select('*').order('created_at', { ascending: false }),
-            supabase.from('profiles').select('*').order('created_at', { ascending: true }),
-            supabase.from('webhook_logs').select('*').order('created_at', { ascending: false })
-          ]);
-
-          if (!leadsRes.error && leadsRes.data && leadsRes.data.length > 0) {
-            setLeads(leadsRes.data as Lead[]);
-            setIsSupabaseConnected(true);
+          const { data: { session } } = await supabase.auth.getSession();
+          const email = session?.user?.email;
+          const staff = email ? await fetchStaffProfile(supabase, email) : null;
+          if (staff) {
+            setCurrentUser(staff);
+            await loadSupabaseData(supabase);
           } else {
-            loadLocalSeed();
-          }
-
-          if (!talentsRes.error && talentsRes.data && talentsRes.data.length > 0) {
-            setTalents(sortByNewest(talentsRes.data as TalentProfile[]));
-            setIsSupabaseConnected(true);
-          }
-
-          if (!profilesRes.error && profilesRes.data && profilesRes.data.length > 0) {
-            setTeamMembers(profilesRes.data as Profile[]);
-          } else {
-            loadLocalTeamMembers();
-          }
-
-          if (!logsRes.error && logsRes.data && logsRes.data.length > 0) {
-            setWebhookLogs(logsRes.data as WebhookLog[]);
+            if (session) await supabase.auth.signOut();
+            setCurrentUser(null);
           }
         } catch (err) {
-          console.warn('Supabase query failed, falling back to local data:', err);
-          loadLocalSeed();
-          loadLocalTeamMembers();
+          console.error('Không kiểm tra được phiên đăng nhập Supabase:', err);
+          setCurrentUser(null);
         }
-      } else {
-        loadLocalSeed();
-        loadLocalTeamMembers();
+        setIsLoading(false);
+        return;
       }
+
+      loadLocalSeed();
+      loadLocalTeamMembers();
 
       // Check existing authenticated session
       checkSession();
@@ -442,6 +452,31 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
+    // Chế độ Supabase: xác thực thật bằng Supabase Auth + kiểm tra quyền trong bảng profiles
+    const supabase = createClient();
+    if (supabase) {
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPassword });
+      if (error) {
+        toast.error('Đăng nhập không thành công', { description: 'Email hoặc mật khẩu không đúng.' });
+        return false;
+      }
+      const staff = await fetchStaffProfile(supabase, cleanEmail);
+      if (!staff) {
+        await supabase.auth.signOut();
+        toast.error('Tài khoản chưa được cấp quyền CRM', {
+          description: 'Liên hệ Ban Giám Đốc để thêm email này vào danh sách nhân sự (bảng profiles).'
+        });
+        return false;
+      }
+      setCurrentUser(staff);
+      await loadSupabaseData(supabase);
+      supabase.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', staff.id).then(() => undefined);
+      toast.success('Đăng nhập thành công!', {
+        description: `Xin chào ${staff.full_name} (${ROLE_DETAILS[staff.role]?.label || staff.role})`
+      });
+      return true;
+    }
+
     const member = teamMembers.find(m => m.email.toLowerCase() === cleanEmail);
 
     if (!member) {
@@ -489,6 +524,12 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setCurrentUser(null);
+    const supabase = createClient();
+    if (supabase) {
+      supabase.auth.signOut();
+      setLeads([]);
+      setTalents([]);
+    }
     try {
       localStorage.removeItem('act_crm_auth_session_v3');
       localStorage.removeItem('act_crm_current_user');

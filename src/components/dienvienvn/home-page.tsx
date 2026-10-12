@@ -6,6 +6,7 @@ import { CASTING_STEPS } from '@/lib/dienvienvn/casting-form';
 import { useDvvnHref } from './base-path';
 import { FlipCountdown, useLaunched } from './flip-countdown';
 import { GlobalNav, Reveal, SiteFooter } from './site-chrome';
+import { ProjectsSection } from './projects-section';
 
 function Cta({
   primary,
@@ -64,6 +65,8 @@ export function DienVienVNHome() {
             <Cta primary={apply} tone="light" />
           </Reveal>
         </section>
+
+        <ProjectsSection />
 
         {/* GRID TILES */}
         <section className="bg-[var(--dv-bg)] p-3">

@@ -49,10 +49,19 @@ function ProvinceOptions({ exclude = [] }: { exclude?: string[] }) {
   );
 }
 
+export interface ApplicationTarget {
+  projectName: string;
+  roleName: string;
+  selftapeRequired: boolean;
+  selftapeBrief?: string | null;
+}
+
 export interface StepProps {
   draft: CastingDraft;
   update: (patch: Partial<CastingDraft>) => void;
   errors: StepErrors;
+  /** Dự án & vai đang ứng tuyển (khi vào form từ trang dự án). */
+  application?: ApplicationTarget | null;
 }
 
 const Divider = () => <div className="h-px bg-[#e8e8ed]" />;
@@ -429,7 +438,7 @@ export function StepWillingness({ draft, update }: StepProps) {
 }
 
 /* ---------------- Bước 6 ---------------- */
-export function StepMedia({ draft, update, errors }: StepProps) {
+export function StepMedia({ draft, update, errors, application }: StepProps) {
   const socials: { key: keyof CastingDraft['social_links']; label: string; ph: string }[] = [
     { key: 'facebook', label: 'Facebook', ph: 'https://facebook.com/…' },
     { key: 'instagram', label: 'Instagram', ph: 'https://instagram.com/…' },
@@ -450,6 +459,35 @@ export function StepMedia({ draft, update, errors }: StepProps) {
       <p className="text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
         Ảnh JPG, PNG hoặc ảnh chụp từ điện thoại. Ảnh sẽ được tự động tối ưu dung lượng trước khi tải lên.
       </p>
+      {application && (
+        <>
+          <Divider />
+          <SectionTitle
+            title={`Self-tape · ${application.roleName}`}
+            desc={
+              application.selftapeBrief ||
+              `Video thử vai cho ${application.projectName}. Tải lên YouTube (không công khai) hoặc Google Drive rồi dán link.`
+            }
+          />
+          <Field
+            label="Link self-tape"
+            required={application.selftapeRequired}
+            htmlFor="selftape"
+            error={errors.selftape_url}
+            hint={application.selftapeRequired ? undefined : 'Không bắt buộc, nhưng giúp tăng cơ hội được chọn.'}
+          >
+            <TextInput
+              id="selftape"
+              type="url"
+              inputMode="url"
+              placeholder="https://youtube.com/… hoặc https://drive.google.com/…"
+              value={draft.selftape_url}
+              invalid={!!errors.selftape_url}
+              onChange={e => update({ selftape_url: e.target.value })}
+            />
+          </Field>
+        </>
+      )}
       <Divider />
       <SectionTitle title="Mạng xã hội & Showreel" desc="Giúp đạo diễn xem thêm hình ảnh và khả năng diễn xuất của bạn." />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

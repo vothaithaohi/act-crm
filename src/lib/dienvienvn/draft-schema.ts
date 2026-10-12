@@ -81,5 +81,6 @@ export const castingDraftSchema = z.object({
     showreel_url: url
   }),
   trainings: z.array(trainingEntry).max(20).default([]),
+  selftape_url: url,
   consent: z.boolean()
 });

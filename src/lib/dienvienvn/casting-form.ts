@@ -146,6 +146,9 @@ export interface CastingDraft {
 
   trainings: TrainingEntry[];
 
+  /** Link self-tape khi ứng tuyển một dự án cụ thể. */
+  selftape_url: string;
+
   consent: boolean;
 }
 
@@ -180,6 +183,7 @@ export function createEmptyDraft(): CastingDraft {
     compcard_url: '',
     social_links: { facebook: '', instagram: '', tiktok: '', showreel_url: '' },
     trainings: [],
+    selftape_url: '',
     consent: false
   };
 }
@@ -217,7 +221,7 @@ export function ageFromDob(dob: string): number | null {
 export type StepErrors = Record<string, string>;
 
 /** Kiểm tra các trường bắt buộc của từng bước. Trả về map field -> thông báo lỗi. */
-export function validateStep(step: number, d: CastingDraft): StepErrors {
+export function validateStep(step: number, d: CastingDraft, ctx: { selftapeRequired?: boolean | null } = {}): StepErrors {
   const e: StepErrors = {};
   if (step === 1) {
     if (d.full_name.trim().length < 2) e.full_name = 'Vui lòng nhập họ và tên';
@@ -250,6 +254,11 @@ export function validateStep(step: number, d: CastingDraft): StepErrors {
   if (step === 6) {
     if (!d.headshot_url) e.headshot_url = 'Vui lòng tải lên ảnh chân dung';
     if (!d.fullbody_url) e.fullbody_url = 'Vui lòng tải lên ảnh toàn thân';
+    const tape = (d.selftape_url || '').trim();
+    if (ctx.selftapeRequired && !tape) e.selftape_url = 'Dự án này bắt buộc gửi link self-tape';
+    else if (ctx.selftapeRequired !== undefined && ctx.selftapeRequired !== null && tape && !/^https?:\/\/\S+\.\S+/i.test(tape)) {
+      e.selftape_url = 'Link self-tape cần bắt đầu bằng https://';
+    }
   }
   if (step === 7) {
     d.trainings.forEach((t, i) => {

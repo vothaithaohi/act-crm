@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Loader2, Send, UserRound } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Clapperboard, Loader2, Send, UserRound, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ProjectRole, PublicProject, isAcceptingApplications } from '@/lib/projects/types';
+import { checkLocalApplication, fetchPublicProject, saveLocalApplication } from '@/lib/projects/public-client';
 import confetti from 'canvas-confetti';
 import {
   CASTING_STEPS,
@@ -52,7 +55,13 @@ const STEP_INTROS: Record<number, string> = {
 
 type StepState = 'current' | 'done' | 'error' | 'upcoming';
 
+interface ApplyTarget {
+  project: PublicProject;
+  role: ProjectRole;
+}
+
 interface SubmitResult {
+  appliedTo?: string | null;
   id: string;
   name: string;
   phone: string;
@@ -94,6 +103,46 @@ export function CastingApplication() {
   const [draftSaved, setDraftSaved] = useState<'idle' | 'saved' | 'failed'>('idle');
   const [hydrated, setHydrated] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  const [target, setTarget] = useState<ApplyTarget | null>(null);
+  const [targetNotice, setTargetNotice] = useState('');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const projectParam = searchParams.get('du-an');
+  const roleParam = searchParams.get('vai');
+
+  // Vào form từ trang dự án: chọn sẵn dự án & vai ứng tuyển
+  useEffect(() => {
+    if (!projectParam || !roleParam) {
+      setTarget(null);
+      return;
+    }
+    let cancelled = false;
+    fetchPublicProject(projectParam)
+      .then(project => {
+        if (cancelled) return;
+        const role = project?.roles.find(r => r.id === roleParam);
+        if (!project || !role) {
+          setTargetNotice('Không tìm thấy dự án hoặc vai ứng tuyển. Bạn vẫn có thể nộp hồ sơ vào kho diễn viên.');
+          setTarget(null);
+        } else if (!isAcceptingApplications(project)) {
+          setTargetNotice(`${project.display_name} đã ngừng nhận hồ sơ. Bạn vẫn có thể nộp hồ sơ vào kho diễn viên.`);
+          setTarget(null);
+        } else {
+          setTargetNotice('');
+          setTarget({ project, role });
+        }
+      })
+      .catch(() => !cancelled && setTargetNotice('Không tải được thông tin dự án. Bạn vẫn có thể nộp hồ sơ.'));
+    return () => {
+      cancelled = true;
+    };
+  }, [projectParam, roleParam]);
+
+  const clearTarget = () => {
+    setTarget(null);
+    setTargetNotice('');
+    router.replace(href('/nop-ho-so'));
+  };
 
   const topRef = useRef<HTMLDivElement>(null);
   const consentRef = useRef<HTMLDivElement>(null);
@@ -138,9 +187,10 @@ export function CastingApplication() {
 
   const allErrors = useMemo(() => {
     const map: Record<number, StepErrors> = {};
-    CASTING_STEPS.forEach(s => (map[s.id] = validateStep(s.id, draft)));
+    const ctx = { selftapeRequired: target ? target.project.selftape_required : null };
+    CASTING_STEPS.forEach(s => (map[s.id] = validateStep(s.id, draft, ctx)));
     return map;
-  }, [draft]);
+  }, [draft, target]);
 
   const stepValid = (id: number) => Object.keys(allErrors[id] || {}).length === 0;
   const visibleErrors = showErrorsFor.includes(step) ? allErrors[step] : {};
@@ -216,7 +266,13 @@ export function CastingApplication() {
       const res = await fetch('/api/dienvienvn/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draft, website: honeypot })
+        body: JSON.stringify({
+          draft,
+          website: honeypot,
+          application: target
+            ? { project_id: target.project.id, role_id: target.role.id, selftape_url: draft.selftape_url.trim() }
+            : null
+        })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -232,6 +288,15 @@ export function CastingApplication() {
       if (data.stored === 'local' && data.profile) {
         const list = readJSON<unknown[]>(LOCAL_SUBMISSIONS_KEY) || [];
         writeJSON(LOCAL_SUBMISSIONS_KEY, [data.profile, ...list]);
+        if (target && !checkLocalApplication(target.project.id, target.role.id, draft.selftape_url)) {
+          saveLocalApplication({
+            project_id: target.project.id,
+            role_id: target.role.id,
+            talent_id: data.id,
+            selftape_url: draft.selftape_url.trim() || null,
+            note: null
+          });
+        }
       }
 
       try {
@@ -239,7 +304,12 @@ export function CastingApplication() {
       } catch {
         /* bỏ qua */
       }
-      setResult({ id: data.id, name: draft.full_name.trim(), phone: draft.phone });
+      setResult({
+        id: data.id,
+        name: draft.full_name.trim(),
+        phone: draft.phone,
+        appliedTo: target && data.applicationSaved !== false ? `${target.project.display_name} · vai ${target.role.name}` : null
+      });
       window.scrollTo({ top: 0 });
       if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         confetti({ particleCount: 90, spread: 70, startVelocity: 38, origin: { y: 0.35 }, colors: ['#0071e3', '#1d1d1f', '#86868b', '#ffffff'] });
@@ -342,8 +412,24 @@ export function CastingApplication() {
               <ChevronLeft className="h-4 w-4" /> Trang chủ DienVienVN
             </Link>
             <h1 className="dv-display mt-2 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[40px] md:leading-[1.1] md:tracking-normal">
-              Nộp hồ sơ casting.
+              {target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ casting.'}
             </h1>
+            {target && (
+              <div className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3 md:max-w-[640px]">
+                <Clapperboard className="h-5 w-5 shrink-0 text-[var(--dv-blue)]" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-semibold">{target.project.display_name}</p>
+                  <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">
+                    Vai {target.role.name}
+                    {target.project.selftape_required ? ' · Bắt buộc self-tape (bước 6)' : ''}
+                  </p>
+                </div>
+                <button type="button" onClick={clearTarget} aria-label="Bỏ ứng tuyển dự án này" className="rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {targetNotice && <p className="mt-3 text-[14px] text-[var(--dv-text-secondary)]">{targetNotice}</p>}
           </header>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[228px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[248px_minmax(0,1fr)_300px]">
@@ -426,7 +512,21 @@ export function CastingApplication() {
                 )}
 
                 <div key={step} className="dv-fade-step px-5 py-6 sm:px-8 sm:py-8">
-                  <StepComponent draft={draft} update={update} errors={visibleErrors} />
+                  <StepComponent
+                    draft={draft}
+                    update={update}
+                    errors={visibleErrors}
+                    application={
+                      target
+                        ? {
+                            projectName: target.project.display_name,
+                            roleName: target.role.name,
+                            selftapeRequired: target.project.selftape_required,
+                            selftapeBrief: target.project.selftape_brief
+                          }
+                        : null
+                    }
+                  />
                 </div>
 
                 {/* Điều hướng trong thẻ (desktop / tablet) */}
@@ -598,6 +698,15 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
             <span className="text-[var(--dv-text-secondary)]">Mã hồ sơ</span>
             <span className="font-semibold tracking-[0.04em]">{code}</span>
           </div>
+          {result.appliedTo && (
+            <>
+              <div className="mt-3 h-px bg-[#e8e8ed]" />
+              <div className="mt-3 flex items-start justify-between gap-4 text-[15px]">
+                <span className="shrink-0 text-[var(--dv-text-secondary)]">Ứng tuyển</span>
+                <span className="text-right font-semibold">{result.appliedTo}</span>
+              </div>
+            </>
+          )}
           <div className="mt-3 h-px bg-[#e8e8ed]" />
           <p className="mt-3 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
             Chúng tôi sẽ liên hệ qua số <span className="font-semibold text-[var(--dv-text)]">{formatPhone(result.phone)}</span> khi có vai

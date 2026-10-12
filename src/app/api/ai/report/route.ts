@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import Anthropic from '@anthropic-ai/sdk';
 import seedData from '@/data/seed_data.json';
+import { requireStaff } from '@/lib/supabase/auth-guard';
 
 interface ReportRequestBody {
   reportType: 'ads_optimization' | 'finance';
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireStaff(req);
+  if (denied) return denied;
+
   try {
     const body: ReportRequestBody = await req.json();
     const { reportType } = body;

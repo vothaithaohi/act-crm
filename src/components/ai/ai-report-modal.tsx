@@ -1,5 +1,6 @@
 'use client';
 
+import { authedFetch } from '@/lib/supabase/authed-fetch';
 import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
@@ -41,7 +42,7 @@ export function AIReportModal({ isOpen, onClose, initialType = 'ads_optimization
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/ai/report', {
+      const res = await authedFetch('/api/ai/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reportType: type })

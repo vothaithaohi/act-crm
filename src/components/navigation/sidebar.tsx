@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   Terminal,
   Activity,
-  Globe
+  Globe,
+  Film
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
@@ -43,6 +44,13 @@ export function Sidebar() {
       href: '/talents',
       icon: Sparkles,
       badge: talents.length,
+      visible: can('talents:read')
+    },
+    {
+      title: 'Dự Án Casting',
+      href: '/projects',
+      icon: Film,
+      badge: null,
       visible: can('talents:read')
     },
     {
@@ -105,7 +113,7 @@ export function Sidebar() {
             Nghiệp vụ cốt lõi
           </div>
           {mainNavItems.filter(item => item.visible).map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href === '/projects' && pathname.startsWith('/projects/'));
             const Icon = item.icon;
             return (
               <Link

@@ -108,3 +108,36 @@ META_PAGE_ACCESS_TOKEN=your-meta-page-access-token
 3. Trỏ domain `dienvienvn.com` (và `www`) vào cùng project deploy. `src/middleware.ts` tự phục vụ trang công khai cho các host này và ẩn CRM. Đổi danh sách host bằng biến `DIENVIENVN_HOSTS` (phân tách bằng dấu phẩy).
 
 Hồ sơ mới nộp có trạng thái **Chờ duyệt**, hiện ngay trong CRM (Realtime) ở menu **Hồ sơ DienVienVN** và trong bộ lọc Casting Matching (Nguồn hồ sơ / Trạng thái duyệt / Nơi đào tạo).
+
+---
+
+## 🎬 Dự án Casting (DienVienVN)
+
+* **CRM → Dự Án Casting** (`/projects`): tạo dự án, mã tự động `DV-01…`, công tắc *Ẩn tên thật*, vai cần tuyển, công tắc *NSX bắt buộc self-tape*, *Ẩn SĐT/Email trên link NSX*, quản lý ứng viên.
+* **Công khai:** dự án "Đang casting" hiện dưới đồng hồ đếm ngược trên trang chủ → `/du-an/<id>` → ứng tuyển (hồ sơ mới qua form 7 bước, hoặc ứng tuyển nhanh bằng SĐT + ngày sinh).
+* **Link NSX:** `/nsx/<token>`, chỉ hiện hồ sơ **Đã duyệt** và không bị "Loại", không bị Google lập chỉ mục, thu hồi được bằng nút "Link mới".
+* Biến môi trường tuỳ chọn: `NEXT_PUBLIC_DIENVIENVN_URL=https://dienvienvn.com` để link sao chép trong CRM dùng tên miền công khai.
+
+## 🔐 Khoá quyền truy cập database (bắt buộc trước khi chạy thật)
+
+Làm **đúng thứ tự** để không bị khoá ngoài CRM:
+
+1. **Tạo tài khoản nhân sự:** Supabase → *Authentication → Users → Add user → Create new user* (nhập email + mật khẩu mạnh, bật *Auto Confirm User*).
+2. **Cấp quyền CRM** cho từng email trong *SQL Editor*:
+   ```sql
+   insert into public.profiles (full_name, email, role, department, status)
+   values ('Võ Thái Thảo', 'email-that@congty.vn', 'super_admin', 'Ban Giám Đốc', 'active')
+   on conflict (email) do update set role = excluded.role, status = 'active';
+   ```
+   Vai trò: `super_admin`, `casting`, `sales`, `marketing`, `developer`. Đổi `status` thành `inactive` để khoá một người.
+3. **Tắt tự đăng ký:** *Authentication → Sign In / Providers → Email* → tắt **Allow new users to sign up**.
+4. **Chạy migration** (SQL Editor): `20261012_dienvienvn_submissions.sql` rồi `20261013_casting_projects_and_security.sql`.
+5. **Biến môi trường trên Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (tuyệt đối **không** đặt tiền tố `NEXT_PUBLIC_` cho service key), rồi deploy lại.
+6. **Kiểm tra:** gọi thử bằng anon key phải bị chặn:
+   ```bash
+   curl "https://<project>.supabase.co/rest/v1/talent_profiles?select=id&limit=1" \
+     -H "apikey: <ANON_KEY>" -H "Authorization: Bearer <ANON_KEY>"
+   ```
+   Kết quả đúng: lỗi `permission denied` (42501) hoặc `[]`, **không** có dữ liệu.
+
+Sau bước này: đăng nhập CRM bằng tài khoản Supabase Auth (tài khoản demo `admin/admin` chỉ dùng khi chưa cấu hình Supabase); trang công khai và link NSX chỉ đọc dữ liệu qua API server.

@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
+import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
+import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
+import { CastingProject, checkApplication } from '@/lib/projects/types';
 
-// Giới hạn đơn giản chống spam: tối đa 5 lần nộp / 10 phút / IP (theo từng instance server).
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 5;
-const hits = new Map<string, number[]>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) || []).filter(t => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  return recent.length > MAX_PER_WINDOW;
-}
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createSupabaseClient(url, key, { auth: { persistSession: false } });
-}
+/** Đơn ứng tuyển dự án đi kèm hồ sơ (khi diễn viên vào form từ trang dự án). */
+const applicationSchema = z
+  .object({
+    project_id: z.string().uuid(),
+    role_id: z.string().min(1).max(64),
+    selftape_url: z.string().trim().max(500).optional().default('')
+  })
+  .optional()
+  .nullable();
 
 const REVIEW_COLUMNS = ['submission_source', 'review_status', 'review_notes', 'submitted_at'] as const;
 
@@ -38,8 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id: crypto.randomUUID(), stored: 'supabase' });
   }
 
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (isRateLimited(ip)) {
+  if (isRateLimited(`submit:${clientIp(req.headers)}`, 5, 10 * 60 * 1000)) {
     return NextResponse.json({ error: 'Bạn đã gửi quá nhiều lần. Vui lòng thử lại sau ít phút.' }, { status: 429 });
   }
 
@@ -65,6 +57,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const appParsed = applicationSchema.safeParse((body as Record<string, unknown>)?.application);
+  if (!appParsed.success) {
+    return NextResponse.json({ error: 'Thông tin dự án ứng tuyển không hợp lệ.' }, { status: 400 });
+  }
+  const application = appParsed.data;
+
   const now = new Date().toISOString();
   const record = {
     ...draftToTalentProfile(draft),
@@ -77,10 +75,20 @@ export async function POST(req: NextRequest) {
     updated_at: now
   };
 
-  const supabase = getSupabase();
-  if (!supabase) {
+  const { mode, db: supabase } = getServiceDb();
+  if (mode === 'demo') {
     // Chế độ demo chưa cấu hình Supabase: trả bản ghi để trình duyệt lưu vào kho dữ liệu cục bộ của CRM.
     return NextResponse.json({ ok: true, id: record.id, stored: 'local', profile: record });
+  }
+  if (!supabase) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
+
+  if (application) {
+    const { data: project } = await supabase.from('casting_projects').select('*').eq('id', application.project_id).maybeSingle();
+    if (!project || project.status === 'draft') {
+      return NextResponse.json({ error: 'Dự án ứng tuyển không còn tồn tại.' }, { status: 400 });
+    }
+    const problem = checkApplication(project as CastingProject, application.role_id, application.selftape_url);
+    if (problem) return NextResponse.json({ error: problem, step: 6 }, { status: 400 });
   }
 
   let { error } = await supabase.from('talent_profiles').insert(record);
@@ -101,5 +109,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true, id: record.id, stored: 'supabase' });
+  if (application) {
+    const { error: appError } = await supabase.from('project_applications').insert({
+      project_id: application.project_id,
+      role_id: application.role_id,
+      talent_id: record.id,
+      selftape_url: application.selftape_url || null,
+      status: 'applied'
+    });
+    if (appError) {
+      // Hồ sơ đã lưu; đơn ứng tuyển lỗi thì CRM vẫn thêm tay được từ kho diễn viên.
+      console.error('[dienvienvn] Lưu hồ sơ OK nhưng không lưu được đơn ứng tuyển:', appError);
+      return NextResponse.json({ ok: true, id: record.id, stored: 'supabase', applicationSaved: false });
+    }
+  }
+
+  return NextResponse.json({ ok: true, id: record.id, stored: 'supabase', applicationSaved: !!application });
 }

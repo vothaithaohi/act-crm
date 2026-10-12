@@ -612,3 +612,18 @@ input[type='date'].dv-input {
     animation-delay: 0ms;
   }
 }
+
+/* In danh sách ứng viên (link NSX): bỏ quy tắc in comp-card của CRM */
+@media print {
+  .dv-root,
+  .dv-root * {
+    visibility: visible;
+  }
+  .dv-root {
+    min-height: 0;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}
