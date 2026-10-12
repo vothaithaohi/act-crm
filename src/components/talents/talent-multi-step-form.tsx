@@ -12,7 +12,9 @@ import {
   EnrollmentStatus,
   ACTCourseEnrollment,
   AcademicProfile,
-  ACT_LEVEL_DETAILS
+  ACT_LEVEL_DETAILS,
+  ExternalTraining,
+  EXTERNAL_PROGRAM_LABELS
 } from '@/lib/types/crm';
 import { useCRM } from '@/lib/store/crm-context';
 import { calculateAge } from '@/lib/utils';
@@ -44,14 +46,18 @@ interface TalentMultiStepFormProps {
 
 const RANK_ORDER: Record<string, number> = { ACT4: 4, ACT3: 3, ACT2: 2, ACT1: 1, SSC: 0.5 };
 
-const recomputeAcademicProfile = (enrollments: ACTCourseEnrollment[]): AcademicProfile => {
+const recomputeAcademicProfile = (
+  enrollments: ACTCourseEnrollment[],
+  externalTrainings: ExternalTraining[] = []
+): AcademicProfile => {
   if (!enrollments || enrollments.length === 0) {
     return {
       highest_act_level: null,
       highest_class_code: undefined,
       highest_level_status: undefined,
       enrollments: [],
-      total_courses_count: 0
+      total_courses_count: 0,
+      external_trainings: externalTrainings
     };
   }
   const highest = [...enrollments].sort((a, b) => (RANK_ORDER[b.level] || 0) - (RANK_ORDER[a.level] || 0))[0];
@@ -61,6 +67,7 @@ const recomputeAcademicProfile = (enrollments: ACTCourseEnrollment[]): AcademicP
     highest_level_status: highest.status,
     enrollments,
     total_courses_count: enrollments.length,
+    external_trainings: externalTrainings,
     specialization_notes: `Học viên đạt cấp độ đào tạo ${highest.level} (${highest.class_code}) tại ACT Academy`
   };
 };
@@ -153,7 +160,7 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
         return;
       }
     }
-    setCurrentStep(s => Math.min(s + 1, 6));
+    setCurrentStep(s => Math.min(s + 1, STEPS.length));
   };
 
   const handlePrev = () => {
@@ -234,7 +241,7 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
     const updated = [...currentEnrs, newEnr];
     setFormData(p => ({
       ...p,
-      academic_profile: recomputeAcademicProfile(updated)
+      academic_profile: recomputeAcademicProfile(updated, p.academic_profile?.external_trainings)
     }));
 
     setNewEnrCode('');
@@ -247,7 +254,17 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
     const updated = currentEnrs.filter(e => e.id !== id);
     setFormData(p => ({
       ...p,
-      academic_profile: recomputeAcademicProfile(updated)
+      academic_profile: recomputeAcademicProfile(updated, p.academic_profile?.external_trainings)
+    }));
+  };
+
+  const handleRemoveExternalTraining = (id: string) => {
+    setFormData(p => ({
+      ...p,
+      academic_profile: recomputeAcademicProfile(
+        p.academic_profile?.enrollments || [],
+        (p.academic_profile?.external_trainings || []).filter(t => t.id !== id)
+      )
     }));
   };
 
@@ -1199,6 +1216,38 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {currentStep === 7 && (formData.academic_profile?.external_trainings || []).length > 0 && (
+          <div className="space-y-3 mt-6 pt-6 border-t">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+              Đào Tạo Tại Cơ Sở Khác ({formData.academic_profile?.external_trainings?.length || 0})
+            </h4>
+            <div className="space-y-2">
+              {(formData.academic_profile?.external_trainings || []).map(t => (
+                <div key={t.id} className="p-3.5 rounded-xl border bg-card flex items-center justify-between gap-4">
+                  <div className="text-xs space-y-0.5">
+                    <div className="font-bold text-foreground">{t.school_name}</div>
+                    <div className="text-muted-foreground">
+                      {EXTERNAL_PROGRAM_LABELS[t.program_type] || t.program_type}
+                      {t.major ? ` • ${t.major}` : ''}
+                      {t.term_name ? ` • ${t.term_name}` : ''}
+                      {t.start_date ? ` • ${t.start_date}${t.end_date ? ` ➔ ${t.end_date}` : ''}` : ''}
+                    </div>
+                    {t.evaluation && <div className="text-muted-foreground italic">&ldquo;{t.evaluation}&rdquo;</div>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExternalTraining(t.id)}
+                    className="p-2 text-muted-foreground hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                    title="Xóa mục đào tạo này"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}

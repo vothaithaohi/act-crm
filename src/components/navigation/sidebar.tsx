@@ -13,14 +13,15 @@ import {
   RotateCcw,
   ShieldCheck,
   Terminal,
-  Activity
+  Activity,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { leads, talents, resetAllData, can, webhookLogs } = useCRM();
+  const { leads, talents, resetAllData, can, webhookLogs, pendingSubmissionsCount } = useCRM();
 
   const mainNavItems = [
     {
@@ -42,6 +43,13 @@ export function Sidebar() {
       href: '/talents',
       icon: Sparkles,
       badge: talents.length,
+      visible: can('talents:read')
+    },
+    {
+      title: 'Hồ sơ DienVienVN',
+      href: '/talents/submissions',
+      icon: Globe,
+      badge: pendingSubmissionsCount > 0 ? pendingSubmissionsCount : null,
       visible: can('talents:read')
     },
     {

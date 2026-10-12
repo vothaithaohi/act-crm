@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { TalentProfile } from '@/lib/types/crm';
+import { TalentProfile, REVIEW_STATUS_DETAILS, getReviewStatus } from '@/lib/types/crm';
 import { calculateAge } from '@/lib/utils';
 import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
@@ -102,6 +102,20 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
           )}
         </div>
 
+        {/* Hồ sơ tự nộp từ dienvienvn.com */}
+        {talent.submission_source === 'dienvienvn' && (
+          <div className="absolute top-10 left-3 z-10 flex items-center gap-1">
+            <span className="text-[9px] font-bold bg-white/90 text-slate-900 px-2 py-0.5 rounded-full shadow-xs">
+              DienVienVN
+            </span>
+            {getReviewStatus(talent) !== 'approved' && (
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[getReviewStatus(talent)].badgeClass}`}>
+                {REVIEW_STATUS_DETAILS[getReviewStatus(talent)].label}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Cities Badge */}
         {talent.willing_work_cities && talent.willing_work_cities.length > 0 && (
           <div className="absolute top-10 right-3 flex items-center gap-1 text-[9px] font-medium bg-black/60 backdrop-blur-md text-white/90 px-2 py-0.5 rounded-full">
@@ -158,6 +172,13 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
             <span className="text-[10px] text-muted-foreground bg-background px-1.5 py-0.5 rounded border">
               {talent.academic_profile?.total_courses_count || 1} Term
             </span>
+          </div>
+        )}
+
+        {!highestLevel && (talent.academic_profile?.external_trainings || []).length > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] p-2 rounded-xl bg-muted/50 border border-border/60 font-semibold text-foreground">
+            <GraduationCap className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+            <span className="truncate">{talent.academic_profile?.external_trainings?.[0]?.school_name}</span>
           </div>
         )}
 

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { CRMProvider } from '@/lib/store/crm-context';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
@@ -16,10 +15,8 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body className="antialiased selection:bg-brand-500 selection:text-white">
-        <CRMProvider>
-          {children}
-          <Toaster position="top-right" richColors />
-        </CRMProvider>
+        {children}
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

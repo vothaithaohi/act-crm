@@ -9,8 +9,10 @@ import {
   CommercialRole, 
   MusicVideoRole,
   ACT_LEVEL_DETAILS,
-  ACTCourseLevel 
+  ACTCourseLevel,
+  EXTERNAL_PROGRAM_LABELS
 } from '@/lib/types/crm';
+import { SubmissionReviewPanel } from '@/components/talents/submission-review-panel';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
@@ -49,6 +51,7 @@ interface TalentDetailViewProps {
 
 export function TalentDetailView({ talent }: TalentDetailViewProps) {
   const { deleteTalent, can } = useCRM();
+  const externalTrainings = talent.academic_profile?.external_trainings || [];
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'profile' | 'academic' | 'compcard'>('profile');
 
@@ -180,6 +183,8 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
           )}
         </div>
       </div>
+
+      {talent.submission_source === 'dienvienvn' && <SubmissionReviewPanel talent={talent} />}
 
       {activeTab === 'compcard' ? (
         <TalentCompCard talent={talent} />
@@ -459,6 +464,55 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
               </div>
             )}
           </div>
+          {/* Đào tạo tại cơ sở khác (khai báo từ dienvienvn.com) */}
+          {externalTrainings.length > 0 && (
+            <div className="bg-card rounded-2xl border p-6 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 border-b pb-3">
+                <GraduationCap className="w-4 h-4 text-brand-600" />
+                <h3 className="font-bold text-base text-foreground">
+                  Đào Tạo Tại Cơ Sở Khác ({externalTrainings.length})
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {externalTrainings.map(t => (
+                  <div key={t.id} className="p-4 rounded-xl border bg-card space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-sm text-foreground">{t.school_name}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {EXTERNAL_PROGRAM_LABELS[t.program_type] || t.program_type}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        t.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : t.status === 'studying'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      }`}>
+                        {t.status === 'completed' ? '✓ Đã tốt nghiệp' : t.status === 'studying' ? '⏳ Đang theo học' : t.status === 'reserved' ? 'Bảo lưu' : 'Đã dừng / Chuyển'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                      {t.school_group && <span>{t.school_group}{t.school_city ? ` • ${t.school_city}` : ''}</span>}
+                      {t.major && <span>Chuyên ngành / Lớp: <strong className="text-foreground">{t.major}</strong></span>}
+                      {t.class_code && <span>Mã lớp: <strong className="text-foreground">{t.class_code}</strong></span>}
+                      {t.term_name && <span>Khóa: <strong className="text-foreground">{t.term_name}</strong></span>}
+                      {t.start_date && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          {t.start_date} {t.end_date ? `➔ ${t.end_date}` : ''}
+                        </span>
+                      )}
+                    </div>
+                    {t.evaluation && (
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-muted/60 p-2 rounded-lg mt-2 border border-border/50">
+                        💬 <em>&ldquo;{t.evaluation}&rdquo;</em>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -494,7 +548,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                   <div className="p-2.5 bg-muted/50 rounded-xl">
                     <span className="text-muted-foreground block text-[10px] uppercase font-semibold">Số đo 3 vòng</span>
                     <span className="font-bold text-sm text-foreground">
-                      {talent.chest_cm ? `${talent.chest_cm}-${talent.waist_cm}-${talent.hip_cm}` : '—'}
+                      {talent.chest_cm || talent.waist_cm || talent.hip_cm ? `${talent.chest_cm || '—'}-${talent.waist_cm || '—'}-${talent.hip_cm || '—'}` : '—'}
                     </span>
                   </div>
                   <div className="p-2.5 bg-muted/50 rounded-xl">
@@ -637,7 +691,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                 <div>
                   <span className="text-muted-foreground block">Số đo 3 vòng:</span>
                   <span className="font-bold text-foreground text-sm">
-                    {talent.chest_cm ? `${talent.chest_cm} - ${talent.waist_cm} - ${talent.hip_cm}` : '—'}
+                    {talent.chest_cm || talent.waist_cm || talent.hip_cm ? `${talent.chest_cm || '—'} - ${talent.waist_cm || '—'} - ${talent.hip_cm || '—'}` : '—'}
                   </span>
                 </div>
                 <div>
@@ -674,7 +728,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                         <div key={idx} className="p-2.5 rounded-lg border bg-muted/40">
                           <div className="font-bold text-foreground">{f.title}</div>
                           <div className="text-muted-foreground">
-                            Vai: <span className="font-medium text-foreground">{f.role}</span> {f.character ? `(${f.character})` : ''} • Năm: {f.year || '2024'}
+                            Vai: <span className="font-medium text-foreground">{f.role}</span> {f.character ? `(${f.character})` : ''} {f.year ? `• Năm: ${f.year}` : ''}
                           </div>
                         </div>
                       ))}

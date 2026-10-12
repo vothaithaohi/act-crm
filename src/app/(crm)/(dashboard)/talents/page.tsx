@@ -23,7 +23,7 @@ import { PermissionGuard } from '@/components/auth/permission-guard';
 import { ExportCastingModal } from '@/components/talents/export-casting-modal';
 
 export default function TalentsPage() {
-  const { filteredTalents, talents, resetFilters, can } = useCRM();
+  const { filteredTalents, talents, resetFilters, can, pendingSubmissionsCount } = useCRM();
   const [selectedTalentIds, setSelectedTalentIds] = useState<string[]>([]);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
@@ -89,6 +89,18 @@ export default function TalentsPage() {
             )}
           </div>
         </div>
+
+        {pendingSubmissionsCount > 0 && (
+          <Link
+            href="/talents/submissions"
+            className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold transition-colors dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200"
+          >
+            <span>
+              Có {pendingSubmissionsCount} hồ sơ mới từ dienvienvn.com đang chờ duyệt.
+            </span>
+            <span className="underline">Xem & duyệt →</span>
+          </Link>
+        )}
 
         {/* Main Casting Engine Layout */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">

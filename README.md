@@ -91,3 +91,20 @@ META_PAGE_ACCESS_TOKEN=your-meta-page-access-token
    * Endpoint tự động trả về `hub.challenge` với HTTP 200.
 3. **Tiếp nhận Lead (POST request):**
    * Endpoint tự động trích xuất `leadgen_id`, gọi Meta Graph API để lấy thông tin họ tên, số điện thoại, khóa học quan tâm, rồi ghi vào bảng `leads` với `source = 'meta_ads'`.
+
+---
+
+## 🌐 DienVienVN.com — Trang chủ & Cổng nộp hồ sơ casting
+
+| Đường dẫn (trên domain CRM) | Trên dienvienvn.com | Nội dung |
+| --- | --- | --- |
+| `/dienvienvn` | `/` | Trang chủ phong cách apple.com + đồng hồ lật đếm ngược tới 00:00 ngày 11/11/2026 (giờ Việt Nam) |
+| `/dienvienvn/nop-ho-so` | `/nop-ho-so` | Form nộp hồ sơ casting 7 bước (3 cột: các bước · nội dung · nộp hồ sơ), tối ưu cho điện thoại |
+| `/talents/submissions` | — | Trang CRM duyệt / lọc hồ sơ nộp từ dienvienvn.com |
+
+**Cài đặt:**
+1. Chạy `supabase/migrations/20261012_dienvienvn_submissions.sql` trong Supabase SQL Editor (thêm cột `submission_source`, `review_status`, `review_notes`, `submitted_at` và bật Realtime cho `talent_profiles`).
+2. Cấu hình `.env`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (dùng để lưu hồ sơ & ảnh vào bucket `talent-media/dienvienvn/`).
+3. Trỏ domain `dienvienvn.com` (và `www`) vào cùng project deploy. `src/middleware.ts` tự phục vụ trang công khai cho các host này và ẩn CRM. Đổi danh sách host bằng biến `DIENVIENVN_HOSTS` (phân tách bằng dấu phẩy).
+
+Hồ sơ mới nộp có trạng thái **Chờ duyệt**, hiện ngay trong CRM (Realtime) ở menu **Hồ sơ DienVienVN** và trong bộ lọc Casting Matching (Nguồn hồ sơ / Trạng thái duyệt / Nơi đào tạo).

@@ -150,7 +150,7 @@ export function TalentCompCard({ talent }: TalentCompCardProps) {
           <div>
             <div className="text-[10px] uppercase font-bold text-slate-400">Số đo 3 vòng</div>
             <div className="text-base font-black text-slate-800 mt-0.5">
-              {talent.chest_cm ? `${talent.chest_cm}-${talent.waist_cm}-${talent.hip_cm}` : '—'}
+              {talent.chest_cm || talent.waist_cm || talent.hip_cm ? `${talent.chest_cm || '—'}-${talent.waist_cm || '—'}-${talent.hip_cm || '—'}` : '—'}
             </div>
           </div>
           <div>
