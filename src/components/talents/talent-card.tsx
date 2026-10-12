@@ -31,7 +31,9 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
     lingerie: 'Nội y',
     partial_nudity: 'Bán khỏa thân',
     hair_color: 'Nhuộm tóc',
-    cut_hair: 'Cắt tóc'
+    cut_hair: 'Cắt tóc',
+    intimate_scene: 'Cảnh nóng 18+',
+    learn_new_skills: 'Học kỹ năng mới'
   };
 
   const highestLevel = talent.academic_profile?.highest_act_level;

@@ -5,12 +5,20 @@ import { ChevronRight, Clapperboard, GraduationCap, LockKeyhole, ScanFace } from
 import { CASTING_STEPS } from '@/lib/dienvienvn/casting-form';
 import { useDvvnHref } from './base-path';
 import { FlipCountdown, useLaunched } from './flip-countdown';
-import { GlobalNav, Reveal, Ribbon, SiteFooter } from './site-chrome';
+import { GlobalNav, Reveal, SiteFooter } from './site-chrome';
 
-function Cta({ primary, secondary }: { primary: { href: string; label: string }; secondary?: { href: string; label: string } }) {
+function Cta({
+  primary,
+  secondary,
+  tone = 'primary'
+}: {
+  primary: { href: string; label: string };
+  secondary?: { href: string; label: string };
+  tone?: 'primary' | 'light';
+}) {
   return (
     <div className="mt-5 flex flex-wrap items-center justify-center gap-3 md:mt-6 md:gap-4">
-      <Link href={primary.href} className="dv-btn dv-btn-primary">
+      <Link href={primary.href} className={`dv-btn ${tone === 'light' ? 'dv-btn-light' : 'dv-btn-primary'}`}>
         {primary.label}
       </Link>
       {secondary && (
@@ -18,35 +26,6 @@ function Cta({ primary, secondary }: { primary: { href: string; label: string };
           {secondary.label}
         </Link>
       )}
-    </div>
-  );
-}
-
-/** Minh họa: chồng thẻ hồ sơ casting (không dùng ảnh thật). */
-function ProfileStackArt() {
-  const cards = [
-    { r: '-8deg', x: '-58%', tone: 'from-[#e8e8ed] to-[#d2d2d7]' },
-    { r: '7deg', x: '58%', tone: 'from-[#e8e8ed] to-[#d2d2d7]' },
-    { r: '0deg', x: '0%', tone: 'from-[#f5f5f7] to-[#e8e8ed]' }
-  ];
-  return (
-    <div className="relative mx-auto mt-10 h-[260px] w-full max-w-[420px] md:h-[300px]" aria-hidden="true">
-      {cards.map((c, i) => (
-        <div
-          key={i}
-          className={`absolute left-1/2 top-2 h-[230px] w-[168px] rounded-[22px] bg-gradient-to-b ${c.tone} p-3 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)] md:h-[270px] md:w-[196px]`}
-          style={{ transform: `translateX(calc(-50% + ${c.x})) rotate(${c.r})`, zIndex: i }}
-        >
-          <div className="h-[62%] rounded-[14px] bg-gradient-to-b from-[#c7c7cc] to-[#aeaeb2]" />
-          <div className="mt-3 h-2.5 w-3/4 rounded-full bg-[#1d1d1f]/80" />
-          <div className="mt-2 h-2 w-1/2 rounded-full bg-[#86868b]/60" />
-          <div className="mt-3 flex gap-1.5">
-            <span className="h-4 w-10 rounded-full bg-[#0071e3]/15" />
-            <span className="h-4 w-8 rounded-full bg-[#0071e3]/15" />
-            <span className="h-4 w-12 rounded-full bg-[#0071e3]/15" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -63,44 +42,26 @@ export function DienVienVNHome() {
   return (
     <>
       <GlobalNav />
-      <Ribbon />
 
       <main>
-        {/* HERO */}
-        <section className="dv-tile dv-tile-light px-4 pb-14 pt-14 md:pb-20 md:pt-20">
+        {/* RA MẮT — Coming soon (màn hình đầu tiên khi vào trang chủ) */}
+        <section
+          id="ra-mat"
+          className="dv-tile dv-tile-dark flex min-h-[calc(100svh-44px)] scroll-mt-11 flex-col items-center justify-center px-4 py-16 md:py-20"
+        >
           <Reveal>
-            <h1 className="dv-display dv-hero-headline">DienVienVN</h1>
-            <p className="dv-display dv-hero-subhead mt-2">Đúng người. Đúng vai.</p>
-            <p className="mx-auto mt-4 max-w-[560px] text-[17px] leading-[1.47] text-[var(--dv-text-secondary)] md:text-[19px]">
-              Nền tảng hồ sơ diễn viên dành cho điện ảnh, web drama, quảng cáo và MV — kết nối bạn trực tiếp với những dự án
-              đang casting.
-            </p>
-            <Cta primary={apply} secondary={{ href: `${href('/')}#ra-mat`, label: 'Xem ngày ra mắt' }} />
-          </Reveal>
-          <Reveal delay={150}>
-            <ProfileStackArt />
-          </Reveal>
-        </section>
-
-        {/* COUNTDOWN — Coming soon */}
-        <section id="ra-mat" className="dv-tile dv-tile-dark scroll-mt-11 px-4 py-16 md:py-24">
-          <Reveal>
-            <p className="dv-eyebrow text-[#86868b]">{launched ? 'Đã ra mắt' : 'Coming Soon'}</p>
+            <h1 className="dv-display dv-hero-headline text-[#f5f5f7]">DienVienVN</h1>
+            <p className="dv-display dv-hero-subhead mt-1.5 text-[#a1a1a6]">Đúng người. Đúng vai.</p>
+            <p className="dv-eyebrow mt-10 text-[#86868b] md:mt-12">{launched ? 'Đã ra mắt' : 'Coming Soon'}</p>
             <h2 className="dv-display dv-headline mt-2 text-[#f5f5f7]">
               {launched ? 'DienVienVN đã chính thức ra mắt.' : 'Chính thức ra mắt 11.11.2026.'}
             </h2>
-            <p className="dv-subhead mx-auto mt-3 max-w-[640px] text-[#a1a1a6]">
-              {launched
-                ? 'Cảm ơn bạn đã đồng hành cùng chúng tôi.'
-                : 'Đếm ngược tới 00:00 ngày 11 tháng 11, giờ Việt Nam.'}
-            </p>
           </Reveal>
-          <Reveal delay={120} className="mt-12 md:mt-16">
+          <Reveal delay={120} className="mt-10 w-full md:mt-14">
             <FlipCountdown />
           </Reveal>
-          <Reveal delay={200} className="dv-on-dark mt-10">
-            <p className="text-[17px] text-[#f5f5f7]">Không cần đợi tới ngày ra mắt.</p>
-            <Cta primary={apply} />
+          <Reveal delay={200} className="mt-10 md:mt-12">
+            <Cta primary={apply} tone="light" />
           </Reveal>
         </section>
 

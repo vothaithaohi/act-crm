@@ -23,21 +23,6 @@ function getRemaining(now: number): Remaining {
   };
 }
 
-const vnClockFormatter =
-  typeof Intl !== 'undefined'
-    ? new Intl.DateTimeFormat('vi-VN', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        weekday: 'long',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      })
-    : null;
-
 /** Một thẻ số lật: nửa trên lật xuống để lộ số mới, giống đồng hồ lật cơ học. */
 function FlipDigit({ value }: { value: string }) {
   const [state, setState] = useState({ current: value, previous: value, flips: 0 });
@@ -95,7 +80,6 @@ export function FlipCountdown() {
   }, []);
 
   const r = now === null ? null : getRemaining(now);
-  const vnNow = now !== null && vnClockFormatter ? vnClockFormatter.format(new Date(now)) : '';
   const srText = r
     ? `Còn ${r.days} ngày ${r.hours} giờ ${r.minutes} phút ${r.seconds} giây đến ngày ra mắt`
     : 'Đang tải đồng hồ đếm ngược';
@@ -117,9 +101,6 @@ export function FlipCountdown() {
         <FlipGroup value={r ? r.seconds : null} label="Giây" />
       </div>
 
-      <p className="mt-8 text-[12px] leading-[1.33] tracking-[-0.01em] text-[#86868b] md:text-[14px]" suppressHydrationWarning>
-        {vnNow ? `Giờ Việt Nam hiện tại: ${vnNow} (GMT+7)` : ' '}
-      </p>
     </div>
   );
 }

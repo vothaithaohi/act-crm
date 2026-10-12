@@ -2,17 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { Clapperboard } from 'lucide-react';
 import { useDvvnHref } from './base-path';
 
 export function DvLogo({ className = '' }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 font-semibold tracking-[-0.02em] ${className}`}>
-      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-        <rect x="2" y="5" width="20" height="15" rx="3.5" fill="currentColor" />
-        <path d="M2.6 8.5 21.4 4.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        <circle cx="12" cy="12.5" r="3" fill="var(--dv-nav-bg, #fff)" />
-      </svg>
+    <span className={`inline-flex items-center gap-2 font-semibold tracking-[-0.02em] ${className}`}>
+      <Clapperboard className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden="true" />
       <span>
         DienVien<span className="text-[var(--dv-text-secondary)]">VN</span>
       </span>
@@ -20,38 +16,17 @@ export function DvLogo({ className = '' }: { className?: string }) {
   );
 }
 
+/** Header tối giản: chỉ logo + tên DienVienVN ở giữa. */
 export function GlobalNav() {
   const href = useDvvnHref();
   return (
-    <nav className="dv-nav" aria-label="Điều hướng chính">
-      <div className="mx-auto flex h-full max-w-[1024px] items-center justify-between px-4 md:px-[22px]">
-        <Link href={href('/')} className="text-[15px] text-[#1d1d1f]" aria-label="DienVienVN — Trang chủ">
+    <nav className="dv-nav" aria-label="DienVienVN">
+      <div className="mx-auto flex h-full max-w-[1024px] items-center justify-center px-4 md:px-[22px]">
+        <Link href={href('/')} className="text-[17px] text-[#1d1d1f]" aria-label="DienVienVN — Trang chủ">
           <DvLogo />
-        </Link>
-        <div className="hidden items-center gap-8 md:flex">
-          <Link className="dv-nav-link" href={`${href('/')}#ra-mat`}>Ra mắt</Link>
-          <Link className="dv-nav-link" href={`${href('/')}#dien-vien`}>Diễn viên</Link>
-          <Link className="dv-nav-link" href={`${href('/')}#nha-san-xuat`}>Nhà sản xuất</Link>
-          <Link className="dv-nav-link" href={`${href('/')}#dao-tao`}>Đào tạo</Link>
-          <Link className="dv-nav-link" href={`${href('/')}#quy-trinh`}>Quy trình</Link>
-        </div>
-        <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary dv-btn-sm">
-          Nộp hồ sơ
         </Link>
       </div>
     </nav>
-  );
-}
-
-export function Ribbon() {
-  const href = useDvvnHref();
-  return (
-    <div className="bg-[var(--dv-bg-alt)] px-4 py-3 text-center text-[14px] leading-[1.43] tracking-[-0.016em] text-[var(--dv-text)]">
-      Cổng nộp hồ sơ casting đã mở sớm trước ngày ra mắt.{' '}
-      <Link href={href('/nop-ho-so')} className="dv-link whitespace-nowrap">
-        Nộp hồ sơ ngay <ChevronRight className="h-3.5 w-3.5" />
-      </Link>
-    </div>
   );
 }
 

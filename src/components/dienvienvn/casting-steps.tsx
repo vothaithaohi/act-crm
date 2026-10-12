@@ -24,7 +24,30 @@ import {
   newId
 } from '@/lib/dienvienvn/casting-form';
 import { ACT_ACADEMY_SCHOOL, ART_SCHOOLS, OTHER_SCHOOL, SCHOOL_REGION_LABELS, SchoolRegion } from '@/lib/dienvienvn/schools';
+import { ABROAD, ALL_PROVINCES, VN_CITIES, VN_PROVINCES, provinceLabel } from '@/lib/dienvienvn/provinces';
 import { CheckOption, ChipGroup, Field, PhotoUpload, SectionTitle, SelectInput, TextInput } from './form-fields';
+
+/** Danh sách 34 tỉnh/thành, nhóm theo thành phố trực thuộc trung ương / tỉnh. */
+function ProvinceOptions({ exclude = [] }: { exclude?: string[] }) {
+  return (
+    <>
+      <optgroup label="Thành phố trực thuộc trung ương">
+        {VN_CITIES.filter(p => !exclude.includes(p.value)).map(p => (
+          <option key={p.value} value={p.value}>
+            {p.label}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="Tỉnh">
+        {VN_PROVINCES.filter(p => !exclude.includes(p.value)).map(p => (
+          <option key={p.value} value={p.value}>
+            {p.label}
+          </option>
+        ))}
+      </optgroup>
+    </>
+  );
+}
 
 export interface StepProps {
   draft: CastingDraft;
@@ -79,14 +102,23 @@ export function StepPersonal({ draft, update, errors }: StepProps) {
           />
         </Field>
         <Field label="Tỉnh / Thành phố hiện tại" required htmlFor="city" error={errors.city}>
-          <TextInput
+          <SelectInput
             id="city"
             autoComplete="address-level1"
-            placeholder="TP.HCM, Hà Nội…"
             value={draft.city}
             invalid={!!errors.city}
             onChange={e => update({ city: e.target.value })}
-          />
+            className={draft.city ? '' : 'text-[#a1a1a6]'}
+          >
+            <option value="" disabled>
+              Chọn tỉnh / thành phố
+            </option>
+            {draft.city && draft.city !== ABROAD && !ALL_PROVINCES.some(p => p.value === draft.city) && (
+              <option value={draft.city}>{draft.city}</option>
+            )}
+            <ProvinceOptions />
+            <option value={ABROAD}>{ABROAD}</option>
+          </SelectInput>
         </Field>
       </div>
 
@@ -333,17 +365,50 @@ export function StepSkills({ draft, update }: StepProps) {
 
 /* ---------------- Bước 5 ---------------- */
 export function StepWillingness({ draft, update }: StepProps) {
-  const toggle = (id: string) =>
+  const cities = draft.willing_work_cities;
+  // Chip hiển thị: địa bàn mặc định + các tỉnh/thành người điền đã thêm
+  const extraCities = cities.filter(c => !CITY_OPTIONS.includes(c));
+  const chipOptions = [...CITY_OPTIONS, ...extraCities].map(c => ({ id: c, label: provinceLabel(c) }));
+
+  const isChecked = (ids: string[]) => ids.every(id => draft.role_willingness.includes(id));
+  const toggle = (ids: string[]) =>
     update({
-      role_willingness: draft.role_willingness.includes(id)
-        ? draft.role_willingness.filter(x => x !== id)
-        : [...draft.role_willingness, id]
+      role_willingness: isChecked(ids)
+        ? draft.role_willingness.filter(x => !ids.includes(x))
+        : Array.from(new Set([...draft.role_willingness, ...ids]))
     });
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
         <p className="dv-field-label !mb-0">Sẵn sàng quay tại</p>
-        <ChipGroup label="Địa bàn sẵn sàng quay" options={CITY_OPTIONS} value={draft.willing_work_cities} onChange={v => update({ willing_work_cities: v })} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ChipGroup
+            label="Địa bàn sẵn sàng quay"
+            options={chipOptions}
+            value={cities}
+            onChange={next => {
+              // Tỉnh/thành thêm vào mà bị bỏ chọn thì ẩn khỏi danh sách chip
+              update({ willing_work_cities: next });
+            }}
+          />
+          <label className="dv-chip relative !gap-1.5 !pr-4 text-[var(--dv-blue)]">
+            <Plus className="h-4 w-4" strokeWidth={2.2} />
+            <span>Thêm tỉnh / thành</span>
+            <select
+              aria-label="Thêm tỉnh / thành phố sẵn sàng quay"
+              value=""
+              onChange={e => {
+                const v = e.target.value;
+                if (v && !cities.includes(v)) update({ willing_work_cities: [...cities, v] });
+              }}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            >
+              <option value="">Chọn tỉnh / thành phố</option>
+              <ProvinceOptions exclude={[...CITY_OPTIONS, ...cities]} />
+            </select>
+          </label>
+        </div>
       </div>
       <Divider />
       <div className="space-y-3">
@@ -353,7 +418,7 @@ export function StepWillingness({ draft, update }: StepProps) {
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {ROLE_WILLINGNESS_OPTIONS.map(o => (
-            <CheckOption key={o.id} checked={draft.role_willingness.includes(o.id)} onChange={() => toggle(o.id)}>
+            <CheckOption key={o.key} checked={isChecked(o.ids)} onChange={() => toggle(o.ids)}>
               {o.label}
             </CheckOption>
           ))}
@@ -374,8 +439,8 @@ export function StepMedia({ draft, update, errors }: StepProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5">
-        <PhotoUpload kind="headshot" label="Chân dung" hint="Góc thẳng, rõ mặt, không filter" required value={draft.headshot_url} error={errors.headshot_url} onChange={url => update({ headshot_url: url })} />
-        <PhotoUpload kind="fullbody" label="Toàn thân" hint="Đứng thẳng, thấy rõ dáng người" required value={draft.fullbody_url} error={errors.fullbody_url} onChange={url => update({ fullbody_url: url })} />
+        <PhotoUpload kind="headshot" label="Chân dung / Portrait" hint="Góc thẳng, rõ mặt, không filter" required value={draft.headshot_url} error={errors.headshot_url} onChange={url => update({ headshot_url: url })} />
+        <PhotoUpload kind="fullbody" label="Toàn thân / Full-body" hint="Đứng thẳng, thấy rõ dáng người" required value={draft.fullbody_url} error={errors.fullbody_url} onChange={url => update({ fullbody_url: url })} />
         <div className="col-span-2 sm:col-span-1">
           <div className="mx-auto max-w-[50%] sm:max-w-none">
             <PhotoUpload kind="compcard" label="Góc nghiêng / Comp-card" hint="Không bắt buộc" value={draft.compcard_url} onChange={url => update({ compcard_url: url })} />

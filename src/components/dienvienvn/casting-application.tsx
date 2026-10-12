@@ -9,6 +9,7 @@ import {
   CastingDraft,
   StepErrors,
   ageFromDob,
+  computeCompletion,
   createEmptyDraft,
   validateStep
 } from '@/lib/dienvienvn/casting-form';
@@ -151,10 +152,10 @@ export function CastingApplication() {
     return id < maxVisited || showErrorsFor.includes(id) ? 'error' : 'upcoming';
   };
 
-  const completedCount = CASTING_STEPS.filter(
-    s => (s.id < maxVisited || (s.id === maxVisited && s.id === CASTING_STEPS.length)) && stepValid(s.id)
-  ).length;
-  const progress = Math.round((completedCount / CASTING_STEPS.length) * 100);
+  // % hoàn thành tính theo số trường đã điền; nút nộp chỉ sáng khi đã đi đủ 7 bước hợp lệ và đồng ý điều khoản
+  const progress = computeCompletion(draft, maxVisited);
+  const allStepsDone = maxVisited >= CASTING_STEPS.length && CASTING_STEPS.every(s => stepValid(s.id));
+  const readyToSubmit = allStepsDone && draft.consent;
 
   const scrollToTop = () => {
     const y = (topRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY - 56;
@@ -275,14 +276,14 @@ export function CastingApplication() {
   const isLast = step === CASTING_STEPS.length;
   const age = ageFromDob(draft.dob);
 
-  const requirements = [
-    { label: 'Họ tên, ngày sinh, số điện thoại', ok: stepValid(1), step: 1 },
-    { label: 'Chiều cao & cân nặng', ok: stepValid(2), step: 2 },
-    { label: 'Ảnh chân dung & toàn thân', ok: stepValid(6), step: 6 }
-  ];
-
   const submitButton = (extra = '') => (
-    <button type="button" onClick={handleSubmit} disabled={submitting} className={`dv-btn dv-btn-primary ${extra}`}>
+    <button
+      type="button"
+      onClick={handleSubmit}
+      disabled={submitting}
+      aria-disabled={!readyToSubmit}
+      className={`dv-btn ${readyToSubmit ? 'dv-btn-primary' : 'dv-btn-muted'} ${extra}`}
+    >
       {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
       {submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ casting'}
     </button>
@@ -302,7 +303,7 @@ export function CastingApplication() {
             <span className="text-[var(--dv-text-secondary)]">{progress}%</span>
           </div>
           <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-[#e8e8ed]">
-            <div className="h-full rounded-full bg-[var(--dv-blue)] transition-all duration-500" style={{ width: `${(step / CASTING_STEPS.length) * 100}%` }} />
+            <div className="h-full rounded-full bg-[var(--dv-blue)] transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
           </div>
           <div ref={mobileStepsRef} className="dv-scroll-x -mx-4 flex gap-2 overflow-x-auto px-4 py-2.5">
             {CASTING_STEPS.map(s => {
@@ -343,9 +344,6 @@ export function CastingApplication() {
             <h1 className="dv-display mt-2 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[40px] md:leading-[1.1] md:tracking-normal">
               Nộp hồ sơ casting.
             </h1>
-            <p className="mt-1.5 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)] md:text-[17px]">
-              7 bước · khoảng 10 phút. Bạn có thể quay lại chỉnh sửa bất kỳ bước nào trước khi nộp.
-            </p>
           </header>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[228px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[248px_minmax(0,1fr)_300px]">
@@ -487,34 +485,25 @@ export function CastingApplication() {
                     </div>
                   </div>
 
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between text-[13px]">
-                      <span className="text-[var(--dv-text-secondary)]">Tiến độ</span>
-                      <span className="font-semibold">
-                        {completedCount}/{CASTING_STEPS.length} bước
-                      </span>
+                  <div className="mt-6">
+                    <div className="flex items-end justify-between">
+                      <span className="text-[14px] text-[var(--dv-text-secondary)]">Hồ sơ đã hoàn thành</span>
+                      <span className="dv-display text-[28px] font-semibold leading-none tracking-[0.007em] tabular-nums">{progress}%</span>
                     </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e8e8ed]">
-                      <div className="h-full rounded-full bg-[var(--dv-blue)] transition-all duration-500" style={{ width: `${progress}%` }} />
+                    <div
+                      className="mt-3 h-2 overflow-hidden rounded-full bg-[#e8e8ed]"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={progress}
+                      aria-label="Mức độ hoàn thành hồ sơ"
+                    >
+                      <div
+                        className={`h-full rounded-full transition-[width,background-color] duration-700 ease-out ${progress === 100 ? 'bg-[var(--dv-green)]' : 'bg-[var(--dv-blue)]'}`}
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
                   </div>
-
-                  <ul className="mt-5 space-y-2.5">
-                    {requirements.map(r => (
-                      <li key={r.label}>
-                        <button type="button" onClick={() => goTo(r.step)} className="flex w-full items-center gap-2.5 text-left text-[14px] leading-[1.3]">
-                          <span
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                              r.ok ? 'bg-[var(--dv-green)] text-white' : 'border-[1.5px] border-[#c7c7cc]'
-                            }`}
-                          >
-                            {r.ok && <Check className="h-3 w-3" strokeWidth={3.2} />}
-                          </span>
-                          <span className={r.ok ? 'text-[var(--dv-text)]' : 'text-[var(--dv-text-secondary)]'}>{r.label}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
 
                   <div ref={consentRef} className="mt-5 border-t border-[#f0f0f2] pt-5">
                     <button
@@ -547,6 +536,11 @@ export function CastingApplication() {
                   </div>
 
                   <div className="mt-5">{submitButton('w-full')}</div>
+                  {!readyToSubmit && (
+                    <p className="mt-2.5 text-center text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
+                      {allStepsDone ? 'Đánh dấu đồng ý ở trên để nộp hồ sơ.' : 'Hoàn thành đủ 7 bước để nộp hồ sơ.'}
+                    </p>
+                  )}
                 </div>
 
                 <p className="px-2 text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">

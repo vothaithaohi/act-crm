@@ -514,6 +514,8 @@ export function TalentFilterSidebar() {
               { id: 'partial_nudity', label: 'Bán khỏa thân nghệ thuật' },
               { id: 'hair_color', label: 'Sẵn sàng đổi màu tóc' },
               { id: 'cut_hair', label: 'Sẵn sàng cắt tóc ngắn' },
+              { id: 'intimate_scene', label: 'Sẵn sàng cảnh nóng 18+' },
+              { id: 'learn_new_skills', label: 'Sẵn sàng học ngoại ngữ / kỹ năng mới' },
             ].map(w => {
               const active = filterCriteria.roleWillingness.includes(w.id);
               return (

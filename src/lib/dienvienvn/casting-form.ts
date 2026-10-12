@@ -43,15 +43,20 @@ export const MARTIAL_ARTS_OPTIONS = ['Boxing', 'Vovinam', 'Taekwondo', 'Karate',
 export const INSTRUMENT_OPTIONS = ['Guitar', 'Piano', 'Trống', 'Ukulele', 'Violin'];
 export const DANCE_OPTIONS = ['Kpop', 'Contemporary', 'Hip-hop', 'Ballet'];
 export const SPORT_OPTIONS = ['Bơi lội', 'Điền kinh', 'Cầu lông', 'Bắn súng', 'Gym / Fitness'];
-export const CITY_OPTIONS = ['TP.HCM', 'Hà Nội', 'Đà Nẵng', 'Miền Tây', 'Hạ Long', 'Nước ngoài'];
+/** Địa bàn quay hiển thị sẵn; các tỉnh/thành khác được thêm qua danh sách 34 tỉnh/thành. */
+export const CITY_OPTIONS = ['TP.HCM', 'Hà Nội', 'Đà Nẵng', 'Nước ngoài'];
 
-export const ROLE_WILLINGNESS_OPTIONS = [
-  { id: 'kissing_scene', label: 'Sẵn sàng đóng cảnh hôn (Kissing scene)' },
-  { id: 'swimsuit', label: 'Sẵn sàng mặc đồ bơi / Bikini' },
-  { id: 'lingerie', label: 'Sẵn sàng mặc trang phục nội y' },
-  { id: 'partial_nudity', label: 'Sẵn sàng cảnh bán khỏa thân nghệ thuật' },
-  { id: 'hair_color', label: 'Sẵn sàng thay đổi màu tóc theo tạo hình vai diễn' },
-  { id: 'cut_hair', label: 'Sẵn sàng cắt tóc ngắn theo tạo hình vai diễn' }
+/**
+ * Mỗi lựa chọn có thể ghi nhiều mã (ids) để giữ tương thích với bộ lọc CRM
+ * (VD: "Đồ bơi / Bikini / Nội y" ghi cả swimsuit và lingerie).
+ */
+export const ROLE_WILLINGNESS_OPTIONS: { key: string; ids: string[]; label: string }[] = [
+  { key: 'kissing', ids: ['kissing_scene', 'intimate_scene'], label: 'Sẵn sàng đóng cảnh hôn & cảnh nóng 18+' },
+  { key: 'swimwear', ids: ['swimsuit', 'lingerie'], label: 'Sẵn sàng mặc đồ bơi / bikini / nội y' },
+  { key: 'nudity', ids: ['partial_nudity'], label: 'Sẵn sàng cảnh bán khỏa thân nghệ thuật' },
+  { key: 'hair_color', ids: ['hair_color'], label: 'Sẵn sàng thay đổi màu tóc theo tạo hình vai diễn' },
+  { key: 'cut_hair', ids: ['cut_hair'], label: 'Sẵn sàng cắt tóc ngắn theo tạo hình vai diễn' },
+  { key: 'learn', ids: ['learn_new_skills'], label: 'Sẵn sàng học ngoại ngữ hoặc kỹ năng mới' }
 ];
 
 export const FILM_ROLE_OPTIONS = [
@@ -152,7 +157,7 @@ export function createEmptyDraft(): CastingDraft {
     phone: '',
     email: '',
     address: '',
-    city: 'TP.HCM',
+    city: '',
     parent_guardian_name: '',
     height_cm: '',
     weight_kg: '',
@@ -225,7 +230,7 @@ export function validateStep(step: number, d: CastingDraft): StepErrors {
     if (!d.phone.trim()) e.phone = 'Vui lòng nhập số điện thoại';
     else if (!isValidVnPhone(d.phone)) e.phone = 'Số điện thoại gồm 10 số, bắt đầu bằng 0';
     if (d.email.trim() && !isValidEmail(d.email)) e.email = 'Email không hợp lệ';
-    if (!d.city.trim()) e.city = 'Vui lòng nhập tỉnh / thành phố';
+    if (!d.city.trim()) e.city = 'Vui lòng chọn tỉnh / thành phố';
     const age = ageFromDob(d.dob);
     if (age !== null && age < 18 && !d.parent_guardian_name.trim()) {
       e.parent_guardian_name = 'Diễn viên dưới 18 tuổi cần thông tin phụ huynh / người giám hộ';
@@ -253,6 +258,48 @@ export function validateStep(step: number, d: CastingDraft): StepErrors {
     });
   }
   return e;
+}
+
+/**
+ * Phần trăm hoàn thành hồ sơ, tính trên số trường thông tin đã điền.
+ * Các phần không bắt buộc (kinh nghiệm, kỹ năng, phân cảnh, đào tạo) được tính là xong
+ * khi đã có dữ liệu hoặc người điền đã đi qua bước đó (vì "chưa có" cũng là một câu trả lời).
+ */
+export function computeCompletion(d: CastingDraft, maxVisited: number): number {
+  const filled = (v: string) => v.trim().length > 0;
+  const passed = (step: number) => maxVisited > step;
+  const checks: boolean[] = [
+    // Bước 1
+    filled(d.full_name),
+    filled(d.dob),
+    filled(d.phone),
+    filled(d.email),
+    filled(d.address),
+    filled(d.city),
+    // Bước 2
+    filled(d.height_cm),
+    filled(d.weight_kg),
+    filled(d.shoe_size),
+    filled(d.chest_cm),
+    filled(d.waist_cm),
+    filled(d.hip_cm),
+    // Bước 3
+    Object.values(d.experience).some(list => list.some(x => filled(x.title))) || passed(3),
+    // Bước 4
+    d.accents.length > 0,
+    [d.languages, d.martial_arts, d.instruments, d.dancing, d.sports].some(l => l.length > 0) || passed(4),
+    // Bước 5
+    d.willing_work_cities.length > 0,
+    d.role_willingness.length > 0 || passed(5),
+    // Bước 6
+    filled(d.headshot_url),
+    filled(d.fullbody_url),
+    filled(d.compcard_url),
+    Object.values(d.social_links).some(filled),
+    // Bước 7
+    d.trainings.length > 0 || maxVisited >= 7
+  ];
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
 const RANK_ORDER: Record<string, number> = { ACT4: 4, ACT3: 3, ACT2: 2, ACT1: 1, SSC: 0.5 };

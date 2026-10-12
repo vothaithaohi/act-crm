@@ -869,7 +869,9 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                         lingerie: 'Nội y',
                         partial_nudity: 'Bán khỏa thân',
                         hair_color: 'Đổi màu tóc',
-                        cut_hair: 'Cắt tóc'
+                        cut_hair: 'Cắt tóc',
+                        intimate_scene: 'Cảnh nóng 18+',
+                        learn_new_skills: 'Học ngoại ngữ / kỹ năng mới'
                       };
                       return (
                         <span key={w} className="px-2 py-1 bg-rose-50 text-rose-800 font-semibold rounded-md border border-rose-200">

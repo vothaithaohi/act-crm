@@ -69,7 +69,7 @@ export const castingDraftSchema = z.object({
   instruments: tags(),
   dancing: tags(),
   sports: tags(),
-  willing_work_cities: tags(),
+  willing_work_cities: tags(40),
   role_willingness: tags(),
   headshot_url: media,
   fullbody_url: media,

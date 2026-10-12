@@ -156,6 +156,20 @@
   opacity: 0.42;
   cursor: not-allowed;
 }
+.dv-btn-muted {
+  background: #e8e8ed;
+  color: #86868b;
+}
+.dv-btn-muted:hover {
+  background: #dcdce1;
+}
+.dv-btn-light {
+  background: #fff;
+  color: #1d1d1f;
+}
+.dv-btn-light:hover {
+  background: #e8e8ed;
+}
 .dv-btn-secondary {
   background: transparent;
   color: var(--dv-blue);
