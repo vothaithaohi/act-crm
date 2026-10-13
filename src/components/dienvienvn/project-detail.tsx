@@ -110,7 +110,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           )}
 
           <section className="mt-6 flex items-start gap-3 rounded-[18px] bg-white p-5 md:p-6">
-            <Video className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-blue)]" />
+            <Video className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-accent)]" />
             <div className="text-[15px] leading-[1.47]">
               <p className="font-semibold">{project.selftape_required ? 'Bắt buộc gửi self-tape' : 'Self-tape không bắt buộc'}</p>
               <p className="mt-0.5 whitespace-pre-line text-[var(--dv-text-secondary)]">
@@ -226,8 +226,8 @@ function ApplySheet({ project, role, onClose }: { project: PublicProject; role: 
         {doneName !== null ? (
           <div className="py-8 text-center">
             <svg className="mx-auto h-[72px] w-[72px]" viewBox="0 0 56 56" aria-hidden="true">
-              <circle className="dv-check-circle" cx="28" cy="28" r="26" fill="none" stroke="#1d8a3a" strokeWidth="2.5" />
-              <path className="dv-check-mark" d="M17 29.5l7 7 15-16" fill="none" stroke="#1d8a3a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+              <circle className="dv-check-circle" cx="28" cy="28" r="26" fill="none" stroke="#1d1d1f" strokeWidth="2.5" />
+              <path className="dv-check-mark" d="M17 29.5l7 7 15-16" fill="none" stroke="#1d1d1f" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <p className="dv-display mt-5 text-[24px] font-semibold" role="status">
               Đã ứng tuyển thành công.

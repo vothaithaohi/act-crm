@@ -401,7 +401,7 @@ export function StepWillingness({ draft, update }: StepProps) {
               update({ willing_work_cities: next });
             }}
           />
-          <label className="dv-chip relative !gap-1.5 !pr-4 text-[var(--dv-blue)]">
+          <label className="dv-chip relative !gap-1.5 !pr-4 text-[var(--dv-accent)]">
             <Plus className="h-4 w-4" strokeWidth={2.2} />
             <span>Thêm tỉnh / thành</span>
             <select
@@ -692,14 +692,14 @@ export function StepTraining({ draft, update, errors }: StepProps) {
         <button
           type="button"
           onClick={() => setTrainings([...draft.trainings, emptyTraining(ACT_ACADEMY_SCHOOL)])}
-          className="flex min-h-[64px] items-center justify-center gap-2 rounded-[14px] border border-dashed border-[#c7c7cc] text-[15px] font-medium text-[var(--dv-blue)] transition-colors hover:border-[var(--dv-blue)] hover:bg-[rgba(0,113,227,0.04)]"
+          className="flex min-h-[64px] items-center justify-center gap-2 rounded-[14px] border border-dashed border-[#c7c7cc] text-[15px] font-medium text-[var(--dv-accent)] transition-colors hover:border-[var(--dv-accent)] hover:bg-[rgba(29,29,31,0.04)]"
         >
           <Plus className="h-4 w-4" /> Đã học tại ACT Academy
         </button>
         <button
           type="button"
           onClick={() => setTrainings([...draft.trainings, emptyTraining(ART_SCHOOLS[0].name)])}
-          className="flex min-h-[64px] items-center justify-center gap-2 rounded-[14px] border border-dashed border-[#c7c7cc] text-[15px] font-medium text-[var(--dv-blue)] transition-colors hover:border-[var(--dv-blue)] hover:bg-[rgba(0,113,227,0.04)]"
+          className="flex min-h-[64px] items-center justify-center gap-2 rounded-[14px] border border-dashed border-[#c7c7cc] text-[15px] font-medium text-[var(--dv-accent)] transition-colors hover:border-[var(--dv-accent)] hover:bg-[rgba(29,29,31,0.04)]"
         >
           <Plus className="h-4 w-4" /> Đã học tại trường khác
         </button>

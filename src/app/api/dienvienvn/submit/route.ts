@@ -16,7 +16,12 @@ const applicationSchema = z
   .optional()
   .nullable();
 
-const REVIEW_COLUMNS = ['submission_source', 'review_status', 'review_notes', 'submitted_at'] as const;
+/** Cột mà PostgREST báo không tồn tại (PGRST204: "Could not find the 'x' column of 'y' in the schema cache"). */
+function missingColumn(error: { code?: string; message?: string } | null): string | null {
+  if (!error?.message) return null;
+  if (error.code !== 'PGRST204' && error.code !== '42703' && !/column/i.test(error.message)) return null;
+  return error.message.match(/'([a-z_]+)' column/i)?.[1] ?? error.message.match(/column "?([a-z_]+)"? of relation/i)?.[1] ?? null;
+}
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -91,14 +96,15 @@ export async function POST(req: NextRequest) {
     if (problem) return NextResponse.json({ error: problem, step: 6 }, { status: 400 });
   }
 
-  let { error } = await supabase.from('talent_profiles').insert(record);
-
-  // Nếu database chưa chạy migration thêm cột duyệt hồ sơ, vẫn lưu hồ sơ để không mất dữ liệu.
-  if (error && REVIEW_COLUMNS.some(col => error?.message?.includes(col))) {
-    console.error('[dienvienvn] Thiếu cột duyệt hồ sơ, hãy chạy migration 20261012_dienvienvn_submissions.sql:', error.message);
-    const fallback: Record<string, unknown> = { ...record };
-    REVIEW_COLUMNS.forEach(col => delete fallback[col]);
-    ({ error } = await supabase.from('talent_profiles').insert(fallback));
+  // Nếu database còn thiếu cột (chưa chạy đủ migration), bỏ cột đó và lưu lại để không mất hồ sơ.
+  const row: Record<string, unknown> = { ...record };
+  let { error } = await supabase.from('talent_profiles').insert(row);
+  for (let attempt = 0; error && attempt < 8; attempt++) {
+    const col = missingColumn(error);
+    if (!col || !(col in row) || col === 'id') break;
+    console.error(`[dienvienvn] Bảng talent_profiles thiếu cột "${col}" — hãy chạy migration 20261014_schema_alignment.sql.`);
+    delete row[col];
+    ({ error } = await supabase.from('talent_profiles').insert(row));
   }
 
   if (error) {

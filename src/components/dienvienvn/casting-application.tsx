@@ -312,7 +312,7 @@ export function CastingApplication() {
       });
       window.scrollTo({ top: 0 });
       if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        confetti({ particleCount: 90, spread: 70, startVelocity: 38, origin: { y: 0.35 }, colors: ['#0071e3', '#1d1d1f', '#86868b', '#ffffff'] });
+        confetti({ particleCount: 90, spread: 70, startVelocity: 38, origin: { y: 0.35 }, colors: ['#1d1d1f', '#86868b', '#d2d2d7', '#ffffff'] });
       }
     } catch {
       setBanner('Mất kết nối mạng. Hồ sơ của bạn vẫn được lưu nháp — vui lòng thử nộp lại.');
@@ -373,7 +373,7 @@ export function CastingApplication() {
             <span className="text-[var(--dv-text-secondary)]">{progress}%</span>
           </div>
           <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-[#e8e8ed]">
-            <div className="h-full rounded-full bg-[var(--dv-blue)] transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-[var(--dv-accent)] transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
           </div>
           <div ref={mobileStepsRef} className="dv-scroll-x -mx-4 flex gap-2 overflow-x-auto px-4 py-2.5">
             {CASTING_STEPS.map(s => {
@@ -395,7 +395,7 @@ export function CastingApplication() {
                           : 'bg-transparent text-[var(--dv-text-secondary)]'
                   }`}
                 >
-                  {st === 'done' ? <Check className="h-3.5 w-3.5 text-[var(--dv-blue)]" strokeWidth={3} /> : st === 'error' ? <AlertCircle className="h-3.5 w-3.5" /> : <span className="font-semibold">{s.id}</span>}
+                  {st === 'done' ? <Check className="h-3.5 w-3.5 text-[var(--dv-accent)]" strokeWidth={3} /> : st === 'error' ? <AlertCircle className="h-3.5 w-3.5" /> : <span className="font-semibold">{s.id}</span>}
                   {s.title}
                 </button>
               );
@@ -416,7 +416,7 @@ export function CastingApplication() {
             </h1>
             {target && (
               <div className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3 md:max-w-[640px]">
-                <Clapperboard className="h-5 w-5 shrink-0 text-[var(--dv-blue)]" />
+                <Clapperboard className="h-5 w-5 shrink-0 text-[var(--dv-accent)]" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{target.project.display_name}</p>
                   <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">
@@ -448,7 +448,7 @@ export function CastingApplication() {
                           <span
                             aria-hidden="true"
                             className={`absolute left-[25px] top-[42px] h-[calc(100%-28px)] w-[2px] rounded-full transition-colors duration-500 ${
-                              lineActive ? 'bg-[var(--dv-blue)]' : 'bg-[#d2d2d7]'
+                              lineActive ? 'bg-[var(--dv-accent)]' : 'bg-[#d2d2d7]'
                             }`}
                           />
                         )}
@@ -463,9 +463,9 @@ export function CastingApplication() {
                           <span
                             className={`relative z-[1] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold transition-all duration-300 ${
                               st === 'current'
-                                ? 'bg-[var(--dv-blue)] text-white ring-4 ring-[rgba(0,113,227,0.15)]'
+                                ? 'bg-[var(--dv-accent)] text-white ring-4 ring-[rgba(29,29,31,0.15)]'
                                 : st === 'done'
-                                  ? 'bg-[var(--dv-blue)] text-white'
+                                  ? 'bg-[var(--dv-accent)] text-white'
                                   : st === 'error'
                                     ? 'bg-[var(--dv-red)] text-white'
                                     : 'border-2 border-[#d2d2d7] bg-[var(--dv-bg-alt)] text-[var(--dv-text-secondary)]'
@@ -495,7 +495,7 @@ export function CastingApplication() {
             <section className="min-w-0">
               <div className="dv-card overflow-hidden">
                 <div className="border-b border-[#f0f0f2] px-5 pb-5 pt-6 sm:px-8 sm:pt-8">
-                  <p className="text-[14px] font-semibold text-[var(--dv-blue)]">
+                  <p className="text-[14px] font-semibold text-[var(--dv-accent)]">
                     Bước {step} / {CASTING_STEPS.length}
                   </p>
                   <h2 className="dv-display mt-1 text-[24px] font-semibold leading-[1.17] tracking-[0.009em] sm:text-[28px] sm:leading-[1.14]">
@@ -599,7 +599,7 @@ export function CastingApplication() {
                       aria-label="Mức độ hoàn thành hồ sơ"
                     >
                       <div
-                        className={`h-full rounded-full transition-[width,background-color] duration-700 ease-out ${progress === 100 ? 'bg-[var(--dv-green)]' : 'bg-[var(--dv-blue)]'}`}
+                        className={`h-full rounded-full transition-[width,background-color] duration-700 ease-out ${progress === 100 ? 'bg-[var(--dv-accent)]' : 'bg-[var(--dv-accent)]'}`}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -619,7 +619,7 @@ export function CastingApplication() {
                       <span
                         className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
                           draft.consent
-                            ? 'border-[var(--dv-blue)] bg-[var(--dv-blue)] text-white'
+                            ? 'border-[var(--dv-accent)] bg-[var(--dv-accent)] text-white'
                             : consentError
                               ? 'border-[var(--dv-red)] bg-white'
                               : 'border-[#c7c7cc] bg-white'
@@ -682,8 +682,8 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
     <main className="flex min-h-[calc(100vh-44px)] items-center justify-center bg-[var(--dv-bg-alt)] px-4 py-12">
       <div className="dv-pop dv-card w-full max-w-[640px] px-6 py-12 text-center shadow-[0_30px_80px_-40px_rgba(0,0,0,0.35)] sm:px-14 sm:py-16">
         <svg className="mx-auto h-[88px] w-[88px] sm:h-[104px] sm:w-[104px]" viewBox="0 0 56 56" aria-hidden="true">
-          <circle className="dv-check-circle" cx="28" cy="28" r="26" fill="none" stroke="#1d8a3a" strokeWidth="2.5" />
-          <path className="dv-check-mark" d="M17 29.5l7 7 15-16" fill="none" stroke="#1d8a3a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+          <circle className="dv-check-circle" cx="28" cy="28" r="26" fill="none" stroke="#1d1d1f" strokeWidth="2.5" />
+          <path className="dv-check-mark" d="M17 29.5l7 7 15-16" fill="none" stroke="#1d1d1f" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
 
         <h1 className="dv-display dv-headline mt-7" role="status">

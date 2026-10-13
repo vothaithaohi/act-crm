@@ -110,7 +110,7 @@ export function CheckOption({ checked, onChange, children }: { checked: boolean;
     <button type="button" role="checkbox" aria-checked={checked} className="dv-option" onClick={onChange}>
       <span
         className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
-          checked ? 'border-[var(--dv-blue)] bg-[var(--dv-blue)] text-white' : 'border-[#c7c7cc] bg-white'
+          checked ? 'border-[var(--dv-accent)] bg-[var(--dv-accent)] text-white' : 'border-[#c7c7cc] bg-white'
         }`}
       >
         {checked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
@@ -254,18 +254,18 @@ export function PhotoUpload({
             disabled={busy}
             className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center"
           >
-            <ImagePlus className="h-8 w-8 text-[var(--dv-blue)]" strokeWidth={1.4} />
-            <span className="text-[15px] font-medium text-[var(--dv-blue)]">Chọn ảnh</span>
+            <ImagePlus className="h-8 w-8 text-[var(--dv-accent)]" strokeWidth={1.4} />
+            <span className="text-[15px] font-medium text-[var(--dv-accent)]">Chọn ảnh</span>
             <span className="text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">{hint}</span>
           </button>
         )}
 
         {busy && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/85 backdrop-blur-sm">
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-blue)]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-accent)]" />
             <span className="text-[13px] text-[var(--dv-text-secondary)]">Đang tải lên… {progress}%</span>
             <div className="h-1 w-2/3 overflow-hidden rounded-full bg-[#e8e8ed]">
-              <div className="h-full bg-[var(--dv-blue)] transition-all" style={{ width: `${progress}%` }} />
+              <div className="h-full bg-[var(--dv-accent)] transition-all" style={{ width: `${progress}%` }} />
             </div>
           </div>
         )}

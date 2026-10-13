@@ -208,7 +208,7 @@ function ApplicantCard({ applicant, roleName }: { applicant: ProducerApplicant; 
               key={p.key}
               type="button"
               onClick={() => setPhoto(p.url)}
-              className={`h-14 w-11 overflow-hidden rounded-[8px] border-2 ${photo === p.url ? 'border-[var(--dv-blue)]' : 'border-transparent'}`}
+              className={`h-14 w-11 overflow-hidden rounded-[8px] border-2 ${photo === p.url ? 'border-[var(--dv-accent)]' : 'border-transparent'}`}
               aria-label={p.label}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
