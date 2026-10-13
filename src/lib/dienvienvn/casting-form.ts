@@ -233,7 +233,8 @@ export function validateStep(step: number, d: CastingDraft, ctx: { selftapeRequi
     }
     if (!d.phone.trim()) e.phone = 'Vui lòng nhập số điện thoại';
     else if (!isValidVnPhone(d.phone)) e.phone = 'Số điện thoại gồm 10 số, bắt đầu bằng 0';
-    if (d.email.trim() && !isValidEmail(d.email)) e.email = 'Email không hợp lệ';
+    if (!d.email.trim()) e.email = 'Vui lòng nhập email';
+    else if (!isValidEmail(d.email)) e.email = 'Email không hợp lệ';
     if (!d.city.trim()) e.city = 'Vui lòng chọn tỉnh / thành phố';
     const age = ageFromDob(d.dob);
     if (age !== null && age < 18 && !d.parent_guardian_name.trim()) {

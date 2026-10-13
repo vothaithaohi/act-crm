@@ -132,7 +132,7 @@ export function StepPersonal({ draft, update, errors }: StepProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Field label="Số điện thoại di động" required htmlFor="phone" error={errors.phone} hint="Đội ngũ casting sẽ liên hệ qua số này.">
+        <Field label="Số điện thoại di động" required htmlFor="phone" error={errors.phone}>
           <TextInput
             id="phone"
             type="tel"
@@ -144,7 +144,7 @@ export function StepPersonal({ draft, update, errors }: StepProps) {
             onChange={e => update({ phone: e.target.value })}
           />
         </Field>
-        <Field label="Email" htmlFor="email" error={errors.email}>
+        <Field label="Email" required htmlFor="email" error={errors.email} hint="Đội ngũ casting sẽ liên hệ qua email này.">
           <TextInput
             id="email"
             type="email"
