@@ -16,6 +16,7 @@ import { SubmissionReviewPanel } from '@/components/talents/submission-review-pa
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
+import { TalentPhotoCarousel } from '@/components/talents/talent-photo-carousel';
 import { 
   User, 
   Ruler, 
@@ -519,13 +520,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
           {/* Left Column: Actor Card & Photos & Quick Info */}
           <div className="space-y-6">
             <div className="bg-card rounded-2xl border overflow-hidden shadow-xs">
-              <div className="aspect-[3/4] relative bg-muted">
-                <img
-                  src={talent.headshot_url || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800'}
-                  alt={talent.full_name}
-                  className="w-full h-full object-cover object-top"
-                />
-              </div>
+              <TalentPhotoCarousel talent={talent} />
 
               <div className="p-5 space-y-4">
                 <div className="space-y-1">

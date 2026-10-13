@@ -64,12 +64,7 @@ interface SubmitResult {
   appliedTo?: string | null;
   id: string;
   name: string;
-  phone: string;
-}
-
-function formatPhone(p: string) {
-  const d = p.replace(/\D/g, '');
-  return d.length === 10 ? `${d.slice(0, 4)} ${d.slice(4, 7)} ${d.slice(7)}` : p;
+  email: string;
 }
 
 function readJSON<T>(key: string): T | null {
@@ -307,7 +302,7 @@ export function CastingApplication() {
       setResult({
         id: data.id,
         name: draft.full_name.trim(),
-        phone: draft.phone,
+        email: draft.email.trim().toLowerCase(),
         appliedTo: target && data.applicationSaved !== false ? `${target.project.display_name} · vai ${target.role.name}` : null
       });
       window.scrollTo({ top: 0 });
@@ -709,7 +704,7 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
           )}
           <div className="mt-3 h-px bg-[#e8e8ed]" />
           <p className="mt-3 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-            Chúng tôi sẽ liên hệ qua số <span className="font-semibold text-[var(--dv-text)]">{formatPhone(result.phone)}</span> khi có vai
+            Chúng tôi sẽ liên hệ qua email <span className="break-all font-semibold text-[var(--dv-text)]">{result.email}</span> khi có vai
             diễn phù hợp với bạn.
           </p>
         </div>
