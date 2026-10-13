@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PUBLIC_HOSTS } from '@/lib/dienvienvn/hosts';
 
-// Tên miền công khai của DienVienVN. Khi truy cập qua các host này, toàn bộ đường dẫn được
-// phục vụ từ /dienvienvn (VD: dienvienvn.com/nop-ho-so -> /dienvienvn/nop-ho-so) và CRM không bị lộ ra ngoài.
-const PUBLIC_HOSTS = (process.env.DIENVIENVN_HOSTS || 'dienvienvn.com,www.dienvienvn.com')
-  .split(',')
-  .map(h => h.trim().toLowerCase())
-  .filter(Boolean);
+// Trên tên miền DienVienVN, toàn bộ đường dẫn được phục vụ từ /dienvienvn và CRM không bị lộ ra ngoài.
 
 export function middleware(req: NextRequest) {
   const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').split(':')[0].toLowerCase();

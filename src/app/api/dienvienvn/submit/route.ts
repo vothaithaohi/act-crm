@@ -4,6 +4,8 @@ import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
+import { findTalentByEmail, sendAccountEmail, writeTalent } from '@/lib/dienvienvn/actor-server';
+import { TalentProfile } from '@/lib/types/crm';
 import { CastingProject, checkApplication } from '@/lib/projects/types';
 
 /** Đơn ứng tuyển dự án đi kèm hồ sơ (khi diễn viên vào form từ trang dự án). */
@@ -15,13 +17,6 @@ const applicationSchema = z
   })
   .optional()
   .nullable();
-
-/** Cột mà PostgREST báo không tồn tại (PGRST204: "Could not find the 'x' column of 'y' in the schema cache"). */
-function missingColumn(error: { code?: string; message?: string } | null): string | null {
-  if (!error?.message) return null;
-  if (error.code !== 'PGRST204' && error.code !== '42703' && !/column/i.test(error.message)) return null;
-  return error.message.match(/'([a-z_]+)' column/i)?.[1] ?? error.message.match(/column "?([a-z_]+)"? of relation/i)?.[1] ?? null;
-}
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -87,6 +82,19 @@ export async function POST(req: NextRequest) {
   }
   if (!supabase) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
 
+  // Mỗi email một hồ sơ: đã có thì đăng nhập để cập nhật thay vì nộp mới
+  const existing = await findTalentByEmail(supabase, draft.email);
+  if (existing) {
+    return NextResponse.json(
+      {
+        error: 'Email này đã có hồ sơ trên DienVienVN. Vui lòng đăng nhập để chỉnh sửa hồ sơ hoặc ứng tuyển dự án.',
+        step: 1,
+        emailExists: true
+      },
+      { status: 409 }
+    );
+  }
+
   if (application) {
     const { data: project } = await supabase.from('casting_projects').select('*').eq('id', application.project_id).maybeSingle();
     if (!project || project.status === 'draft') {
@@ -96,16 +104,7 @@ export async function POST(req: NextRequest) {
     if (problem) return NextResponse.json({ error: problem, step: 6 }, { status: 400 });
   }
 
-  // Nếu database còn thiếu cột (chưa chạy đủ migration), bỏ cột đó và lưu lại để không mất hồ sơ.
-  const row: Record<string, unknown> = { ...record };
-  let { error } = await supabase.from('talent_profiles').insert(row);
-  for (let attempt = 0; error && attempt < 8; attempt++) {
-    const col = missingColumn(error);
-    if (!col || !(col in row) || col === 'id') break;
-    console.error(`[dienvienvn] Bảng talent_profiles thiếu cột "${col}" — hãy chạy migration 20261014_schema_alignment.sql.`);
-    delete row[col];
-    ({ error } = await supabase.from('talent_profiles').insert(row));
-  }
+  const { error } = await writeTalent(row => supabase.from('talent_profiles').insert(row), record);
 
   if (error) {
     console.error('[dienvienvn] Không lưu được hồ sơ casting:', error);
@@ -114,6 +113,10 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+
+  // Gửi email xác nhận & tạo mật khẩu để diễn viên đăng nhập, chỉnh sửa hồ sơ và ứng tuyển dự án
+  const account = await sendAccountEmail(supabase, record as unknown as TalentProfile, req.headers);
+  const emailSent = account === 'invited' || account === 'reset';
 
   if (application) {
     const { error: appError } = await supabase.from('project_applications').insert({
@@ -126,9 +129,9 @@ export async function POST(req: NextRequest) {
     if (appError) {
       // Hồ sơ đã lưu; đơn ứng tuyển lỗi thì CRM vẫn thêm tay được từ kho diễn viên.
       console.error('[dienvienvn] Lưu hồ sơ OK nhưng không lưu được đơn ứng tuyển:', appError);
-      return NextResponse.json({ ok: true, id: record.id, stored: 'supabase', applicationSaved: false });
+      return NextResponse.json({ ok: true, id: record.id, stored: 'supabase', applicationSaved: false, emailSent });
     }
   }
 
-  return NextResponse.json({ ok: true, id: record.id, stored: 'supabase', applicationSaved: !!application });
+  return NextResponse.json({ ok: true, id: record.id, stored: 'supabase', applicationSaved: !!application, emailSent });
 }

@@ -3,7 +3,7 @@
 // Truy cập dữ liệu dự án từ trang công khai. Chế độ demo (chưa cấu hình Supabase) dùng localStorage
 // của cùng trình duyệt với CRM để chạy thử trọn luồng.
 import { TalentProfile } from '@/lib/types/crm';
-import { normalizePhone } from '@/lib/dienvienvn/casting-form';
+import { AuthRequiredError, actorFetch } from '@/lib/dienvienvn/actor-auth';
 import { ProducerView, buildProducerView } from './producer';
 import {
   CastingProject,
@@ -29,8 +29,9 @@ function newId(): string {
 }
 
 export async function fetchPublicProjects(): Promise<PublicProject[]> {
-  const res = await fetch('/api/dienvienvn/projects', { cache: 'no-store' });
+  const res = await actorFetch('/api/dienvienvn/projects');
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) throw new AuthRequiredError(data.error);
   if (data.mode === 'demo') {
     return readLocal<CastingProject>(LOCAL_PROJECTS_KEY)
       .filter(p => p.status === 'open')
@@ -41,8 +42,9 @@ export async function fetchPublicProjects(): Promise<PublicProject[]> {
 }
 
 export async function fetchPublicProject(id: string): Promise<PublicProject | null> {
-  const res = await fetch(`/api/dienvienvn/projects?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+  const res = await actorFetch(`/api/dienvienvn/projects?id=${encodeURIComponent(id)}`);
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) throw new AuthRequiredError(data.error);
   if (data.mode === 'demo') {
     const p = readLocal<CastingProject>(LOCAL_PROJECTS_KEY).find(x => x.id === id && x.status !== 'draft');
     return p ? toPublicProject(p) : null;
@@ -52,54 +54,25 @@ export async function fetchPublicProject(id: string): Promise<PublicProject | nu
   return data.project || null;
 }
 
-export interface QuickApplyInput {
+export interface ApplyInput {
   project_id: string;
   role_id: string;
-  phone: string;
-  dob: string;
   selftape_url: string;
   note: string;
 }
 
-export type QuickApplyResult = { ok: true; full_name: string } | { ok: false; error: string; notFound?: boolean };
+export type ApplyResult = { ok: true; full_name: string } | { ok: false; error: string; authRequired?: boolean };
 
-export async function quickApply(input: QuickApplyInput): Promise<QuickApplyResult> {
-  const res = await fetch('/api/dienvienvn/apply', {
+/** Diễn viên đã đăng nhập ứng tuyển một vai bằng hồ sơ của mình. */
+export async function applyToRole(input: ApplyInput): Promise<ApplyResult> {
+  const res = await actorFetch('/api/dienvienvn/apply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
   const data = await res.json().catch(() => ({}));
-
-  if (data.mode === 'demo') {
-    const project = readLocal<CastingProject>(LOCAL_PROJECTS_KEY).find(p => p.id === input.project_id);
-    if (!project) return { ok: false, error: 'Không tìm thấy dự án.' };
-    const problem = checkApplication(project, input.role_id, input.selftape_url);
-    if (problem) return { ok: false, error: problem };
-    const phone = normalizePhone(input.phone);
-    const talent = localTalents().find(t => t.dob === input.dob && normalizePhone(t.phone || '') === phone);
-    if (!talent) {
-      return {
-        ok: false,
-        notFound: true,
-        error: 'Không tìm thấy hồ sơ khớp số điện thoại và ngày sinh. Bạn hãy nộp hồ sơ mới để ứng tuyển.'
-      };
-    }
-    const apps = readLocal<ProjectApplication>(LOCAL_APPLICATIONS_KEY);
-    if (apps.some(a => a.project_id === input.project_id && a.role_id === input.role_id && a.talent_id === talent.id)) {
-      return { ok: false, error: 'Bạn đã ứng tuyển vai này rồi.' };
-    }
-    saveLocalApplication({
-      project_id: input.project_id,
-      role_id: input.role_id,
-      talent_id: talent.id,
-      selftape_url: input.selftape_url || null,
-      note: input.note || null
-    });
-    return { ok: true, full_name: talent.full_name };
-  }
-
-  if (!res.ok || !data.ok) return { ok: false, error: data.error || 'Không gửi được đơn ứng tuyển.', notFound: !!data.notFound };
+  if (data.mode === 'demo') return { ok: false, error: 'Chế độ demo: hãy ứng tuyển bằng cách điền hồ sơ mới.' };
+  if (!res.ok || !data.ok) return { ok: false, error: data.error || 'Không gửi được đơn ứng tuyển.', authRequired: res.status === 401 };
   return { ok: true, full_name: data.full_name || '' };
 }
 

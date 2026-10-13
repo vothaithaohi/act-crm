@@ -62,12 +62,14 @@ export interface StepProps {
   errors: StepErrors;
   /** Dự án & vai đang ứng tuyển (khi vào form từ trang dự án). */
   application?: ApplicationTarget | null;
+  /** Đang chỉnh sửa hồ sơ của tài khoản: email là email đăng nhập, không cho đổi. */
+  emailLocked?: boolean;
 }
 
 const Divider = () => <div className="h-px bg-[#e8e8ed]" />;
 
 /* ---------------- Bước 1 ---------------- */
-export function StepPersonal({ draft, update, errors }: StepProps) {
+export function StepPersonal({ draft, update, errors, emailLocked }: StepProps) {
   const age = ageFromDob(draft.dob);
   const today = new Date().toISOString().slice(0, 10);
   return (
@@ -144,9 +146,16 @@ export function StepPersonal({ draft, update, errors }: StepProps) {
             onChange={e => update({ phone: e.target.value })}
           />
         </Field>
-        <Field label="Email" required htmlFor="email" error={errors.email} hint="Đội ngũ casting sẽ liên hệ qua email này.">
+        <Field
+          label="Email"
+          required
+          htmlFor="email"
+          error={errors.email}
+          hint={emailLocked ? 'Email đăng nhập — không thể thay đổi.' : 'Đội ngũ casting sẽ liên hệ qua email này.'}
+        >
           <TextInput
             id="email"
+            disabled={emailLocked}
             type="email"
             inputMode="email"
             autoComplete="email"

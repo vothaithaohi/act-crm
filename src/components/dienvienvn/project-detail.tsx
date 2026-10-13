@@ -10,28 +10,49 @@ import {
   projectTypeLabel,
   roleSummary
 } from '@/lib/projects/types';
-import { fetchPublicProject, quickApply } from '@/lib/projects/public-client';
-import { isValidVnPhone } from '@/lib/dienvienvn/casting-form';
+import { applyToRole, fetchPublicProject } from '@/lib/projects/public-client';
+import { AuthRequiredError, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
+import { LoginGate } from './actor-pages';
 
 export function ProjectDetail({ projectId }: { projectId: string }) {
   const href = useDvvnHref();
   const [project, setProject] = useState<PublicProject | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [applyRole, setApplyRole] = useState<ProjectRole | null>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const session = useActorSession();
 
+  // Chỉ diễn viên đã đăng nhập mới xem được dự án (chế độ demo không có tài khoản nên cho xem)
   useEffect(() => {
+    if (session.status === 'loading') return;
+    if (session.status === 'signed-out') {
+      setNeedsLogin(true);
+      return;
+    }
+    setNeedsLogin(false);
     fetchPublicProject(projectId)
       .then(setProject)
       .catch(e => {
+        if (e instanceof AuthRequiredError) return setNeedsLogin(true);
         setError(e instanceof Error ? e.message : 'Không tải được dự án.');
         setProject(null);
       });
-  }, [projectId]);
+  }, [projectId, session.status]);
+
+  if (needsLogin) {
+    return (
+      <LoginGate
+        title="Đăng nhập để xem dự án."
+        description="Dự án đang casting chỉ dành cho diễn viên đã có hồ sơ trên DienVienVN. Đăng nhập để xem chi tiết và tự ứng tuyển vai phù hợp."
+        next={href(`/du-an/${projectId}`)}
+      />
+    );
+  }
 
   if (project === undefined) {
     return (
@@ -72,8 +93,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] pb-20">
         <div className="mx-auto max-w-[980px] px-4 pt-6 md:px-6 lg:pt-10">
-          <Link href={href('/')} className="dv-link text-[14px]">
-            <ChevronLeft className="h-4 w-4" /> Trang chủ DienVienVN
+          <Link href={href(session.status === 'signed-in' ? '/tai-khoan' : '/')} className="dv-link text-[14px]">
+            <ChevronLeft className="h-4 w-4" /> {session.status === 'signed-in' ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN'}
           </Link>
 
           <header className="mt-4">
@@ -152,22 +173,31 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       </main>
       <SiteFooter />
 
-      {applyRole && <ApplySheet project={project} role={applyRole} onClose={() => setApplyRole(null)} />}
+      {applyRole && (
+        <ApplySheet project={project} role={applyRole} signedIn={session.status === 'signed-in'} onClose={() => setApplyRole(null)} />
+      )}
     </>
   );
 }
 
 /** Bảng ứng tuyển: bottom sheet trên điện thoại, hộp thoại giữa màn hình trên máy tính. */
-function ApplySheet({ project, role, onClose }: { project: PublicProject; role: ProjectRole; onClose: () => void }) {
+function ApplySheet({
+  project,
+  role,
+  signedIn,
+  onClose
+}: {
+  project: PublicProject;
+  role: ProjectRole;
+  signedIn: boolean;
+  onClose: () => void;
+}) {
   const href = useDvvnHref();
-  const [tab, setTab] = useState<'new' | 'existing'>('new');
-  const [phone, setPhone] = useState('');
-  const [dob, setDob] = useState('');
   const [selftape, setSelftape] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [notFound, setNotFound] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
   const [doneName, setDoneName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -185,17 +215,15 @@ function ApplySheet({ project, role, onClose }: { project: PublicProject; role: 
 
   const submit = async () => {
     setError('');
-    setNotFound(false);
-    if (!isValidVnPhone(phone)) return setError('Số điện thoại gồm 10 số, bắt đầu bằng 0.');
-    if (!dob) return setError('Vui lòng chọn ngày sinh.');
+    setAuthRequired(false);
     if (project.selftape_required && !selftape.trim()) return setError('Dự án này bắt buộc gửi link self-tape.');
     setSubmitting(true);
     try {
-      const r = await quickApply({ project_id: project.id, role_id: role.id, phone, dob, selftape_url: selftape.trim(), note: note.trim() });
+      const r = await applyToRole({ project_id: project.id, role_id: role.id, selftape_url: selftape.trim(), note: note.trim() });
       if (r.ok) setDoneName(r.full_name);
       else {
         setError(r.error);
-        setNotFound(!!r.notFound);
+        setAuthRequired(!!r.authRequired);
       }
     } catch {
       setError('Mất kết nối mạng. Vui lòng thử lại.');
@@ -235,74 +263,61 @@ function ApplySheet({ project, role, onClose }: { project: PublicProject; role: 
             <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
               Cảm ơn {doneName || 'bạn'}. Đội ngũ casting sẽ liên hệ nếu hồ sơ phù hợp với vai {role.name}.
             </p>
-            <button type="button" onClick={onClose} className="dv-btn dv-btn-primary mt-8">
-              Xong
-            </button>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <button type="button" onClick={onClose} className="dv-btn dv-btn-primary">
+                Xong
+              </button>
+              <Link href={href('/tai-khoan')} className="dv-btn dv-btn-secondary">
+                Vai đã ứng tuyển
+              </Link>
+            </div>
+          </div>
+        ) : !signedIn ? (
+          // Chế độ demo (chưa có tài khoản diễn viên): ứng tuyển kèm hồ sơ mới
+          <div className="mt-6">
+            <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
+              Điền hồ sơ casting 7 bước. Vai <span className="font-semibold text-[var(--dv-text)]">{role.name}</span> sẽ được chọn sẵn
+              {project.selftape_required ? ', và bạn sẽ dán link self-tape ở bước Hình ảnh.' : '.'}
+            </p>
+            <Link href={formHref} className="dv-btn dv-btn-primary mt-6 w-full">
+              Điền hồ sơ &amp; ứng tuyển <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
         ) : (
-          <>
-            <div className="mt-5 grid grid-cols-2 rounded-[12px] bg-[var(--dv-bg-alt)] p-1 text-[14px]">
-              {(['new', 'existing'] as const).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    setTab(t);
-                    setError('');
-                  }}
-                  className={`rounded-[9px] px-3 py-2 transition-colors ${tab === t ? 'bg-white font-semibold shadow-[0_1px_4px_rgba(0,0,0,0.08)]' : 'text-[var(--dv-text-secondary)]'}`}
-                >
-                  {t === 'new' ? 'Chưa có hồ sơ' : 'Đã có hồ sơ'}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'new' ? (
-              <div className="mt-6">
-                <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                  Điền hồ sơ casting 7 bước. Vai <span className="font-semibold text-[var(--dv-text)]">{role.name}</span> sẽ được chọn sẵn
-                  {project.selftape_required ? ', và bạn sẽ dán link self-tape ở bước Hình ảnh.' : '.'}
-                </p>
-                <Link href={formHref} className="dv-btn dv-btn-primary mt-6 w-full">
-                  Điền hồ sơ &amp; ứng tuyển <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 space-y-4">
-                <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-                  Đã từng nộp hồ sơ trên DienVienVN? Xác nhận bằng số điện thoại và ngày sinh để ứng tuyển nhanh.
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Số điện thoại" required htmlFor="qa-phone">
-                    <TextInput id="qa-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="0912 345 678" value={phone} onChange={e => setPhone(e.target.value)} />
-                  </Field>
-                  <Field label="Ngày sinh" required htmlFor="qa-dob">
-                    <TextInput id="qa-dob" type="date" value={dob} onChange={e => setDob(e.target.value)} />
-                  </Field>
-                </div>
-                <Field label="Link self-tape" required={project.selftape_required} htmlFor="qa-tape" hint="YouTube (không công khai), Google Drive…">
-                  <TextInput id="qa-tape" type="url" inputMode="url" placeholder="https://" value={selftape} onChange={e => setSelftape(e.target.value)} />
-                </Field>
-                <Field label="Lời nhắn cho đội casting" htmlFor="qa-note">
-                  <TextInput id="qa-note" placeholder="Không bắt buộc" value={note} onChange={e => setNote(e.target.value)} />
-                </Field>
-                {error && (
-                  <p role="alert" className="rounded-[12px] bg-[#fff0f0] p-3 text-[14px] leading-[1.43] text-[#b00020]">
-                    {error}{' '}
-                    {notFound && (
-                      <Link href={formHref} className="font-semibold underline">
-                        Nộp hồ sơ mới
-                      </Link>
-                    )}
-                  </p>
+          <div className="mt-6 space-y-4">
+            <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
+              Hồ sơ casting trong tài khoản của bạn sẽ được gửi tới đội ngũ casting của dự án.{' '}
+              <Link href={href('/tai-khoan/ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
+                Cập nhật hồ sơ
+              </Link>{' '}
+              trước khi ứng tuyển nếu cần.
+            </p>
+            <Field
+              label="Link self-tape"
+              required={project.selftape_required}
+              htmlFor="qa-tape"
+              hint="YouTube (không công khai), Google Drive…"
+            >
+              <TextInput id="qa-tape" type="url" inputMode="url" placeholder="https://" value={selftape} onChange={e => setSelftape(e.target.value)} />
+            </Field>
+            <Field label="Lời nhắn cho đội casting" htmlFor="qa-note">
+              <TextInput id="qa-note" placeholder="Không bắt buộc" value={note} onChange={e => setNote(e.target.value)} />
+            </Field>
+            {error && (
+              <p role="alert" className="rounded-[12px] bg-[#fff0f0] p-3 text-[14px] leading-[1.43] text-[#b00020]">
+                {error}{' '}
+                {authRequired && (
+                  <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/du-an/${project.id}`))}`)} className="font-semibold underline">
+                    Đăng nhập lại
+                  </Link>
                 )}
-                <button type="button" onClick={submit} disabled={submitting} className="dv-btn dv-btn-primary w-full">
-                  {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
-                  {submitting ? 'Đang gửi…' : 'Gửi ứng tuyển'}
-                </button>
-              </div>
+              </p>
             )}
-          </>
+            <button type="button" onClick={submit} disabled={submitting} className="dv-btn dv-btn-primary w-full">
+              {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
+              {submitting ? 'Đang gửi…' : 'Gửi ứng tuyển'}
+            </button>
+          </div>
         )}
       </div>
     </div>

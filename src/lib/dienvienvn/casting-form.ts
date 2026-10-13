@@ -443,3 +443,119 @@ export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'>
     review_status: 'pending'
   };
 }
+
+const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+const ROLE_IDS = ['leading', 'supporting', 'cameo', 'extra'] as const;
+const asRole = (r: unknown): ExperienceEntry['role'] =>
+  (ROLE_IDS as readonly string[]).includes(String(r)) ? (r as ExperienceEntry['role']) : 'supporting';
+
+/**
+ * Chiều ngược của draftToTalentProfile: dựng lại dữ liệu form từ hồ sơ đã lưu
+ * để diễn viên đăng nhập chỉnh sửa / bổ sung.
+ */
+export function talentToDraft(t: TalentProfile): CastingDraft {
+  const base = createEmptyDraft();
+  const exp = (t.acting_experience || {}) as Partial<ActingExperience>;
+  const film = (list?: { title: string; role: unknown; character?: string; year?: number }[]): ExperienceEntry[] =>
+    (list || []).map(x => ({ id: newId(), title: str(x.title), role: asRole(x.role), character: str(x.character), year: str(x.year) }));
+  const academic = t.academic_profile;
+  const option = (list: string[], values: (string | undefined)[]) =>
+    values.filter((v): v is string => !!v && list.includes(v));
+
+  const trainings: TrainingEntry[] = [
+    ...(academic?.enrollments || []).map(e => ({
+      ...blankTraining(),
+      id: e.id || newId(),
+      school: ACT_ACADEMY_SCHOOL,
+      act_level: e.level,
+      program_type: 'short_course' as ExternalTraining['program_type'],
+      class_code: str(e.class_code),
+      term_name: str(e.term_name),
+      start_date: str(e.start_date),
+      end_date: str(e.end_date),
+      status: e.status,
+      instructor: str(e.instructor),
+      evaluation: str(e.evaluation)
+    })),
+    ...(academic?.external_trainings || []).map(e => {
+      const known = findArtSchool(e.school_name);
+      return {
+        ...blankTraining(),
+        id: e.id || newId(),
+        school: known ? known.name : OTHER_SCHOOL,
+        custom_school: known ? '' : str(e.school_name),
+        program_type: e.program_type,
+        major: str(e.major),
+        class_code: str(e.class_code),
+        term_name: str(e.term_name),
+        start_date: str(e.start_date),
+        end_date: str(e.end_date),
+        status: e.status,
+        evaluation: str(e.evaluation)
+      };
+    })
+  ];
+
+  return {
+    ...base,
+    full_name: str(t.full_name),
+    gender: t.gender || base.gender,
+    dob: str(t.dob).slice(0, 10),
+    phone: str(t.phone),
+    email: str(t.email),
+    address: str(t.address),
+    city: str(t.city || t.province),
+    parent_guardian_name: str(t.parent_guardian_name),
+    height_cm: str(t.height_cm),
+    weight_kg: str(t.weight_kg),
+    shoe_size: str(t.shoe_size),
+    chest_cm: str(t.chest_cm),
+    waist_cm: str(t.waist_cm),
+    hip_cm: str(t.hip_cm),
+    tattoos_piercings: t.tattoos_piercings?.length ? t.tattoos_piercings : ['none'],
+    experience: {
+      feature_films: film([...(exp.feature_films || []), ...(exp.short_films || [])]),
+      web_dramas: film(exp.web_dramas),
+      tv_shows: film(exp.tv_shows),
+      commercials: (exp.commercials || []).map(x => ({ id: newId(), title: str(x.brand), role: asRole(x.role), character: '', year: str(x.year) })),
+      music_videos: (exp.music_videos || []).map(x => ({ id: newId(), title: str(x.song), role: asRole(x.role), character: str(x.artist), year: str(x.year) }))
+    },
+    accents: option(ACCENT_OPTIONS, (t.vietnamese_accents || []).map(a => a.accent)),
+    languages: option(LANGUAGE_OPTIONS, (t.languages || []).map(l => l.language)),
+    martial_arts: option(MARTIAL_ARTS_OPTIONS, (t.martial_arts || []).map(m => m.style)),
+    instruments: option(INSTRUMENT_OPTIONS, (t.instruments || []).map(i => i.name)),
+    dancing: option(DANCE_OPTIONS, (t.dancing || []).map(d => d.style)),
+    sports: option(SPORT_OPTIONS, (t.sports || []).map(s => s.name)),
+    willing_work_cities: t.willing_work_cities?.length ? t.willing_work_cities : base.willing_work_cities,
+    role_willingness: t.role_willingness || [],
+    headshot_url: str(t.headshot_url),
+    fullbody_url: str(t.fullbody_url),
+    compcard_url: str(t.compcard_url),
+    social_links: {
+      facebook: str(t.social_links?.facebook),
+      instagram: str(t.social_links?.instagram),
+      tiktok: str(t.social_links?.tiktok),
+      showreel_url: str(t.social_links?.showreel_url)
+    },
+    trainings,
+    consent: true
+  };
+}
+
+function blankTraining(): TrainingEntry {
+  return {
+    id: newId(),
+    school: ACT_ACADEMY_SCHOOL,
+    custom_school: '',
+    act_level: 'ACT1',
+    program_type: 'university',
+    major: '',
+    class_code: '',
+    term_name: '',
+    start_date: '',
+    end_date: '',
+    status: 'completed',
+    instructor: '',
+    evaluation: ''
+  };
+}

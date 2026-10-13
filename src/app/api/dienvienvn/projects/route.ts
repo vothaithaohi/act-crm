@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getActor } from '@/lib/dienvienvn/actor-server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, toPublicProject } from '@/lib/projects/types';
 
-// Danh sách dự án công khai (đang casting), hoặc 1 dự án theo ?id= (trừ bản nháp).
+// Dự án đang casting — chỉ diễn viên đã đăng nhập mới xem được.
+// Danh sách dự án mở, hoặc 1 dự án theo ?id= (trừ bản nháp).
 // Tên thật / công ty sản xuất bị loại bỏ ngay trên server khi dự án bật "Ẩn tên".
 export async function GET(req: NextRequest) {
   const { mode, db } = getServiceDb();
   if (mode === 'demo') return NextResponse.json({ mode: 'demo' });
   if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
+
+  const actor = await getActor(req, db);
+  if (actor instanceof NextResponse) return actor;
 
   const id = req.nextUrl.searchParams.get('id');
   if (id) {

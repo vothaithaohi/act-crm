@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Clapperboard, Loader2, Send, UserRound, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Clapperboard, Loader2, Mail, Send, UserRound, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProjectRole, PublicProject, isAcceptingApplications } from '@/lib/projects/types';
 import { checkLocalApplication, fetchPublicProject, saveLocalApplication } from '@/lib/projects/public-client';
+import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import confetti from 'canvas-confetti';
 import {
   CASTING_STEPS,
@@ -65,6 +66,8 @@ interface SubmitResult {
   id: string;
   name: string;
   email: string;
+  /** Đã gửi email xác nhận & tạo mật khẩu. */
+  emailSent: boolean;
 }
 
 function readJSON<T>(key: string): T | null {
@@ -85,8 +88,13 @@ function writeJSON(key: string, value: unknown) {
   }
 }
 
-export function CastingApplication() {
+/** mode="edit": diễn viên đã đăng nhập chỉnh sửa / bổ sung hồ sơ của mình. */
+export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edit' }) {
+  const editing = mode === 'edit';
   const href = useDvvnHref();
+  const session = useActorSession();
+  const [loadError, setLoadError] = useState('');
+  const [bannerLogin, setBannerLogin] = useState(false);
   const [draft, setDraft] = useState<CastingDraft>(createEmptyDraft);
   const [step, setStep] = useState(1);
   const [maxVisited, setMaxVisited] = useState(1);
@@ -107,7 +115,7 @@ export function CastingApplication() {
 
   // Vào form từ trang dự án: chọn sẵn dự án & vai ứng tuyển
   useEffect(() => {
-    if (!projectParam || !roleParam) {
+    if (editing || !projectParam || !roleParam) {
       setTarget(null);
       return;
     }
@@ -131,7 +139,7 @@ export function CastingApplication() {
     return () => {
       cancelled = true;
     };
-  }, [projectParam, roleParam]);
+  }, [editing, projectParam, roleParam]);
 
   const clearTarget = () => {
     setTarget(null);
@@ -145,6 +153,7 @@ export function CastingApplication() {
 
   // Khôi phục bản nháp đang điền dở trên thiết bị
   useEffect(() => {
+    if (editing) return;
     const saved = readJSON<{ draft: CastingDraft; step: number; maxVisited: number }>(DRAFT_KEY);
     if (saved?.draft) {
       const base = createEmptyDraft();
@@ -158,16 +167,51 @@ export function CastingApplication() {
       setMaxVisited(Math.min(Math.max(saved.maxVisited || 1, 1), CASTING_STEPS.length));
     }
     setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Đã có tài khoản (đang đăng nhập) thì chỉnh sửa hồ sơ hiện có thay vì nộp hồ sơ mới
+  useEffect(() => {
+    if (!editing && session.status === 'signed-in' && !result) router.replace(href('/tai-khoan/ho-so'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, session.status]);
+
+  // Chỉnh sửa: tải hồ sơ đã lưu của tài khoản đang đăng nhập
+  useEffect(() => {
+    if (!editing) return;
+    if (session.status === 'signed-out') {
+      router.replace(href(`/dang-nhap?next=${encodeURIComponent(href('/tai-khoan/ho-so'))}`));
+      return;
+    }
+    if (session.status === 'unavailable') return setLoadError('Hệ thống tài khoản diễn viên chưa được kết nối.');
+    if (session.status !== 'signed-in' || hydrated) return;
+    (async () => {
+      const res = await actorFetch('/api/dienvienvn/me');
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401) return signOutActor();
+      if (!res.ok || !body.draft) return setLoadError(body.error || 'Không tải được hồ sơ.');
+      const base = createEmptyDraft();
+      setDraft({
+        ...base,
+        ...body.draft,
+        experience: { ...base.experience, ...(body.draft.experience || {}) },
+        social_links: { ...base.social_links, ...(body.draft.social_links || {}) },
+        consent: true
+      });
+      setMaxVisited(CASTING_STEPS.length);
+      setHydrated(true);
+    })().catch(() => setLoadError('Mất kết nối mạng. Vui lòng tải lại trang.'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, session.status]);
 
   // Tự lưu nháp
   useEffect(() => {
-    if (!hydrated || result) return;
+    if (editing || !hydrated || result) return;
     const t = window.setTimeout(() => {
       setDraftSaved(writeJSON(DRAFT_KEY, { draft, step, maxVisited }) ? 'saved' : 'failed');
     }, 500);
     return () => window.clearTimeout(t);
-  }, [draft, step, maxVisited, hydrated, result]);
+  }, [editing, draft, step, maxVisited, hydrated, result]);
 
   // Giữ bước đang điền luôn hiển thị trên thanh bước (mobile)
   useEffect(() => {
@@ -178,6 +222,7 @@ export function CastingApplication() {
   const update = useCallback((patch: Partial<CastingDraft>) => {
     setDraft(d => ({ ...d, ...patch }));
     setBanner('');
+    setBannerLogin(false);
   }, []);
 
   const allErrors = useMemo(() => {
@@ -257,6 +302,40 @@ export function CastingApplication() {
 
     setSubmitting(true);
     setBanner('');
+    setBannerLogin(false);
+
+    if (editing) {
+      try {
+        const res = await actorFetch('/api/dienvienvn/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draft })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          if (typeof data.step === 'number') {
+            setStep(data.step);
+            setShowErrorsFor(prev => Array.from(new Set([...prev, data.step])));
+          }
+          setBanner(
+            res.status === 401
+              ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại rồi lưu.'
+              : data.error || 'Không lưu được thay đổi. Vui lòng thử lại.'
+          );
+          setBannerLogin(res.status === 401);
+          scrollToTop();
+          return;
+        }
+        router.push(href('/tai-khoan?da-luu=1'));
+      } catch {
+        setBanner('Mất kết nối mạng. Vui lòng thử lại.');
+        scrollToTop();
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch('/api/dienvienvn/submit', {
         method: 'POST',
@@ -276,6 +355,7 @@ export function CastingApplication() {
           setShowErrorsFor(prev => Array.from(new Set([...prev, data.step])));
         }
         setBanner(data.error || 'Không gửi được hồ sơ. Vui lòng kiểm tra kết nối mạng và thử lại.');
+        setBannerLogin(!!data.emailExists);
         scrollToTop();
         return;
       }
@@ -303,6 +383,7 @@ export function CastingApplication() {
         id: data.id,
         name: draft.full_name.trim(),
         email: draft.email.trim().toLowerCase(),
+        emailSent: !!data.emailSent,
         appliedTo: target && data.applicationSaved !== false ? `${target.project.display_name} · vai ${target.role.name}` : null
       });
       window.scrollTo({ top: 0 });
@@ -336,6 +417,26 @@ export function CastingApplication() {
     );
   }
 
+  if (editing && !hydrated) {
+    return (
+      <>
+        <GlobalNav />
+        <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
+          {loadError ? (
+            <>
+              <p className="text-[17px]">{loadError}</p>
+              <Link href={href('/tai-khoan')} className="dv-btn dv-btn-secondary mt-6">
+                Về tài khoản
+              </Link>
+            </>
+          ) : (
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
+          )}
+        </main>
+      </>
+    );
+  }
+
   const StepComponent = STEP_COMPONENTS[step];
   const current = CASTING_STEPS[step - 1];
   const isLast = step === CASTING_STEPS.length;
@@ -350,7 +451,7 @@ export function CastingApplication() {
       className={`dv-btn ${readyToSubmit ? 'dv-btn-primary' : 'dv-btn-muted'} ${extra}`}
     >
       {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
-      {submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ casting'}
+      {editing ? (submitting ? 'Đang lưu…' : 'Lưu thay đổi') : submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ casting'}
     </button>
   );
 
@@ -403,11 +504,11 @@ export function CastingApplication() {
         <div ref={topRef} className="mx-auto max-w-[1320px] px-4 pt-6 md:px-6 lg:pt-10">
           {/* Tiêu đề trang */}
           <header className="mb-6 lg:mb-8">
-            <Link href={href('/')} className="dv-link text-[14px]">
-              <ChevronLeft className="h-4 w-4" /> Trang chủ DienVienVN
+            <Link href={href(editing ? '/tai-khoan' : '/')} className="dv-link text-[14px]">
+              <ChevronLeft className="h-4 w-4" /> {editing ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN'}
             </Link>
             <h1 className="dv-display mt-2 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[40px] md:leading-[1.1] md:tracking-normal">
-              {target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ casting.'}
+              {editing ? 'Chỉnh sửa hồ sơ.' : target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ casting.'}
             </h1>
             {target && (
               <div className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3 md:max-w-[640px]">
@@ -502,7 +603,20 @@ export function CastingApplication() {
                 {banner && (
                   <div role="alert" className="mx-5 mt-5 flex items-start gap-2.5 rounded-[12px] bg-[#fff0f0] p-3.5 text-[14px] leading-[1.43] text-[#b00020] sm:mx-8">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{banner}</span>
+                    <span>
+                      {banner}
+                      {bannerLogin && (
+                        <>
+                          {' '}
+                          <Link
+                            href={href(`/dang-nhap?next=${encodeURIComponent(href(editing ? '/tai-khoan/ho-so' : '/tai-khoan'))}`)}
+                            className="font-semibold underline underline-offset-2"
+                          >
+                            Đăng nhập
+                          </Link>
+                        </>
+                      )}
+                    </span>
                   </div>
                 )}
 
@@ -511,6 +625,7 @@ export function CastingApplication() {
                     draft={draft}
                     update={update}
                     errors={visibleErrors}
+                    emailLocked={editing}
                     application={
                       target
                         ? {
@@ -600,7 +715,7 @@ export function CastingApplication() {
                     </div>
                   </div>
 
-                  <div ref={consentRef} className="mt-5 border-t border-[#f0f0f2] pt-5">
+                  <div ref={consentRef} className={`mt-5 border-t border-[#f0f0f2] pt-5 ${editing ? 'hidden' : ''}`}>
                     <button
                       type="button"
                       role="checkbox"
@@ -633,18 +748,28 @@ export function CastingApplication() {
                   <div className="mt-5">{submitButton('w-full')}</div>
                   {!readyToSubmit && (
                     <p className="mt-2.5 text-center text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
-                      {allStepsDone ? 'Đánh dấu đồng ý ở trên để nộp hồ sơ.' : 'Hoàn thành đủ 7 bước để nộp hồ sơ.'}
+                      {editing
+                        ? 'Kiểm tra lại các bước được đánh dấu đỏ để lưu.'
+                        : allStepsDone
+                          ? 'Đánh dấu đồng ý ở trên để nộp hồ sơ.'
+                          : 'Hoàn thành đủ 7 bước để nộp hồ sơ.'}
                     </p>
                   )}
                 </div>
 
                 <p className="px-2 text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
+                  {editing ? (
+                    'Thay đổi chỉ được lưu khi bạn bấm “Lưu thay đổi”. Email đăng nhập không thể thay đổi.'
+                  ) : (
+                    <>
                   {draftSaved === 'saved'
                     ? 'Bản nháp được tự động lưu trên thiết bị này.'
                     : draftSaved === 'failed'
                       ? 'Không lưu được bản nháp trên thiết bị này (bộ nhớ trình duyệt đầy hoặc bị chặn).'
                       : 'Bản nháp sẽ được tự động lưu trên thiết bị này.'}{' '}
                   Hồ sơ chỉ được gửi đi khi bạn bấm “Nộp hồ sơ casting”.
+                    </>
+                  )}
                 </p>
               </div>
             </aside>
@@ -706,6 +831,23 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
           <p className="mt-3 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
             Chúng tôi sẽ liên hệ qua email <span className="break-all font-semibold text-[var(--dv-text)]">{result.email}</span> khi có vai
             diễn phù hợp với bạn.
+          </p>
+        </div>
+
+        <div className="mx-auto mt-4 flex max-w-[420px] items-start gap-3 rounded-[16px] border border-[#d2d2d7] p-5 text-left">
+          <Mail className="mt-0.5 h-5 w-5 shrink-0" />
+          <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
+            {result.emailSent ? (
+              <>
+                <span className="font-semibold text-[var(--dv-text)]">Kiểm tra hộp thư của bạn.</span> Mở email xác nhận để tạo mật khẩu — sau
+                đó bạn có thể đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển các dự án đang casting. Nếu không thấy, hãy xem mục Spam.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-[var(--dv-text)]">Kích hoạt tài khoản</span> để chỉnh sửa hồ sơ và tự ứng tuyển các dự án
+                đang casting: vào trang Đăng nhập → “Quên mật khẩu / chưa nhận được email kích hoạt?”.
+              </>
+            )}
           </p>
         </div>
 

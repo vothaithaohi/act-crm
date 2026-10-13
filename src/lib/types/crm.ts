@@ -299,6 +299,8 @@ export interface TalentProfile {
   review_status?: TalentReviewStatus | null;
   review_notes?: string | null;
   submitted_at?: string | null;
+  /** Tài khoản đăng nhập DienVienVN (Supabase Auth) của diễn viên sở hữu hồ sơ. */
+  auth_user_id?: string | null;
   
   created_at?: string;
   updated_at?: string;
