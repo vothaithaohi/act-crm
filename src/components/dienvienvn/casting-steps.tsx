@@ -77,7 +77,7 @@ export function StepPersonal({ draft, update, errors }: StepProps) {
           <TextInput
             id="full_name"
             autoComplete="name"
-            placeholder="VD: Trương Ngọc Ánh"
+            placeholder="VD: Võ Thái Thảo"
             value={draft.full_name}
             invalid={!!errors.full_name}
             onChange={e => update({ full_name: e.target.value })}
