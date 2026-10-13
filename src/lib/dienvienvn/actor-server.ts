@@ -71,8 +71,22 @@ export async function sendAccountEmail(db: SupabaseClient, talent: TalentProfile
     data: { kind: 'dienvienvn_actor', full_name: talent.full_name }
   });
   if (error) {
-    // Email đã có tài khoản Supabase (VD: tài khoản nhân sự) → không tự gắn để tránh nhầm quyền.
-    if (/already|registered|exists/i.test(error.message)) return 'exists';
+    if (/already|registered|exists/i.test(error.message)) {
+      // Email đã có tài khoản Supabase (VD: dùng chung email đăng nhập CRM, hoặc lần mời trước chưa gắn được
+      // vào hồ sơ): gắn hồ sơ vào tài khoản đó và gửi email đặt mật khẩu. Chỉ chủ hộp thư mới mở được link.
+      const existing = await findAuthUserByEmail(db, email);
+      if (!existing) return 'exists';
+      if (existing.id !== talent.auth_user_id) {
+        const { error: linkError } = await db.from('talent_profiles').update({ auth_user_id: existing.id }).eq('id', talent.id);
+        if (linkError) {
+          console.error('[dienvienvn] Email đã có tài khoản nhưng không gắn được vào hồ sơ:', linkError.message);
+          return 'exists';
+        }
+      }
+      const { error: resetError } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+      if (resetError) console.error('[dienvienvn] Không gửi được email đặt mật khẩu:', resetError.message);
+      return resetError ? 'failed' : 'reset';
+    }
     console.error('[dienvienvn] Không gửi được email mời tạo tài khoản:', error.message);
     return 'failed';
   }
@@ -85,6 +99,18 @@ export async function sendAccountEmail(db: SupabaseClient, talent: TalentProfile
     }
   }
   return 'invited';
+}
+
+/** Tìm tài khoản Supabase Auth theo email (duyệt danh sách người dùng — đủ nhanh với vài nghìn tài khoản). */
+async function findAuthUserByEmail(db: SupabaseClient, email: string): Promise<User | null> {
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data?.users?.length) return null;
+    const found = data.users.find(u => (u.email || '').toLowerCase() === email);
+    if (found) return found;
+    if (data.users.length < 200) return null;
+  }
+  return null;
 }
 
 /** Cột mà PostgREST báo không tồn tại (PGRST204: "Could not find the 'x' column of 'y' in the schema cache"). */
