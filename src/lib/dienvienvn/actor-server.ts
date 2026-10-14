@@ -54,6 +54,9 @@ export type AccountEmailResult = 'invited' | 'reset' | 'exists' | 'failed';
 export async function sendAccountEmail(db: SupabaseClient, talent: TalentProfile, headers: Headers): Promise<AccountEmailResult> {
   const email = (talent.email || '').trim().toLowerCase();
   if (!email) return 'failed';
+  // Email của nhân sự CRM: không gắn hồ sơ diễn viên và không gửi email đặt mật khẩu,
+  // để luồng diễn viên không bao giờ đổi được mật khẩu đăng nhập CRM.
+  if (await isStaffEmail(db, email)) return 'exists';
   const redirectTo = `${publicSiteUrl(headers)}${SET_PASSWORD_PATH}`;
 
   if (talent.auth_user_id) {
@@ -99,6 +102,12 @@ export async function sendAccountEmail(db: SupabaseClient, talent: TalentProfile
     }
   }
   return 'invited';
+}
+
+/** Email thuộc bảng profiles (nhân sự CRM)? */
+async function isStaffEmail(db: SupabaseClient, email: string): Promise<boolean> {
+  const { data } = await db.from('profiles').select('id').ilike('email', email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
+  return !!data?.length;
 }
 
 /** Tìm tài khoản Supabase Auth theo email (duyệt danh sách người dùng — đủ nhanh với vài nghìn tài khoản). */
