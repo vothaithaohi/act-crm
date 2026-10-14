@@ -64,12 +64,14 @@ export interface StepProps {
   application?: ApplicationTarget | null;
   /** Đang chỉnh sửa hồ sơ của tài khoản: email là email đăng nhập, không cho đổi. */
   emailLocked?: boolean;
+  /** Tên mẫu trong ô Họ và tên (đổi luân phiên mỗi lần mở form). */
+  namePlaceholder?: string;
 }
 
 const Divider = () => <div className="h-px bg-[#e8e8ed]" />;
 
 /* ---------------- Bước 1 ---------------- */
-export function StepPersonal({ draft, update, errors, emailLocked }: StepProps) {
+export function StepPersonal({ draft, update, errors, emailLocked, namePlaceholder = 'Võ Thái Thảo' }: StepProps) {
   const age = ageFromDob(draft.dob);
   const today = new Date().toISOString().slice(0, 10);
   return (
@@ -79,7 +81,7 @@ export function StepPersonal({ draft, update, errors, emailLocked }: StepProps) 
           <TextInput
             id="full_name"
             autoComplete="name"
-            placeholder="VD: Võ Thái Thảo"
+            placeholder={`VD: ${namePlaceholder}`}
             value={draft.full_name}
             invalid={!!errors.full_name}
             onChange={e => update({ full_name: e.target.value })}

@@ -31,6 +31,9 @@ import {
 } from './casting-steps';
 
 const DRAFT_KEY = 'dvvn_casting_draft_v1';
+/** Tên mẫu trong ô Họ và tên, luân phiên mỗi lần mở form. */
+const NAME_HINTS = ['Võ Thái Thảo', 'Nguyễn Đăng Khoa'];
+const NAME_HINT_KEY = 'dvvn_name_hint_turn';
 /** Kho tạm cho chế độ demo chưa nối Supabase — CRM đọc key này để hiển thị hồ sơ mới nộp. */
 export const LOCAL_SUBMISSIONS_KEY = 'dvvn_local_submissions';
 
@@ -95,6 +98,19 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
   const session = useActorSession();
   const [loadError, setLoadError] = useState('');
   const [bannerLogin, setBannerLogin] = useState(false);
+  const [nameHint, setNameHint] = useState(NAME_HINTS[0]);
+
+  // Mỗi lần mở trang (tải lại hoặc vào lại form) đổi sang tên mẫu kế tiếp
+  useEffect(() => {
+    let turn = 0;
+    try {
+      turn = Number(localStorage.getItem(NAME_HINT_KEY) || 0) || 0;
+      localStorage.setItem(NAME_HINT_KEY, String((turn + 1) % NAME_HINTS.length));
+    } catch {
+      turn = Math.floor(Math.random() * NAME_HINTS.length);
+    }
+    setNameHint(NAME_HINTS[turn % NAME_HINTS.length]);
+  }, []);
   const [draft, setDraft] = useState<CastingDraft>(createEmptyDraft);
   const [step, setStep] = useState(1);
   const [maxVisited, setMaxVisited] = useState(1);
@@ -626,6 +642,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                     update={update}
                     errors={visibleErrors}
                     emailLocked={editing}
+                    namePlaceholder={nameHint}
                     application={
                       target
                         ? {

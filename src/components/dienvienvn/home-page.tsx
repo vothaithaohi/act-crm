@@ -46,7 +46,8 @@ const HOMEPAGE_SECTIONS = {
   tiles: false, // Hồ sơ casting / Nhà sản xuất / Đào tạo diễn xuất / Riêng tư
   process: false, // "Bảy bước. Khoảng mười phút."
   closing: false, // "Vai diễn tiếp theo có thể là của bạn."
-  footer: false
+  footer: false,
+  nav: false // Thanh trắng trên cùng (logo DienVienVN)
 } as const;
 
 export function DienVienVNHome() {
@@ -66,13 +67,13 @@ export function DienVienVNHome() {
 
   return (
     <>
-      <GlobalNav />
+      {HOMEPAGE_SECTIONS.nav && <GlobalNav />}
 
       <main>
         {/* RA MẮT — Coming soon (màn hình đầu tiên khi vào trang chủ) */}
         <section
           id="ra-mat"
-          className="dv-tile dv-tile-dark flex min-h-[calc(100svh-44px)] scroll-mt-11 flex-col items-center justify-center px-4 py-16 md:py-20"
+          className="dv-tile dv-tile-dark flex min-h-[100svh] scroll-mt-11 flex-col items-center justify-center px-4 py-16 md:py-20"
         >
           <Reveal>
             <h1 className="dv-display dv-hero-headline text-[#f5f5f7]">DienVienVN</h1>

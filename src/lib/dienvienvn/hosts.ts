@@ -16,3 +16,13 @@ export function publicSiteUrl(headers: Headers): string {
   const base = PUBLIC_HOSTS.includes(host.split(':')[0]) ? '' : '/dienvienvn';
   return `${proto}://${host}${base}`;
 }
+
+/** Địa chỉ chính thức (canonical) của DienVienVN. */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dienvienvn.com').replace(/\/$/, '');
+
+export function isPublicHost(headers: Headers): boolean {
+  return PUBLIC_HOSTS.includes(requestHost(headers).split(':')[0]);
+}
+
+/** Các trang công khai được phép index (đường dẫn trên tên miền dienvienvn.com). */
+export const INDEXABLE_PATHS = ['/', '/nop-ho-so'];
