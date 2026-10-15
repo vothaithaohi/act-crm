@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PUBLIC_HOSTS } from '@/lib/dienvienvn/hosts';
+import { CRM_HOST, PUBLIC_HOSTS } from '@/lib/dienvienvn/hosts';
 
 // Trên tên miền DienVienVN, toàn bộ đường dẫn được phục vụ từ /dienvienvn và CRM không bị lộ ra ngoài.
 
@@ -8,6 +8,11 @@ export function middleware(req: NextRequest) {
   if (!PUBLIC_HOSTS.includes(host)) return NextResponse.next();
 
   const { pathname } = req.nextUrl;
+
+  // dienvienvn.com/admin → CRM ở tên miền riêng (CRM dùng đường dẫn gốc nên không chạy dưới /admin được)
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    return NextResponse.redirect(`https://${CRM_HOST}/`, 308);
+  }
 
   if (pathname === '/dienvienvn' || pathname.startsWith('/dienvienvn/')) {
     const url = req.nextUrl.clone();

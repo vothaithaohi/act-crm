@@ -26,3 +26,6 @@ export function isPublicHost(headers: Headers): boolean {
 
 /** Các trang công khai được phép index (đường dẫn trên tên miền dienvienvn.com). */
 export const INDEXABLE_PATHS = ['/', '/nop-ho-so'];
+
+/** Tên miền riêng của CRM; dienvienvn.com/admin chuyển hướng tới đây. */
+export const CRM_HOST = (process.env.CRM_HOST || 'admin.dienvienvn.com').trim().toLowerCase();
