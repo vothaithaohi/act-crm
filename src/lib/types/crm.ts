@@ -293,9 +293,45 @@ export interface TalentProfile {
   compcard_url?: string | null;
   
   academic_profile?: AcademicProfile;
+
+  // Nguồn hồ sơ & trạng thái duyệt (hồ sơ tự nộp từ dienvienvn.com cần duyệt trước khi dùng)
+  submission_source?: TalentSubmissionSource | null;
+  review_status?: TalentReviewStatus | null;
+  review_notes?: string | null;
+  submitted_at?: string | null;
+  /** Tài khoản đăng nhập DienVienVN (Supabase Auth) của diễn viên sở hữu hồ sơ. */
+  auth_user_id?: string | null;
+  /** Đường dẫn riêng: dienvienvn.com/<username>, admin.dienvienvn.com/<username>. */
+  username?: string | null;
+  /** Diễn viên đồng ý hiển thị hồ sơ trên trang công khai. */
+  public_profile?: boolean | null;
   
   created_at?: string;
   updated_at?: string;
+}
+
+export type TalentSubmissionSource = 'crm' | 'dienvienvn';
+
+export type TalentReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export const REVIEW_STATUS_DETAILS: Record<TalentReviewStatus, { label: string; badgeClass: string }> = {
+  pending: {
+    label: 'Chờ duyệt',
+    badgeClass: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+  },
+  approved: {
+    label: 'Đã duyệt',
+    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+  },
+  rejected: {
+    label: 'Từ chối',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+  }
+};
+
+/** Hồ sơ cũ (tạo trong CRM, chưa có cột review_status) được coi là đã duyệt. */
+export function getReviewStatus(talent: Pick<TalentProfile, 'review_status'>): TalentReviewStatus {
+  return talent.review_status || 'approved';
 }
 
 export type ACTCourseLevel = 'ACT1' | 'ACT2' | 'ACT3' | 'ACT4' | 'SSC';
@@ -316,6 +352,32 @@ export interface ACTCourseEnrollment {
   certificate_issued?: boolean;
 }
 
+export type ExternalProgramType = 'university' | 'college' | 'intermediate' | 'short_course' | 'workshop';
+
+export const EXTERNAL_PROGRAM_LABELS: Record<ExternalProgramType, string> = {
+  university: 'Đại học chính quy',
+  college: 'Cao đẳng',
+  intermediate: 'Trung cấp',
+  short_course: 'Khóa ngắn hạn',
+  workshop: 'Workshop / Lớp chuyên đề'
+};
+
+/** Quá trình đào tạo tại cơ sở ngoài ACT Academy (không có giảng viên phụ trách). */
+export interface ExternalTraining {
+  id: string;
+  school_name: string;
+  school_group?: string;
+  school_city?: string;
+  program_type: ExternalProgramType;
+  major?: string;
+  class_code?: string;
+  term_name?: string;
+  start_date?: string;
+  end_date?: string;
+  status: EnrollmentStatus;
+  evaluation?: string;
+}
+
 export interface AcademicProfile {
   highest_act_level: ACTCourseLevel | null;
   highest_class_code?: string;
@@ -323,6 +385,7 @@ export interface AcademicProfile {
   enrollments: ACTCourseEnrollment[];
   total_courses_count: number;
   specialization_notes?: string;
+  external_trainings?: ExternalTraining[];
 }
 
 export const ACT_LEVEL_DETAILS: Record<ACTCourseLevel, {
@@ -471,6 +534,9 @@ export interface CastingFilterCriteria {
   cities: string[];
   genres: string[];
   tattoos?: 'all' | 'none' | 'has_tattoo';
+  reviewStatus?: 'all' | TalentReviewStatus;
+  source?: 'all' | TalentSubmissionSource;
+  trainingSchools?: string[];
 }
 
 export interface WebhookLog {

@@ -59,7 +59,7 @@ export function PermissionGuard({
         {/* Glow Icon */}
         <div className="relative mx-auto w-20 h-20">
           <div className="absolute inset-0 bg-rose-500/20 rounded-full blur-xl animate-pulse" />
-          <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/30">
+          <div className="relative w-20 h-20 rounded-2xl act-gold-bg text-black flex items-center justify-center shadow-lg shadow-[#a87b3f]/30">
             <Lock className="w-10 h-10" />
           </div>
         </div>

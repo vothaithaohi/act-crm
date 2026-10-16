@@ -16,6 +16,7 @@ import {
   Swords 
 } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
+import { ACT_ACADEMY_SCHOOL, ART_SCHOOLS } from '@/lib/dienvienvn/schools';
 
 export function TalentFilterSidebar() {
   const { filterCriteria, setFilterCriteria, resetFilters, filteredTalents, talents } = useCRM();
@@ -60,7 +61,10 @@ export function TalentFilterSidebar() {
     filterCriteria.sports.length > 0 ||
     filterCriteria.roleWillingness.length > 0 ||
     filterCriteria.cities.length > 0 ||
-    (filterCriteria.tattoos && filterCriteria.tattoos !== 'all');
+    (filterCriteria.tattoos && filterCriteria.tattoos !== 'all') ||
+    (filterCriteria.reviewStatus && filterCriteria.reviewStatus !== 'all') ||
+    (filterCriteria.source && filterCriteria.source !== 'all') ||
+    Boolean(filterCriteria.trainingSchools && filterCriteria.trainingSchools.length > 0);
 
   return (
     <div className="w-80 shrink-0 bg-card rounded-2xl border p-5 shadow-xs space-y-6 h-fit sticky top-20">
@@ -106,6 +110,80 @@ export function TalentFilterSidebar() {
               className="w-full pl-8 pr-3 py-1.5 rounded-lg border bg-background focus:border-brand-500 outline-none transition-all"
             />
           </div>
+        </div>
+
+        {/* Nguồn hồ sơ & Trạng thái duyệt */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+              Nguồn hồ sơ
+            </label>
+            <select
+              value={filterCriteria.source || 'all'}
+              onChange={(e) => setFilterCriteria(p => ({ ...p, source: e.target.value as typeof p.source }))}
+              className="w-full px-2.5 py-1.5 rounded-lg border bg-background focus:border-brand-500 outline-none"
+            >
+              <option value="all">Tất cả</option>
+              <option value="dienvienvn">DienVienVN</option>
+              <option value="crm">Nhập từ CRM</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+              Trạng thái duyệt
+            </label>
+            <select
+              value={filterCriteria.reviewStatus || 'all'}
+              onChange={(e) => setFilterCriteria(p => ({ ...p, reviewStatus: e.target.value as typeof p.reviewStatus }))}
+              className="w-full px-2.5 py-1.5 rounded-lg border bg-background focus:border-brand-500 outline-none"
+            >
+              <option value="all">Tất cả</option>
+              <option value="pending">Chờ duyệt</option>
+              <option value="approved">Đã duyệt</option>
+              <option value="rejected">Từ chối</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Nơi đào tạo diễn xuất */}
+        <div>
+          <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+            Nơi đào tạo diễn xuất
+          </label>
+          <select
+            value=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!v) return;
+              setFilterCriteria(p => {
+                const arr = p.trainingSchools || [];
+                return { ...p, trainingSchools: arr.includes(v) ? arr : [...arr, v] };
+              });
+            }}
+            className="w-full px-2.5 py-1.5 rounded-lg border bg-background focus:border-brand-500 outline-none"
+          >
+            <option value="">+ Thêm trường để lọc…</option>
+            <option value={ACT_ACADEMY_SCHOOL}>ACT Academy</option>
+            {ART_SCHOOLS.map(sc => (
+              <option key={sc.name} value={sc.name}>{sc.name}</option>
+            ))}
+          </select>
+          {(filterCriteria.trainingSchools || []).length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {(filterCriteria.trainingSchools || []).map(sc => (
+                <button
+                  key={sc}
+                  type="button"
+                  onClick={() => setFilterCriteria(p => ({ ...p, trainingSchools: (p.trainingSchools || []).filter(x => x !== sc) }))}
+                  className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-brand-50 text-brand-700 border border-brand-200 dark:bg-brand-950/60 dark:text-brand-300 dark:border-brand-900"
+                  title="Bỏ lọc trường này"
+                >
+                  <span className="max-w-[200px] truncate">{sc}</span>
+                  <span>×</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ACT Academic Level Filter */}
@@ -436,6 +514,8 @@ export function TalentFilterSidebar() {
               { id: 'partial_nudity', label: 'Bán khỏa thân nghệ thuật' },
               { id: 'hair_color', label: 'Sẵn sàng đổi màu tóc' },
               { id: 'cut_hair', label: 'Sẵn sàng cắt tóc ngắn' },
+              { id: 'intimate_scene', label: 'Sẵn sàng cảnh nóng 18+' },
+              { id: 'learn_new_skills', label: 'Sẵn sàng học ngoại ngữ / kỹ năng mới' },
             ].map(w => {
               const active = filterCriteria.roleWillingness.includes(w.id);
               return (

@@ -9,11 +9,14 @@ import {
   CommercialRole, 
   MusicVideoRole,
   ACT_LEVEL_DETAILS,
-  ACTCourseLevel 
+  ACTCourseLevel,
+  EXTERNAL_PROGRAM_LABELS
 } from '@/lib/types/crm';
+import { SubmissionReviewPanel } from '@/components/talents/submission-review-panel';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
+import { TalentPhotoCarousel } from '@/components/talents/talent-photo-carousel';
 import { 
   User, 
   Ruler, 
@@ -40,7 +43,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Clock,
-  Lock
+  Lock,
+  IdCard
 } from 'lucide-react';
 
 interface TalentDetailViewProps {
@@ -49,6 +53,7 @@ interface TalentDetailViewProps {
 
 export function TalentDetailView({ talent }: TalentDetailViewProps) {
   const { deleteTalent, can } = useCRM();
+  const externalTrainings = talent.academic_profile?.external_trainings || [];
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'profile' | 'academic' | 'compcard'>('profile');
 
@@ -100,7 +105,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
               {highestLevel && (
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-xs flex items-center gap-1.5 ${
                   highestLevel === 'ACT4'
-                    ? 'bg-gradient-to-r from-purple-100 to-rose-100 text-purple-900 border-purple-300 dark:from-purple-950/80 dark:to-rose-950/80 dark:text-purple-200 dark:border-purple-700 font-extrabold ring-1 ring-purple-500/20'
+                    ? 'bg-[#fbf7ef] text-[#6b4a1f] border-[#dcbd83] font-extrabold ring-1 ring-[#c9a063]/30'
                     : highestLevel === 'ACT3'
                     ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700'
                     : highestLevel === 'ACT2'
@@ -114,6 +119,20 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               ID: {talent.id.slice(0, 8)} • Ngày tạo: {new Date(talent.created_at || '').toLocaleDateString('vi-VN')}
+              {talent.username && (
+                <>
+                  {' • '}
+                  <span className="font-mono text-foreground">@{talent.username}</span>
+                  {talent.public_profile && talent.review_status === 'approved' && (
+                    <>
+                      {' • '}
+                      <a href={`https://www.dienvienvn.com/${talent.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#8c5f2a] hover:underline">
+                        Trang công khai ↗
+                      </a>
+                    </>
+                  )}
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -153,7 +172,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                   activeTab === 'compcard' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <IdCard className="w-3.5 h-3.5 text-[#8c5f2a]" />
                 <span>Xuất Comp-Card</span>
               </button>
             )}
@@ -181,6 +200,8 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
         </div>
       </div>
 
+      {talent.submission_source === 'dienvienvn' && <SubmissionReviewPanel talent={talent} />}
+
       {activeTab === 'compcard' ? (
         <TalentCompCard talent={talent} />
       ) : activeTab === 'academic' ? (
@@ -206,7 +227,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                     {highestLevel && (
                       <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-sm ${
                         highestLevel === 'ACT4'
-                          ? 'bg-gradient-to-r from-purple-500 to-rose-500 text-white border-purple-400 font-extrabold shadow-purple-500/20'
+                          ? 'act-gold-bg text-black border-[#c9a063] font-extrabold shadow-[#a87b3f]/20'
                           : highestLevel === 'ACT3'
                           ? 'bg-emerald-600 text-white border-emerald-400'
                           : highestLevel === 'ACT2'
@@ -459,19 +480,62 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
               </div>
             )}
           </div>
+          {/* Đào tạo tại cơ sở khác (khai báo từ dienvienvn.com) */}
+          {externalTrainings.length > 0 && (
+            <div className="bg-card rounded-2xl border p-6 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 border-b pb-3">
+                <GraduationCap className="w-4 h-4 text-brand-600" />
+                <h3 className="font-bold text-base text-foreground">
+                  Đào Tạo Tại Cơ Sở Khác ({externalTrainings.length})
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {externalTrainings.map(t => (
+                  <div key={t.id} className="p-4 rounded-xl border bg-card space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-sm text-foreground">{t.school_name}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {EXTERNAL_PROGRAM_LABELS[t.program_type] || t.program_type}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        t.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : t.status === 'studying'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      }`}>
+                        {t.status === 'completed' ? '✓ Đã tốt nghiệp' : t.status === 'studying' ? '⏳ Đang theo học' : t.status === 'reserved' ? 'Bảo lưu' : 'Đã dừng / Chuyển'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                      {t.school_group && <span>{t.school_group}{t.school_city ? ` • ${t.school_city}` : ''}</span>}
+                      {t.major && <span>Chuyên ngành / Lớp: <strong className="text-foreground">{t.major}</strong></span>}
+                      {t.class_code && <span>Mã lớp: <strong className="text-foreground">{t.class_code}</strong></span>}
+                      {t.term_name && <span>Khóa: <strong className="text-foreground">{t.term_name}</strong></span>}
+                      {t.start_date && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          {t.start_date} {t.end_date ? `➔ ${t.end_date}` : ''}
+                        </span>
+                      )}
+                    </div>
+                    {t.evaluation && (
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-muted/60 p-2 rounded-lg mt-2 border border-border/50">
+                        💬 <em>&ldquo;{t.evaluation}&rdquo;</em>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Actor Card & Photos & Quick Info */}
           <div className="space-y-6">
             <div className="bg-card rounded-2xl border overflow-hidden shadow-xs">
-              <div className="aspect-[3/4] relative bg-muted">
-                <img
-                  src={talent.headshot_url || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800'}
-                  alt={talent.full_name}
-                  className="w-full h-full object-cover object-top"
-                />
-              </div>
+              <TalentPhotoCarousel talent={talent} />
 
               <div className="p-5 space-y-4">
                 <div className="space-y-1">
@@ -494,7 +558,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                   <div className="p-2.5 bg-muted/50 rounded-xl">
                     <span className="text-muted-foreground block text-[10px] uppercase font-semibold">Số đo 3 vòng</span>
                     <span className="font-bold text-sm text-foreground">
-                      {talent.chest_cm ? `${talent.chest_cm}-${talent.waist_cm}-${talent.hip_cm}` : '—'}
+                      {talent.chest_cm || talent.waist_cm || talent.hip_cm ? `${talent.chest_cm || '—'}-${talent.waist_cm || '—'}-${talent.hip_cm || '—'}` : '—'}
                     </span>
                   </div>
                   <div className="p-2.5 bg-muted/50 rounded-xl">
@@ -637,7 +701,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                 <div>
                   <span className="text-muted-foreground block">Số đo 3 vòng:</span>
                   <span className="font-bold text-foreground text-sm">
-                    {talent.chest_cm ? `${talent.chest_cm} - ${talent.waist_cm} - ${talent.hip_cm}` : '—'}
+                    {talent.chest_cm || talent.waist_cm || talent.hip_cm ? `${talent.chest_cm || '—'} - ${talent.waist_cm || '—'} - ${talent.hip_cm || '—'}` : '—'}
                   </span>
                 </div>
                 <div>
@@ -674,7 +738,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                         <div key={idx} className="p-2.5 rounded-lg border bg-muted/40">
                           <div className="font-bold text-foreground">{f.title}</div>
                           <div className="text-muted-foreground">
-                            Vai: <span className="font-medium text-foreground">{f.role}</span> {f.character ? `(${f.character})` : ''} • Năm: {f.year || '2024'}
+                            Vai: <span className="font-medium text-foreground">{f.role}</span> {f.character ? `(${f.character})` : ''} {f.year ? `• Năm: ${f.year}` : ''}
                           </div>
                         </div>
                       ))}
@@ -815,7 +879,9 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                         lingerie: 'Nội y',
                         partial_nudity: 'Bán khỏa thân',
                         hair_color: 'Đổi màu tóc',
-                        cut_hair: 'Cắt tóc'
+                        cut_hair: 'Cắt tóc',
+                        intimate_scene: 'Cảnh nóng 18+',
+                        learn_new_skills: 'Học ngoại ngữ / kỹ năng mới'
                       };
                       return (
                         <span key={w} className="px-2 py-1 bg-rose-50 text-rose-800 font-semibold rounded-md border border-rose-200">

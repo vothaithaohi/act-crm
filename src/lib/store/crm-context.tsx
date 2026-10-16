@@ -12,7 +12,9 @@ import {
   UserRole, 
   Permission, 
   WebhookLog,
+  TalentReviewStatus,
   hasPermission, 
+  getReviewStatus,
   ROLE_DETAILS 
 } from '@/lib/types/crm';
 import seedData from '@/data/seed_data.json';
@@ -174,6 +176,9 @@ interface CRMContextType {
   resetFilters: () => void;
   filteredTalents: TalentProfile[];
   resetAllData: () => void;
+  refreshTalents: () => Promise<void>;
+  reviewTalent: (id: string, status: TalentReviewStatus, notes?: string) => Promise<void>;
+  pendingSubmissionsCount: number;
 }
 
 const initialFilterCriteria: CastingFilterCriteria = {
@@ -196,10 +201,41 @@ const initialFilterCriteria: CastingFilterCriteria = {
   cities: [],
   genres: [],
   actLevels: [],
-  tattoos: 'all'
+  tattoos: 'all',
+  reviewStatus: 'all',
+  source: 'all',
+  trainingSchools: []
 };
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
+
+/** Key do trang nộp hồ sơ dienvienvn.com ghi khi chạy chế độ demo (chưa cấu hình Supabase). */
+const LOCAL_SUBMISSIONS_KEY = 'dvvn_local_submissions';
+
+function readLocalSubmissions(): TalentProfile[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_SUBMISSIONS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Gộp hồ sơ tự nộp (chế độ demo) vào danh sách, bỏ trùng theo id. */
+function mergeLocalSubmissions(list: TalentProfile[]): TalentProfile[] {
+  const local = readLocalSubmissions();
+  if (local.length === 0) return list;
+  const ids = new Set(list.map(t => t.id));
+  const fresh = local.filter(t => t && t.id && !ids.has(t.id));
+  return fresh.length ? [...fresh, ...list] : list;
+}
+
+/** Sắp xếp: hồ sơ mới nộp / mới tạo lên đầu. */
+function sortByNewest(list: TalentProfile[]): TalentProfile[] {
+  const time = (t: TalentProfile) => Date.parse(t.submitted_at || t.created_at || '') || 0;
+  return [...list].sort((a, b) => time(b) - time(a));
+}
 
 export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -213,51 +249,61 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = currentUser !== null;
 
+  /** Tìm hồ sơ nhân sự đang hoạt động theo email đăng nhập. */
+  async function fetchStaffProfile(supabase: NonNullable<ReturnType<typeof createClient>>, email: string): Promise<Profile | null> {
+    const { data, error } = await supabase.from('profiles').select('*').ilike('email', email).limit(1);
+    if (error || !data || data.length === 0) return null;
+    const profile = data[0] as Profile;
+    return profile.status === 'active' ? profile : null;
+  }
+
+  /** Tải toàn bộ dữ liệu CRM từ Supabase (sau khi đã đăng nhập). */
+  async function loadSupabaseData(supabase: NonNullable<ReturnType<typeof createClient>>) {
+    const [leadsRes, talentsRes, profilesRes, logsRes] = await Promise.all([
+      supabase.from('leads').select('*').order('created_at', { ascending: false }),
+      supabase.from('talent_profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*').order('created_at', { ascending: true }),
+      supabase.from('webhook_logs').select('*').order('created_at', { ascending: false })
+    ]);
+    if (!leadsRes.error) setLeads((leadsRes.data || []).map(l => ({ ...l, status: normalizeLeadStatus(l.status) })) as Lead[]);
+    if (!talentsRes.error) setTalents(sortByNewest((talentsRes.data || []) as TalentProfile[]));
+    if (!profilesRes.error && profilesRes.data && profilesRes.data.length > 0) setTeamMembers(profilesRes.data as Profile[]);
+    if (!logsRes.error) setWebhookLogs((logsRes.data || []) as WebhookLog[]);
+    setIsSupabaseConnected(!leadsRes.error && !talentsRes.error);
+    const firstError = leadsRes.error || talentsRes.error;
+    if (firstError) {
+      toast.error('Không tải được dữ liệu từ Supabase', { description: firstError.message });
+    }
+  }
+
   // Initialize from Supabase or fallback to localStorage / Excel seed data
   useEffect(() => {
     async function initData() {
       const supabase = createClient();
 
       if (supabase) {
+        // Chế độ Supabase: chỉ tải dữ liệu khi có phiên đăng nhập của nhân sự (RLS chặn mọi truy cập khác)
         try {
-          // Fetch leads, talents, profiles, webhook logs from Supabase
-          const [leadsRes, talentsRes, profilesRes, logsRes] = await Promise.all([
-            supabase.from('leads').select('*').order('created_at', { ascending: false }),
-            supabase.from('talent_profiles').select('*').order('created_at', { ascending: false }),
-            supabase.from('profiles').select('*').order('created_at', { ascending: true }),
-            supabase.from('webhook_logs').select('*').order('created_at', { ascending: false })
-          ]);
-
-          if (!leadsRes.error && leadsRes.data && leadsRes.data.length > 0) {
-            setLeads(leadsRes.data as Lead[]);
-            setIsSupabaseConnected(true);
+          const { data: { session } } = await supabase.auth.getSession();
+          const email = session?.user?.email;
+          const staff = email ? await fetchStaffProfile(supabase, email) : null;
+          if (staff) {
+            setCurrentUser(staff);
+            await loadSupabaseData(supabase);
           } else {
-            loadLocalSeed();
-          }
-
-          if (!talentsRes.error && talentsRes.data && talentsRes.data.length > 0) {
-            setTalents(talentsRes.data as TalentProfile[]);
-            setIsSupabaseConnected(true);
-          }
-
-          if (!profilesRes.error && profilesRes.data && profilesRes.data.length > 0) {
-            setTeamMembers(profilesRes.data as Profile[]);
-          } else {
-            loadLocalTeamMembers();
-          }
-
-          if (!logsRes.error && logsRes.data && logsRes.data.length > 0) {
-            setWebhookLogs(logsRes.data as WebhookLog[]);
+            if (session) await supabase.auth.signOut();
+            setCurrentUser(null);
           }
         } catch (err) {
-          console.warn('Supabase query failed, falling back to local data:', err);
-          loadLocalSeed();
-          loadLocalTeamMembers();
+          console.error('Không kiểm tra được phiên đăng nhập Supabase:', err);
+          setCurrentUser(null);
         }
-      } else {
-        loadLocalSeed();
-        loadLocalTeamMembers();
+        setIsLoading(false);
+        return;
       }
+
+      loadLocalSeed();
+      loadLocalTeamMembers();
 
       // Check existing authenticated session
       checkSession();
@@ -312,13 +358,13 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         if (storedTalents) {
           const parsed = JSON.parse(storedTalents);
           if (Array.isArray(parsed) && parsed.length >= rawTalents.length) {
-            setTalents(parsed);
+            setTalents(sortByNewest(mergeLocalSubmissions(parsed)));
           } else {
-            setTalents(rawTalents);
+            setTalents(sortByNewest(mergeLocalSubmissions(rawTalents)));
             localStorage.setItem('act_crm_talents_v6', JSON.stringify(rawTalents));
           }
         } else {
-          setTalents(rawTalents);
+          setTalents(sortByNewest(mergeLocalSubmissions(rawTalents)));
           localStorage.setItem('act_crm_talents_v6', JSON.stringify(rawTalents));
         }
       } catch (e) {
@@ -355,6 +401,46 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     initData();
   }, []);
 
+  // Realtime: nhận ngay hồ sơ mới nộp từ dienvienvn.com (cần bật Realtime cho bảng talent_profiles)
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    const channel = supabase
+      .channel(`talent_profiles_changes_${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'talent_profiles' }, payload => {
+        const incoming = payload.new as TalentProfile;
+        if (!incoming?.id) return;
+        setTalents(prev => (prev.some(t => t.id === incoming.id) ? prev : [incoming, ...prev]));
+        if (incoming.submission_source === 'dienvienvn') {
+          toast.info('Có hồ sơ casting mới từ dienvienvn.com', { description: incoming.full_name });
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'talent_profiles' }, payload => {
+        const incoming = payload.new as TalentProfile;
+        if (!incoming?.id) return;
+        setTalents(prev => prev.map(t => (t.id === incoming.id ? { ...t, ...incoming } : t)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'talent_profiles' }, payload => {
+        const oldId = (payload.old as { id?: string })?.id;
+        if (oldId) setTalents(prev => prev.filter(t => t.id !== oldId));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Chế độ demo: cập nhật khi tab dienvienvn (cùng trình duyệt) vừa nộp hồ sơ
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LOCAL_SUBMISSIONS_KEY) {
+        setTalents(prev => sortByNewest(mergeLocalSubmissions(prev)));
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const login = async (email: string, password?: string): Promise<boolean> => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = (password || '').trim();
@@ -364,6 +450,31 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         description: 'Mật khẩu là bắt buộc để đăng nhập vào hệ thống.'
       });
       return false;
+    }
+
+    // Chế độ Supabase: xác thực thật bằng Supabase Auth + kiểm tra quyền trong bảng profiles
+    const supabase = createClient();
+    if (supabase) {
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPassword });
+      if (error) {
+        toast.error('Đăng nhập không thành công', { description: 'Email hoặc mật khẩu không đúng.' });
+        return false;
+      }
+      const staff = await fetchStaffProfile(supabase, cleanEmail);
+      if (!staff) {
+        await supabase.auth.signOut();
+        toast.error('Tài khoản chưa được cấp quyền CRM', {
+          description: 'Liên hệ Ban Giám Đốc để thêm email này vào danh sách nhân sự (bảng profiles).'
+        });
+        return false;
+      }
+      setCurrentUser(staff);
+      await loadSupabaseData(supabase);
+      supabase.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', staff.id).then(() => undefined);
+      toast.success('Đăng nhập thành công!', {
+        description: `Xin chào ${staff.full_name} (${ROLE_DETAILS[staff.role]?.label || staff.role})`
+      });
+      return true;
     }
 
     const member = teamMembers.find(m => m.email.toLowerCase() === cleanEmail);
@@ -413,6 +524,12 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setCurrentUser(null);
+    const supabase = createClient();
+    if (supabase) {
+      supabase.auth.signOut();
+      setLeads([]);
+      setTalents([]);
+    }
     try {
       localStorage.removeItem('act_crm_auth_session_v3');
       localStorage.removeItem('act_crm_current_user');
@@ -675,9 +792,66 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshTalents = async () => {
+    const supabase = createClient();
+    if (supabase) {
+      const { data, error } = await supabase.from('talent_profiles').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setTalents(sortByNewest(data as TalentProfile[]));
+        setIsSupabaseConnected(true);
+        return;
+      }
+      if (error) {
+        toast.error('Không tải lại được danh sách hồ sơ', { description: error.message });
+      }
+    }
+    setTalents(prev => sortByNewest(mergeLocalSubmissions(prev)));
+  };
+
+  const reviewTalent = async (id: string, status: TalentReviewStatus, notes?: string) => {
+    const now = new Date().toISOString();
+    const patch: Partial<TalentProfile> = { review_status: status, updated_at: now };
+    if (notes !== undefined) patch.review_notes = notes;
+
+    const updated = talents.map(t => (t.id === id ? { ...t, ...patch } : t));
+    syncTalentsLocal(updated);
+
+    // Đồng bộ bản ghi demo nếu hồ sơ nằm trong kho tạm
+    try {
+      const local = readLocalSubmissions();
+      if (local.some(t => t.id === id)) {
+        localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(local.map(t => (t.id === id ? { ...t, ...patch } : t))));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const labels: Record<TalentReviewStatus, string> = { pending: 'Đã chuyển về Chờ duyệt', approved: 'Đã duyệt hồ sơ', rejected: 'Đã từ chối hồ sơ' };
+    toast.success(labels[status]);
+
+    const supabase = createClient();
+    if (supabase) {
+      const { error } = await supabase.from('talent_profiles').update(patch).eq('id', id);
+      if (error) {
+        console.error('Failed to sync review status to Supabase:', error);
+        toast.error('Chưa lưu được trạng thái duyệt lên Supabase', {
+          description: 'Hãy chạy migration 20261012_dienvienvn_submissions.sql rồi thử lại.'
+        });
+      }
+    }
+  };
+
   const deleteTalent = async (id: string) => {
     const updated = talents.filter(t => t.id !== id);
     syncTalentsLocal(updated);
+    try {
+      const local = readLocalSubmissions();
+      if (local.some(t => t.id === id)) {
+        localStorage.setItem(LOCAL_SUBMISSIONS_KEY, JSON.stringify(local.filter(t => t.id !== id)));
+      }
+    } catch (e) {
+      console.error(e);
+    }
     toast.info('Đã xóa hồ sơ diễn viên');
 
     const supabase = createClient();
@@ -800,18 +974,37 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     const rawTalents = (seedData.talents as TalentProfile[]) || [];
     syncLeadsLocal(rawLeads);
     syncTalentsLocal(rawTalents);
+    setTalents(sortByNewest(mergeLocalSubmissions(rawTalents)));
     syncTeamMembersLocal(INITIAL_TEAM_MEMBERS);
     resetFilters();
     toast.success('Đã khôi phục dữ liệu ban đầu từ file Excel & danh sách nhân sự mẫu!');
   };
 
+  const pendingSubmissionsCount = talents.filter(t => getReviewStatus(t) === 'pending').length;
+
   // Dynamic filter for Casting Matching
   const filteredTalents = talents.filter(talent => {
+    if (filterCriteria.reviewStatus && filterCriteria.reviewStatus !== 'all') {
+      if (getReviewStatus(talent) !== filterCriteria.reviewStatus) return false;
+    }
+
+    if (filterCriteria.source && filterCriteria.source !== 'all') {
+      if ((talent.submission_source || 'crm') !== filterCriteria.source) return false;
+    }
+
+    if (filterCriteria.trainingSchools && filterCriteria.trainingSchools.length > 0) {
+      const schools = new Set<string>([
+        ...((talent.academic_profile?.enrollments || []).length > 0 ? ['ACT Academy'] : []),
+        ...(talent.academic_profile?.external_trainings || []).map(e => e.school_name)
+      ]);
+      if (!filterCriteria.trainingSchools.some(s => schools.has(s))) return false;
+    }
+
     if (filterCriteria.searchQuery.trim()) {
       const q = filterCriteria.searchQuery.toLowerCase();
-      const matchName = talent.full_name.toLowerCase().includes(q);
-      const matchPhone = talent.phone.toLowerCase().includes(q);
-      const matchEmail = talent.email.toLowerCase().includes(q);
+      const matchName = (talent.full_name || '').toLowerCase().includes(q);
+      const matchPhone = (talent.phone || '').toLowerCase().includes(q) || (talent.phone || '').includes(q.replace(/\D/g, '') || '\u0000');
+      const matchEmail = (talent.email || '').toLowerCase().includes(q);
       if (!matchName && !matchPhone && !matchEmail) return false;
     }
 
@@ -942,6 +1135,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         resetFilters,
         filteredTalents,
         resetAllData,
+        refreshTalents,
+        reviewTalent,
+        pendingSubmissionsCount,
       }}
     >
       {children}
