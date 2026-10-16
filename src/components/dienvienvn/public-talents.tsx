@@ -28,6 +28,12 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
           <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
             {talents.length > 0 ? `${talents.length} hồ sơ diễn viên đã được duyệt.` : 'Các hồ sơ đã duyệt sẽ sớm xuất hiện tại đây.'}
           </p>
+          <p className="mt-3 text-[14px] text-[var(--dv-text-secondary)]">
+            Đạo diễn, nhà sản xuất?{' '}
+            <Link href={href('/doi-tac')} className="dv-link font-semibold">
+              Đăng nhập cổng đối tác <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </p>
 
           {talents.length > 0 && (
             <div className="relative mt-8 max-w-[420px]">
@@ -36,7 +42,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder="Tìm theo tên diễn viên"
-                className="dv-input pl-11"
+                className="dv-input !pl-11"
                 aria-label="Tìm diễn viên"
               />
             </div>
@@ -204,6 +210,13 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
               {talent.experience.length === 0 && talent.skills.length === 0 && talent.trainings.length === 0 && (
                 <p className="mt-8 text-[15px] text-[var(--dv-text-secondary)]">Diễn viên đang cập nhật thêm thông tin hồ sơ.</p>
               )}
+
+              <p className="mt-6 text-[14px] text-[var(--dv-text-secondary)]">
+                Đối tác của DienVienVN?{' '}
+                <Link href={href(`/doi-tac/${talent.username}`)} className="dv-link font-semibold">
+                  Xem hồ sơ đầy đủ <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </p>
             </div>
           </div>
         </div>

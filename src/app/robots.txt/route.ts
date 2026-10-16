@@ -14,10 +14,11 @@ export function GET(req: NextRequest) {
         'Disallow: /tai-khoan',
         'Disallow: /du-an/',
         'Disallow: /nsx/',
+        'Disallow: /doi-tac',
         '',
         '# Bot AI được phép đọc nội dung công khai',
         ...['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-SearchBot', 'PerplexityBot', 'Google-Extended', 'Applebot-Extended', 'CCBot'].flatMap(
-          bot => [`User-agent: ${bot}`, 'Allow: /', 'Disallow: /api/', 'Disallow: /tai-khoan', 'Disallow: /nsx/', '']
+          bot => [`User-agent: ${bot}`, 'Allow: /', 'Disallow: /api/', 'Disallow: /tai-khoan', 'Disallow: /nsx/', 'Disallow: /doi-tac', '']
         ),
         `Sitemap: ${SITE_URL}/sitemap.xml`,
         ''

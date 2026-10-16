@@ -33,7 +33,7 @@ export const USERNAME_PATTERN = /^[a-z0-9][a-z0-9_-]{2,39}$/;
 /** Đường dẫn của web, không dùng làm username (khớp dvvn_reserved_username trong database). */
 export const RESERVED_USERNAMES = new Set([
   'admin', 'api', 'dienvienvn', 'dien-vien', 'dienvien', 'nop-ho-so', 'du-an', 'nsx', 'dang-nhap', 'tai-khoan', 'tao-mat-khau',
-  'login', 'leads', 'talents', 'projects', 'casting', 'settings', 'robots', 'sitemap', 'llms', 'favicon', 'www', 'mail', 'support',
+  'doi-tac', 'doitac', 'login', 'leads', 'talents', 'projects', 'casting', 'settings', 'robots', 'sitemap', 'llms', 'favicon', 'www', 'mail', 'support',
   'help', 'about', 'privacy', 'terms', 'static', 'assets', 'images', 'img', 'r', 'send'
 ]);
 

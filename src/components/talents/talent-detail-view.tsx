@@ -43,7 +43,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Clock,
-  Lock
+  Lock,
+  IdCard
 } from 'lucide-react';
 
 interface TalentDetailViewProps {
@@ -171,7 +172,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                   activeTab === 'compcard' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <IdCard className="w-3.5 h-3.5 text-[#8c5f2a]" />
                 <span>Xuất Comp-Card</span>
               </button>
             )}

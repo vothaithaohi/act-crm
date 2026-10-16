@@ -67,7 +67,7 @@ function Unavailable() {
 }
 
 /* ---------------- Màn hình yêu cầu đăng nhập ---------------- */
-export function LoginGate({ title, description, next }: { title: string; description: string; next: string }) {
+export function LoginGate({ title, description, next, partner = false }: { title: string; description: string; next: string; partner?: boolean }) {
   const href = useDvvnHref();
   return (
     <Shell>
@@ -79,10 +79,17 @@ export function LoginGate({ title, description, next }: { title: string; descrip
           <Link href={href(`/dang-nhap?next=${encodeURIComponent(next)}`)} className="dv-btn dv-btn-primary w-full">
             Đăng nhập
           </Link>
-          <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-secondary w-full">
-            Chưa có hồ sơ? Nộp hồ sơ diễn viên
-          </Link>
+          {!partner && (
+            <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-secondary w-full">
+              Chưa có hồ sơ? Nộp hồ sơ diễn viên
+            </Link>
+          )}
         </div>
+        {partner && (
+          <p className="mt-6 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
+            Tài khoản đối tác do DienVienVN cấp cho đạo diễn, nhà sản xuất và đối tác casting. Liên hệ đội ngũ DienVienVN để được cấp tài khoản.
+          </p>
+        )}
       </div>
     </Shell>
   );
@@ -178,6 +185,7 @@ export function ActorLogin() {
   const params = useSearchParams();
   const session = useActorSession();
   const next = safeNext(params.get('next'), href('/tai-khoan'));
+  const forPartner = next.startsWith(href('/doi-tac'));
   const [mode, setMode] = useState<'login' | 'resend'>(params.get('quen-mat-khau') ? 'resend' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -210,7 +218,7 @@ export function ActorLogin() {
   return (
     <Shell>
       <div className="dv-card px-6 py-9 sm:px-10">
-        <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{mode === 'login' ? 'Đăng nhập.' : 'Nhận lại email.'}</h1>
+        <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{mode === 'login' ? (forPartner ? 'Đăng nhập đối tác.' : 'Đăng nhập.') : 'Nhận lại email.'}</h1>
         {mode === 'login' ? (
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
             <Field label="Email" htmlFor="login-email">
@@ -234,12 +242,16 @@ export function ActorLogin() {
           </div>
         )}
       </div>
-      <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
-        Chưa có hồ sơ?{' '}
-        <Link href={href('/nop-ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-          Nộp hồ sơ diễn viên
-        </Link>
-      </p>
+      {forPartner ? (
+        <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">Tài khoản đối tác do DienVienVN cấp.</p>
+      ) : (
+        <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
+          Chưa có hồ sơ?{' '}
+          <Link href={href('/nop-ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
+            Nộp hồ sơ diễn viên
+          </Link>
+        </p>
+      )}
     </Shell>
   );
 }
@@ -415,6 +427,7 @@ export function ActorAccount() {
         return;
       }
       if (!res.ok) return setProblem(body.error || 'Không tải được hồ sơ.');
+      if (body.partner) return router.replace(href('/doi-tac'));
       setData(body);
       fetchPublicProjects()
         .then(list => !cancelled && setProjects(list.filter(p => !isDeadlinePassed(p.deadline))))

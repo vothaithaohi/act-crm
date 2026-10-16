@@ -15,7 +15,8 @@ import {
   Terminal,
   Activity,
   Globe,
-  Film
+  Film,
+  Handshake
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
@@ -59,6 +60,13 @@ export function Sidebar() {
       icon: Globe,
       badge: pendingSubmissionsCount > 0 ? pendingSubmissionsCount : null,
       visible: can('talents:read')
+    },
+    {
+      title: 'Tài khoản đối tác',
+      href: '/admin/partners',
+      icon: Handshake,
+      badge: null,
+      visible: can('talents:export')
     },
     {
       title: 'Thêm Hồ Sơ Casting',

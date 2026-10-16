@@ -105,13 +105,13 @@ export async function sendAccountEmail(db: SupabaseClient, talent: TalentProfile
 }
 
 /** Email thuộc bảng profiles (nhân sự CRM)? */
-async function isStaffEmail(db: SupabaseClient, email: string): Promise<boolean> {
+export async function isStaffEmail(db: SupabaseClient, email: string): Promise<boolean> {
   const { data } = await db.from('profiles').select('id').ilike('email', email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
   return !!data?.length;
 }
 
 /** Tìm tài khoản Supabase Auth theo email (duyệt danh sách người dùng — đủ nhanh với vài nghìn tài khoản). */
-async function findAuthUserByEmail(db: SupabaseClient, email: string): Promise<User | null> {
+export async function findAuthUserByEmail(db: SupabaseClient, email: string): Promise<User | null> {
   for (let page = 1; page <= 50; page++) {
     const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 });
     if (error || !data?.users?.length) return null;

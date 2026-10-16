@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, talentToDraft, validateStep } from '@/lib/dienvienvn/casting-form';
 import { getActor, writeTalent } from '@/lib/dienvienvn/actor-server';
+import { findPartnerForUser } from '@/lib/dienvienvn/partner-server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, ProjectApplication, toPublicProject } from '@/lib/projects/types';
 import { getReviewStatus } from '@/lib/types/crm';
@@ -18,7 +19,12 @@ export async function GET(req: NextRequest) {
   const actor = await getActor(req, db);
   if (actor instanceof NextResponse) return actor;
   const { talent, user } = actor;
-  if (!talent) return NextResponse.json({ error: NO_PROFILE, noProfile: true, email: user.email }, { status: 404 });
+  if (!talent) {
+    // Tài khoản đối tác (đạo diễn, NSX…) đăng nhập cùng trang: chuyển sang cổng đối tác
+    const partner = await findPartnerForUser(db, user).catch(() => null);
+    if (partner?.status === 'active') return NextResponse.json({ mode: 'live', partner: true });
+    return NextResponse.json({ error: NO_PROFILE, noProfile: true, email: user.email }, { status: 404 });
+  }
 
   const { data: apps } = await db
     .from('project_applications')

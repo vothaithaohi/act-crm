@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { findTalentByEmail, sendAccountEmail } from '@/lib/dienvienvn/actor-server';
+import { sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
+import { PartnerAccount } from '@/lib/dienvienvn/partners';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 
@@ -23,5 +25,11 @@ export async function POST(req: NextRequest) {
 
   const talent = await findTalentByEmail(db, email);
   if (talent) await sendAccountEmail(db, talent, req.headers);
+  else {
+    // Tài khoản đối tác (đạo diễn, NSX…) quên mật khẩu
+    const { data } = await db.from('partner_accounts').select('*').ilike('email', email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
+    const partner = data?.[0] as PartnerAccount | undefined;
+    if (partner?.status === 'active') await sendPartnerEmail(db, partner, req.headers);
+  }
   return NextResponse.json({ ok: true });
 }
