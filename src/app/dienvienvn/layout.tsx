@@ -10,7 +10,7 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-HSCCK5DSHP';
 
 const TITLE = 'DienVienVN — Đúng người. Đúng vai.';
 const DESCRIPTION =
-  'DienVienVN kết nối diễn viên Việt với đạo diễn và nhà sản xuất đang casting. Chính thức ra mắt 11.11.2026 — cổng nộp hồ sơ casting đã mở.';
+  'DienVienVN kết nối diễn viên Việt với đạo diễn và nhà sản xuất đang casting. Chính thức ra mắt 11.11.2026 — cổng nộp hồ sơ diễn viên đã mở.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   applicationName: 'DienVienVN',
   openGraph: {
     title: TITLE,
-    description: 'Chính thức ra mắt 11.11.2026. Nộp hồ sơ casting ngay hôm nay.',
+    description: 'Chính thức ra mắt 11.11.2026. Nộp hồ sơ diễn viên ngay hôm nay.',
     url: `${SITE_URL}/`,
     siteName: 'DienVienVN',
     locale: 'vi_VN',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: TITLE,
-    description: 'Chính thức ra mắt 11.11.2026. Nộp hồ sơ casting ngay hôm nay.'
+    description: 'Chính thức ra mắt 11.11.2026. Nộp hồ sơ diễn viên ngay hôm nay.'
   }
 };
 

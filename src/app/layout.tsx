@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <body className="antialiased selection:bg-brand-500 selection:text-white">
+      <body className="antialiased selection:bg-brand-gold/40 selection:text-black">
         {children}
         <Toaster position="top-right" richColors />
       </body>

@@ -6,6 +6,7 @@ import { TalentProfile, REVIEW_STATUS_DETAILS, getReviewStatus } from '@/lib/typ
 import { calculateAge } from '@/lib/utils';
 import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
+import { talentPath } from '@/lib/talent-path';
 
 interface TalentCardProps {
   talent: TalentProfile;
@@ -92,7 +93,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
           {highestLevel && (
             <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-md border ${
               highestLevel === 'ACT4'
-                ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white border-purple-400/60 ring-1 ring-white/20'
+                ? 'act-gold-bg text-black border-[#c9a063]/60 ring-1 ring-white/20'
                 : highestLevel === 'ACT3'
                 ? 'bg-emerald-600 text-white border-emerald-400/60'
                 : highestLevel === 'ACT2'
@@ -215,7 +216,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         {/* Action Buttons */}
         <div className="pt-2 border-t flex items-center gap-2">
           <Link
-            href={`/talents/${talent.id}`}
+            href={talentPath(talent)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold shadow-xs transition-all hover:scale-[1.02]"
           >
             <Eye className="w-3.5 h-3.5" />
@@ -224,7 +225,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
 
           {can('talents:export') && (
             <Link
-              href={`/talents/${talent.id}#compcard`}
+              href={`${talentPath(talent)}#compcard`}
               className="px-2.5 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1"
               title="Xuất Comp-Card"
             >

@@ -1,4 +1,4 @@
-// Schema kiểm tra dữ liệu hồ sơ casting gửi lên server (chặn dữ liệu sai kiểu / quá dài).
+// Schema kiểm tra dữ liệu hồ sơ diễn viên gửi lên server (chặn dữ liệu sai kiểu / quá dài).
 import { z } from 'zod';
 
 const str = (max: number) => z.string().trim().max(max).default('');
@@ -82,5 +82,6 @@ export const castingDraftSchema = z.object({
   }),
   trainings: z.array(trainingEntry).max(20).default([]),
   selftape_url: url,
-  consent: z.boolean()
+  consent: z.boolean(),
+  public_profile: z.boolean().optional().default(false)
 });

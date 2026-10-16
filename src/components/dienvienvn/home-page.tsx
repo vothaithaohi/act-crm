@@ -43,7 +43,7 @@ function TileIcon({ children }: { children: React.ReactNode }) {
  */
 const HOMEPAGE_SECTIONS = {
   projects: false, // "Dự án đang casting"
-  tiles: false, // Hồ sơ casting / Nhà sản xuất / Đào tạo diễn xuất / Riêng tư
+  tiles: false, // Hồ sơ diễn viên / Nhà sản xuất / Đào tạo diễn xuất / Riêng tư
   process: false, // "Bảy bước. Khoảng mười phút."
   closing: false, // "Vai diễn tiếp theo có thể là của bạn."
   footer: false,
@@ -63,7 +63,7 @@ export function DienVienVNHome() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const apply = { href: href('/nop-ho-so'), label: 'Nộp hồ sơ casting' };
+  const apply = { href: href('/nop-ho-so'), label: 'Nộp hồ sơ diễn viên' };
 
   return (
     <>
@@ -115,7 +115,7 @@ export function DienVienVNHome() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div id="dien-vien" className="dv-tile dv-tile-alt scroll-mt-11 px-6 pb-10 pt-12 md:pt-14">
                 <Reveal>
-                  <h3 className="dv-display dv-headline">Hồ sơ casting</h3>
+                  <h3 className="dv-display dv-headline">Hồ sơ diễn viên</h3>
                   <p className="dv-subhead mt-2">Một hồ sơ. Mọi dự án.</p>
                   <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
                     Số đo, kỹ năng, kinh nghiệm và ảnh chân dung — trình bày đúng chuẩn mà đạo diễn casting cần xem.
@@ -204,7 +204,7 @@ export function DienVienVNHome() {
                   >
                     <span className="text-[14px] font-semibold text-white/75">Sẵn sàng?</span>
                     <span className="mt-1 flex items-center gap-1 text-[19px] font-semibold leading-[1.21]">
-                      Nộp hồ sơ casting <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                      Nộp hồ sơ diễn viên <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </Link>
                 </Reveal>

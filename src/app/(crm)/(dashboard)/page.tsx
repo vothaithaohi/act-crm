@@ -24,6 +24,7 @@ import { TalentCard } from '@/components/talents/talent-card';
 import { AIReportModal } from '@/components/ai/ai-report-modal';
 import { Bot, DollarSign } from 'lucide-react';
 import { LEAD_STATUS_DETAILS } from '@/lib/types/crm';
+import { talentPath } from '@/lib/talent-path';
 
 export default function DashboardOverviewPage() {
   const { leads, talents } = useCRM();
@@ -49,23 +50,23 @@ export default function DashboardOverviewPage() {
   return (
     <div className="space-y-8">
       {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-rose-950 text-white p-8 md:p-10 shadow-xl border border-white/10">
+      <div className="relative overflow-hidden rounded-3xl act-hero text-white p-8 md:p-10 shadow-xl border border-white/10">
         <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-rose-300 border border-white/10">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-[#e8cf98] border border-white/10">
+            <Sparkles className="w-3.5 h-3.5 text-[#d4ae6a]" />
             <span>ACT Academy Growth & Talent Casting System</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
             Mini CRM & Bộ Lọc Tuyển Vai Diễn Viên
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
             Hệ thống quản lý chu trình tuyển sinh từ Meta Ads và kho hồ sơ casting diễn viên chuyên sâu. Đã nhập sẵn <span className="text-white font-bold">{leads.length} học viên</span> từ dữ liệu thực tế ACT Academy.
           </p>
 
           <div className="flex flex-wrap gap-3 pt-3">
             <Link
               href="/leads"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold shadow-lg shadow-brand-500/30 transition-all hover:scale-[1.02]"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl act-gold-bg text-black text-xs font-bold shadow-lg shadow-[#a87b3f]/30 transition-all hover:scale-[1.02]"
             >
               <Users className="w-4 h-4" />
               <span>Pipeline Tuyển Sinh</span>
@@ -76,14 +77,11 @@ export default function DashboardOverviewPage() {
               href="/talents"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/15 transition-all hover:scale-[1.02]"
             >
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-[#d4ae6a]" />
               <span>Casting Matching Engine</span>
             </Link>
           </div>
         </div>
-
-        {/* Decorative background glow */}
-        <div className="absolute right-0 top-0 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
       </div>
 
       {/* KPI Cards Grid */}
@@ -126,9 +124,9 @@ export default function DashboardOverviewPage() {
         <div className="p-5 bg-card rounded-2xl border shadow-xs space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Talent Pool</span>
-            <Sparkles className="w-4 h-4 text-amber-500" />
+            <Sparkles className="w-4 h-4 text-brand-gold" />
           </div>
-          <div className="text-3xl font-extrabold text-amber-600">{talents.length}</div>
+          <div className="text-3xl font-extrabold act-gold-text">{talents.length}</div>
           <div className="text-[11px] text-muted-foreground">
             Hồ sơ diễn viên sẵn sàng tuyển vai
           </div>
@@ -136,18 +134,18 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* Claude AI Report Action Section */}
-      <div className="p-6 rounded-2xl border bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl border border-white/10 act-hero text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-amber-400" />
+            <Bot className="w-5 h-5 text-[#d4ae6a]" />
             <span className="font-extrabold text-base tracking-tight text-white">
               Báo Cáo AI Claude 3.5 Sonnet (Growth & Finance Intelligence)
             </span>
-            <span className="text-[10px] bg-amber-400/20 text-amber-300 font-mono px-2 py-0.5 rounded-full border border-amber-400/30">
+            <span className="text-[10px] bg-[#d4ae6a]/15 text-[#e8cf98] font-mono px-2 py-0.5 rounded-full border border-[#d4ae6a]/30">
               Live AI
             </span>
           </div>
-          <p className="text-xs text-slate-300">
+          <p className="text-xs text-neutral-300">
             Khai phá dữ liệu {leads.length} lead và {talents.length} diễn viên ACT Academy để xuất báo cáo tối ưu hoá và tài chính tức thì.
           </p>
         </div>
@@ -155,14 +153,14 @@ export default function DashboardOverviewPage() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => openAiReport('ads_optimization')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl act-gold-bg text-black font-bold text-xs shadow-md shadow-[#a87b3f]/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <span>🤖 Claude: Phân tích Tối ưu Ads</span>
           </button>
 
           <button
             onClick={() => openAiReport('finance')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <span>📊 Claude: Báo cáo Tài chính Lead</span>
           </button>
@@ -217,7 +215,7 @@ export default function DashboardOverviewPage() {
           <div className="flex items-center justify-between pb-3 border-b">
             <div>
               <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
+                <Sparkles className="w-4 h-4 text-brand-gold" />
                 <span>Talent Pool Diễn Viên Nổi Bật</span>
               </h3>
               <p className="text-xs text-muted-foreground">Diễn viên có hồ sơ comp-card đầy đủ</p>
@@ -235,7 +233,7 @@ export default function DashboardOverviewPage() {
             {featuredTalents.map((t) => (
               <Link
                 key={t.id}
-                href={`/talents/${t.id}`}
+                href={talentPath(t)}
                 className="group rounded-xl border overflow-hidden bg-muted/40 hover:border-brand-500/50 transition-all"
               >
                 <div className="aspect-[3/4] relative bg-muted">

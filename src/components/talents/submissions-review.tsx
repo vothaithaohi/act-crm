@@ -21,6 +21,7 @@ import { useCRM } from '@/lib/store/crm-context';
 import { REVIEW_STATUS_DETAILS, TalentProfile, TalentReviewStatus, getReviewStatus } from '@/lib/types/crm';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { ACT_ACADEMY_SCHOOL, ART_SCHOOLS } from '@/lib/dienvienvn/schools';
+import { talentPath } from '@/lib/talent-path';
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'all';
 type SortKey = 'newest' | 'oldest' | 'name';
@@ -313,7 +314,7 @@ export function SubmissionsReview() {
                       {isSel ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4 text-muted-foreground" />}
                     </button>
                   )}
-                  <Link href={`/talents/${t.id}`} className="w-14 h-[72px] rounded-xl overflow-hidden bg-muted shrink-0 border">
+                  <Link href={talentPath(t)} className="w-14 h-[72px] rounded-xl overflow-hidden bg-muted shrink-0 border">
                     {t.headshot_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={t.headshot_url} alt={t.full_name} className="w-full h-full object-cover object-top" loading="lazy" />
@@ -321,7 +322,7 @@ export function SubmissionsReview() {
                   </Link>
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/talents/${t.id}`} className="font-bold text-sm text-foreground hover:text-brand-600 truncate">
+                      <Link href={talentPath(t)} className="font-bold text-sm text-foreground hover:text-brand-600 truncate">
                         {t.full_name}
                       </Link>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[status].badgeClass}`}>
@@ -355,7 +356,7 @@ export function SubmissionsReview() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <Link
-                    href={`/talents/${t.id}`}
+                    href={talentPath(t)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border hover:bg-muted text-xs font-semibold"
                   >
                     <Eye className="w-3.5 h-3.5" /> Xem

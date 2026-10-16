@@ -87,9 +87,9 @@ export function AIReportModal({ isOpen, onClose, initialType = 'ads_optimization
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div className="bg-card w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 border-b bg-black text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md">
+            <div className="w-10 h-10 rounded-xl act-gold-bg flex items-center justify-center text-black shadow-md">
               <Bot className="w-5 h-5" />
             </div>
             <div>
@@ -170,7 +170,7 @@ export function AIReportModal({ isOpen, onClose, initialType = 'ads_optimization
         <div className="flex-1 overflow-y-auto p-6 text-foreground bg-card">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/30 animate-pulse">
+              <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center text-[#d4ae6a] shadow-lg shadow-black/20 animate-pulse">
                 <Loader2 className="w-6 h-6 animate-spin" />
               </div>
               <div className="space-y-1">

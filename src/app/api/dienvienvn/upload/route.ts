@@ -9,7 +9,7 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 const ALLOWED_KINDS = ['headshot', 'fullbody', 'compcard'];
 
-// Tải ảnh hồ sơ casting công khai lên Supabase Storage (bucket talent-media, thư mục dienvienvn/).
+// Tải ảnh hồ sơ diễn viên công khai lên Supabase Storage (bucket talent-media, thư mục dienvienvn/).
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();

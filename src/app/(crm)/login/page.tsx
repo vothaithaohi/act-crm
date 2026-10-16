@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ActMark } from '@/components/brand/act-mark';
 import { useRouter } from 'next/navigation';
 import { 
   Clapperboard, 
@@ -60,28 +61,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative overflow-hidden select-none">
+    <div className="min-h-screen bg-black text-neutral-100 flex flex-col justify-between relative overflow-hidden select-none">
       {/* Background Ambient Glows */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -right-40 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#c9a063]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -right-40 w-96 h-96 bg-[#d4ae6a]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-[#8c5f2a]/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Brand Bar */}
       <header className="p-6 sm:p-8 flex items-center justify-between relative z-10 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-rose-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
-            <Clapperboard className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-black border border-white/10 flex items-center justify-center">
+            <ActMark className="w-6 h-6" />
           </div>
           <div>
             <div className="font-bold text-base tracking-tight flex items-center gap-2">
               <span className="text-white">ACT ACADEMY</span>
-              <span className="text-[10px] bg-brand-500/20 text-brand-400 border border-brand-500/30 font-semibold px-2 py-0.5 rounded uppercase">CRM</span>
+              <span className="text-[10px] act-gold-bg text-black font-semibold px-2 py-0.5 rounded uppercase">CRM</span>
             </div>
-            <p className="text-xs text-slate-400 font-medium">Growth & Talent Casting System</p>
+            <p className="text-xs text-neutral-400 font-medium">Growth & Talent Casting System</p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-800">
+        <div className="hidden sm:flex items-center gap-2 text-xs text-neutral-400 bg-neutral-900/60 px-3 py-1.5 rounded-full border border-neutral-800">
           <ShieldCheck className="w-4 h-4 text-emerald-500" />
           <span>Hệ thống phân quyền bảo mật</span>
         </div>
@@ -93,8 +94,8 @@ export default function LoginPage() {
 
           {/* If there is already an active session, show status card with option to proceed or logout */}
           {isAuthenticated && currentUser ? (
-            <div className="bg-slate-900/90 backdrop-blur-xl border border-brand-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 text-center animate-in fade-in-50">
-              <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-brand-400 flex items-center justify-center mx-auto shadow-inner">
+            <div className="bg-neutral-900/90 backdrop-blur-xl border border-[#c9a063]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 text-center animate-in fade-in-50">
+              <div className="w-12 h-12 rounded-2xl bg-[#c9a063]/10 border border-[#c9a063]/30 text-brand-400 flex items-center justify-center mx-auto shadow-inner">
                 <UserCheck className="w-6 h-6" />
               </div>
 
@@ -105,11 +106,11 @@ export default function LoginPage() {
                 <h2 className="text-xl font-bold text-white">
                   {currentUser.full_name}
                 </h2>
-                <p className="text-xs text-slate-400 font-mono">
+                <p className="text-xs text-neutral-400 font-mono">
                   {currentUser.email}
                 </p>
                 <div className="pt-1.5">
-                  <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+                  <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-300">
                     {ROLE_DETAILS[currentUser.role]?.label || currentUser.role} • {currentUser.department || 'ACT Academy'}
                   </span>
                 </div>
@@ -119,7 +120,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => router.push('/')}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-brand-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3 act-gold-bg text-black rounded-xl text-xs font-bold shadow-md shadow-black/10 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
                   <span>Tiếp Tục Vào Hệ Thống CRM</span>
                   <ArrowRight className="w-4 h-4" />
@@ -128,7 +129,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleLogoutCurrent}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-800/80 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-900/60 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-neutral-800/80 hover:bg-white/5 text-neutral-300 hover:text-white border border-neutral-700 hover:border-neutral-600 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Đăng Xuất Tài Khoản Này</span>
@@ -137,15 +138,15 @@ export default function LoginPage() {
             </div>
           ) : (
             /* Secure Login Card */
-            <div className="bg-slate-900/85 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="bg-neutral-900/85 backdrop-blur-xl border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
               <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700/80 text-brand-400 flex items-center justify-center mx-auto shadow-inner">
+                <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/80 text-brand-400 flex items-center justify-center mx-auto shadow-inner">
                   <Lock className="w-6 h-6" />
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-white">
                   Đăng Nhập Hệ Thống
                 </h1>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-neutral-400 leading-relaxed">
                   Nhập tài khoản email và mật khẩu được cấp phép để truy cập vào phân hệ làm việc ACT CRM.
                 </p>
               </div>
@@ -161,11 +162,11 @@ export default function LoginPage() {
               {/* Secure Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300 block">
+                  <label className="text-xs font-semibold text-neutral-300 block">
                     Địa chỉ Email
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -tranneutral-y-1/2 text-neutral-400" />
                     <input
                       type="email"
                       required
@@ -176,19 +177,19 @@ export default function LoginPage() {
                         if (errorMessage) setErrorMessage('');
                       }}
                       placeholder="email@act.edu.vn"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none transition-colors"
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-neutral-500 focus:border-[#c9a063] focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-300 block">
+                    <label className="text-xs font-semibold text-neutral-300 block">
                       Mật khẩu
                     </label>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -tranneutral-y-1/2 text-neutral-400" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
@@ -199,12 +200,12 @@ export default function LoginPage() {
                         if (errorMessage) setErrorMessage('');
                       }}
                       placeholder="••••••••"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none transition-colors"
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder:text-neutral-500 focus:border-[#c9a063] focus:outline-none transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      className="absolute right-3.5 top-1/2 -tranneutral-y-1/2 text-neutral-400 hover:text-white transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -212,13 +213,13 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+                <div className="flex items-center justify-between text-xs text-neutral-400 pt-1">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="rounded border-slate-800 text-brand-600 focus:ring-brand-500 bg-slate-950"
+                      className="rounded border-neutral-800 text-[#c9a063] focus:ring-[#c9a063] bg-neutral-950"
                     />
                     <span>Ghi nhớ đăng nhập</span>
                   </label>
@@ -227,15 +228,15 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-brand-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3 act-gold-bg text-black rounded-xl text-xs font-bold shadow-md shadow-black/10 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 cursor-pointer"
                 >
                   <span>{isLoading ? 'Đang xác thực...' : 'Đăng Nhập'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
 
-              <div className="pt-2 text-center border-t border-slate-800/80">
-                <p className="text-[11px] text-slate-400">
+              <div className="pt-2 text-center border-t border-neutral-800/80">
+                <p className="text-[11px] text-neutral-400">
                   Nếu bạn quên mật khẩu hoặc cần cấp tài khoản mới, vui lòng liên hệ <span className="text-white font-medium">Ban Giám Đốc</span> hoặc <span className="text-white font-medium">Phòng Kỹ Thuật IT</span>.
                 </p>
               </div>
@@ -245,7 +246,7 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="p-6 text-center text-[11px] text-slate-400 relative z-10 border-t border-slate-900">
+      <footer className="p-6 text-center text-[11px] text-neutral-400 relative z-10 border-t border-neutral-900">
         ACT ACADEMY Mini CRM & Talent Casting • Hệ thống phân quyền nội bộ bảo mật
       </footer>
     </div>

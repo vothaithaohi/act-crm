@@ -79,7 +79,7 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
         {can('talents:write') && (
           <Link
             href="/talents/new"
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-2 act-gold-bg text-black text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm shadow-[#a87b3f]/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>+ Form Casting Mới</span>

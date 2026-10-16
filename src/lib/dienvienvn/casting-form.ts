@@ -1,4 +1,4 @@
-// Cấu hình & logic dùng chung cho form nộp hồ sơ casting trên dienvienvn.com.
+// Cấu hình & logic dùng chung cho form nộp hồ sơ diễn viên trên dienvienvn.com.
 // Các giá trị lựa chọn khớp 1-1 với form "Thêm Hồ Sơ Casting" và bộ lọc Casting Matching của CRM.
 
 import {
@@ -150,6 +150,9 @@ export interface CastingDraft {
   selftape_url: string;
 
   consent: boolean;
+
+  /** Đồng ý hiển thị hồ sơ trên trang công khai dienvienvn.com/<username>. */
+  public_profile: boolean;
 }
 
 export function createEmptyDraft(): CastingDraft {
@@ -184,7 +187,8 @@ export function createEmptyDraft(): CastingDraft {
     social_links: { facebook: '', instagram: '', tiktok: '', showreel_url: '' },
     trainings: [],
     selftape_url: '',
-    consent: false
+    consent: false,
+    public_profile: false
   };
 }
 
@@ -439,6 +443,7 @@ export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'>
     fullbody_url: d.fullbody_url || null,
     compcard_url: d.compcard_url || null,
     academic_profile: buildAcademicProfile(d.trainings),
+    public_profile: !!d.public_profile,
     submission_source: 'dienvienvn',
     review_status: 'pending'
   };
@@ -538,7 +543,8 @@ export function talentToDraft(t: TalentProfile): CastingDraft {
       showreel_url: str(t.social_links?.showreel_url)
     },
     trainings,
-    consent: true
+    consent: true,
+    public_profile: !!t.public_profile
   };
 }
 

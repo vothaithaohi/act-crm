@@ -86,7 +86,7 @@ export default function LeadsPage() {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => openAiReport('ads_optimization')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-xs transition-all hover:scale-[1.02]"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg act-gold-bg text-black text-xs font-bold shadow-xs transition-all hover:scale-[1.02]"
               title="Phân tích hiệu quả Meta Ads bằng Claude 3.5"
             >
               <Bot className="w-3.5 h-3.5" />
@@ -96,7 +96,7 @@ export default function LeadsPage() {
 
             <button
               onClick={() => openAiReport('finance')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all hover:scale-[1.02]"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-muted text-foreground border text-xs font-bold shadow-xs transition-all hover:scale-[1.02]"
               title="Báo cáo tài chính & doanh thu học phí bằng Claude 3.5"
             >
               <DollarSign className="w-3.5 h-3.5" />

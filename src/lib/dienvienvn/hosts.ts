@@ -25,7 +25,17 @@ export function isPublicHost(headers: Headers): boolean {
 }
 
 /** Các trang công khai được phép index (đường dẫn trên tên miền dienvienvn.com). */
-export const INDEXABLE_PATHS = ['/', '/nop-ho-so'];
+export const INDEXABLE_PATHS = ['/', '/nop-ho-so', '/dien-vien'];
+
+/** Username hợp lệ: chữ thường không dấu, số, "-", "_"; 3–40 ký tự (khớp ràng buộc trong database). */
+export const USERNAME_PATTERN = /^[a-z0-9][a-z0-9_-]{2,39}$/;
+
+/** Đường dẫn của web, không dùng làm username (khớp dvvn_reserved_username trong database). */
+export const RESERVED_USERNAMES = new Set([
+  'admin', 'api', 'dienvienvn', 'dien-vien', 'dienvien', 'nop-ho-so', 'du-an', 'nsx', 'dang-nhap', 'tai-khoan', 'tao-mat-khau',
+  'login', 'leads', 'talents', 'projects', 'casting', 'settings', 'robots', 'sitemap', 'llms', 'favicon', 'www', 'mail', 'support',
+  'help', 'about', 'privacy', 'terms', 'static', 'assets', 'images', 'img', 'r', 'send'
+]);
 
 /** Tên miền riêng của CRM; dienvienvn.com/admin chuyển hướng tới đây. */
 export const CRM_HOST = (process.env.CRM_HOST || 'admin.dienvienvn.com').trim().toLowerCase();

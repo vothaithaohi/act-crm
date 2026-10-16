@@ -80,7 +80,7 @@ export function LoginGate({ title, description, next }: { title: string; descrip
             Đăng nhập
           </Link>
           <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-secondary w-full">
-            Chưa có hồ sơ? Nộp hồ sơ casting
+            Chưa có hồ sơ? Nộp hồ sơ diễn viên
           </Link>
         </div>
       </div>
@@ -237,7 +237,7 @@ export function ActorLogin() {
       <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
         Chưa có hồ sơ?{' '}
         <Link href={href('/nop-ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-          Nộp hồ sơ casting
+          Nộp hồ sơ diễn viên
         </Link>
       </p>
     </Shell>
@@ -374,7 +374,15 @@ export function SetPassword() {
 
 /* ---------------- Tài khoản của tôi ---------------- */
 interface AccountData {
-  profile: { id: string; full_name: string; email: string; headshot_url: string | null; review_status: 'pending' | 'approved' | 'rejected' };
+  profile: {
+    id: string;
+    full_name: string;
+    email: string;
+    headshot_url: string | null;
+    review_status: 'pending' | 'approved' | 'rejected';
+    username: string | null;
+    public_profile: boolean;
+  };
   applications: { id: string; project_id: string; project_name: string; role_name: string; created_at?: string }[];
 }
 
@@ -490,6 +498,13 @@ export function ActorAccount() {
         </div>
       </section>
 
+      <PublicProfileCard
+        username={profile.username}
+        isPublic={profile.public_profile}
+        approved={profile.review_status === 'approved'}
+        onSaved={username => setData(d => (d ? { ...d, profile: { ...d.profile, username } } : d))}
+      />
+
       <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">Dự án đang casting</h2>
       {projects === null ? (
         <Spinner />
@@ -534,5 +549,96 @@ export function ActorAccount() {
         </ul>
       )}
     </Shell>
+  );
+}
+
+/* ---------------- Trang hồ sơ công khai (username) ---------------- */
+function PublicProfileCard({
+  username,
+  isPublic,
+  approved,
+  onSaved
+}: {
+  username: string | null;
+  isPublic: boolean;
+  approved: boolean;
+  onSaved: (username: string) => void;
+}) {
+  const href = useDvvnHref();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(username || '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  if (!username) return null;
+
+  const live = isPublic && approved;
+  const save = async () => {
+    setError('');
+    const next = value.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9_-]{2,39}$/.test(next)) {
+      return setError('3–40 ký tự: chữ thường không dấu, số, "-" hoặc "_", bắt đầu bằng chữ hoặc số.');
+    }
+    setBusy(true);
+    const res = await actorFetch('/api/dienvienvn/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: next })
+    }).catch(() => null);
+    const body = res ? await res.json().catch(() => ({})) : {};
+    setBusy(false);
+    if (!res || !res.ok) return setError(body.error || 'Không lưu được username. Vui lòng thử lại.');
+    onSaved(body.username);
+    setEditing(false);
+  };
+
+  return (
+    <section className="dv-card mt-4 p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold">Trang hồ sơ công khai</p>
+          {editing ? (
+            <div className="mt-2 flex items-center gap-1 text-[15px]">
+              <span className="shrink-0 text-[var(--dv-text-secondary)]">dienvienvn.com/</span>
+              <TextInput value={value} onChange={e => setValue(e.target.value.toLowerCase())} aria-label="Username" className="h-10 max-w-[260px]" />
+            </div>
+          ) : (
+            <p className="mt-1 truncate text-[15px] text-[var(--dv-text-secondary)]">
+              dienvienvn.com/<span className="font-semibold text-[var(--dv-text)]">{username}</span>
+            </p>
+          )}
+          <p className="mt-1.5 text-[13px] leading-[1.4] text-[var(--dv-text-tertiary)]">
+            {live
+              ? 'Đang hiển thị công khai: ảnh, nghệ danh, kỹ năng, kinh nghiệm, đào tạo.'
+              : !isPublic
+                ? 'Đang ẩn. Bật “Hiển thị hồ sơ công khai” trong Chỉnh sửa hồ sơ để mọi người xem được.'
+                : 'Sẽ hiển thị sau khi hồ sơ được đội ngũ DienVienVN duyệt.'}
+          </p>
+          {error && <p className="dv-field-error">{error}</p>}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {editing ? (
+            <>
+              <button type="button" onClick={save} disabled={busy} className="dv-btn dv-btn-primary">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Lưu
+              </button>
+              <button type="button" onClick={() => { setEditing(false); setValue(username); setError(''); }} className="dv-btn dv-btn-secondary">
+                Huỷ
+              </button>
+            </>
+          ) : (
+            <>
+              {live && (
+                <Link href={href(`/${username}`)} className="dv-btn dv-btn-secondary">
+                  Xem trang
+                </Link>
+              )}
+              <button type="button" onClick={() => setEditing(true)} className="dv-btn dv-btn-secondary">
+                Đổi username
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }

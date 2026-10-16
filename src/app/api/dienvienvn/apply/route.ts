@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const actor = await getActor(req, db);
   if (actor instanceof NextResponse) return actor;
   if (!actor.talent) {
-    return NextResponse.json({ error: 'Tài khoản này chưa gắn với hồ sơ casting nào.' }, { status: 404 });
+    return NextResponse.json({ error: 'Tài khoản này chưa gắn với hồ sơ diễn viên nào.' }, { status: 404 });
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));

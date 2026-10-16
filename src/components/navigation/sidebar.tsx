@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ActMark } from '@/components/brand/act-mark';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -8,7 +9,6 @@ import {
   Sparkles, 
   LayoutDashboard, 
   UserPlus, 
-  Clapperboard, 
   GraduationCap, 
   RotateCcw,
   ShieldCheck,
@@ -94,13 +94,13 @@ export function Sidebar() {
         {/* Brand Header */}
         <div className="p-5 border-b flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-rose-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-              <Clapperboard className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shadow-md shadow-black/20 group-hover:scale-105 transition-transform">
+              <ActMark className="w-6 h-6" />
             </div>
             <div>
               <div className="font-bold text-base tracking-tight flex items-center gap-1.5">
                 <span>ACT ACADEMY</span>
-                <span className="text-[10px] bg-brand-100 text-brand-700 font-semibold px-1.5 py-0.5 rounded uppercase">CRM</span>
+                <span className="text-[10px] act-gold-bg text-black font-semibold px-1.5 py-0.5 rounded uppercase">CRM</span>
               </div>
               <p className="text-xs text-muted-foreground font-medium">Growth & Talent Casting</p>
             </div>
@@ -122,12 +122,12 @@ export function Sidebar() {
                 className={cn(
                   'flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all group',
                   isActive
-                    ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/25'
+                    ? 'bg-[#1d1d1f] text-white shadow-sm shadow-black/20'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={cn('w-4 h-4 transition-transform group-hover:scale-110', isActive ? 'text-white' : 'text-muted-foreground')} />
+                  <Icon className={cn('w-4 h-4 transition-transform group-hover:scale-110', isActive ? 'text-[#d4ae6a]' : 'text-muted-foreground')} />
                   <span>{item.title}</span>
                 </div>
                 {item.badge !== null && (
@@ -148,7 +148,7 @@ export function Sidebar() {
           <div className="p-3 pt-1 space-y-1">
             <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               <span>Hệ Thống & Quản Trị</span>
-              <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-mono font-bold">ADMIN</span>
+              <span className="text-[9px] bg-brand-50 text-[#8c5f2a] border border-brand-200 px-1 py-0.5 rounded font-mono font-bold">ADMIN</span>
             </div>
             {adminNavItems.filter(item => item.visible).map((item) => {
               const isActive = pathname === item.href;
@@ -160,12 +160,12 @@ export function Sidebar() {
                   className={cn(
                     'flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all group',
                     isActive
-                      ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/25'
+                      ? 'bg-[#1d1d1f] text-white shadow-sm shadow-black/20'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={cn('w-4 h-4 transition-transform group-hover:scale-110', isActive ? 'text-white' : 'text-muted-foreground')} />
+                    <Icon className={cn('w-4 h-4 transition-transform group-hover:scale-110', isActive ? 'text-[#d4ae6a]' : 'text-muted-foreground')} />
                     <span>{item.title}</span>
                   </div>
                   {item.badge !== null && (
@@ -185,7 +185,7 @@ export function Sidebar() {
         {/* Quick Highlights */}
         <div className="px-4 py-3 mx-3 mt-2 rounded-xl bg-muted/50 border border-border/60 text-xs space-y-2">
           <div className="font-semibold text-foreground flex items-center gap-1.5">
-            <GraduationCap className="w-4 h-4 text-brand-600" />
+            <GraduationCap className="w-4 h-4 text-brand-gold" />
             <span>Dữ liệu ACT Academy</span>
           </div>
           <p className="text-muted-foreground leading-relaxed text-[11px]">

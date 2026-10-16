@@ -15,6 +15,7 @@ import {
 import { TalentProfile } from '@/lib/types/crm';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { toast } from 'sonner';
+import { talentPath } from '@/lib/talent-path';
 
 interface ExportCastingModalProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export function ExportCastingModal({ isOpen, onClose, talents }: ExportCastingMo
         sports ? `Thể thao: ${sports}` : null
       ].filter(Boolean).join(' • ');
 
-      const profileUrl = `https://crm.timviecremote.com/talents/${t.id}`;
+      const profileUrl = `https://admin.dienvienvn.com${talentPath(t)}`;
       const headshotUrl = t.headshot_url || 'Chưa cập nhật ảnh';
 
       return `[${index + 1}] ${t.full_name.toUpperCase()} (${gender} - ${age ? `${age} tuổi` : 'N/A'})
@@ -105,9 +106,9 @@ Hotline: 0901 234 567 | Email: casting@act.edu.vn`;
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div className="bg-card w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-slate-900 to-rose-950 text-white flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 border-b bg-black text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-rose-500 flex items-center justify-center text-white shadow-md">
+            <div className="w-10 h-10 rounded-xl act-gold-bg flex items-center justify-center text-black shadow-md">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
@@ -184,7 +185,7 @@ Hotline: 0901 234 567 | Email: casting@act.edu.vn`;
 
             <button
               onClick={handleCopy}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-700 hover:to-rose-700 text-white font-bold text-xs shadow-md shadow-brand-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-[#1d1d1f] hover:bg-black text-white font-bold text-xs shadow-md shadow-black/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? 'Đã Sao Chép!' : 'Sao Chép Gửi Zalo / Email'}</span>

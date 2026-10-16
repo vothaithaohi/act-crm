@@ -104,7 +104,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
               {highestLevel && (
                 <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-xs flex items-center gap-1.5 ${
                   highestLevel === 'ACT4'
-                    ? 'bg-gradient-to-r from-purple-100 to-rose-100 text-purple-900 border-purple-300 dark:from-purple-950/80 dark:to-rose-950/80 dark:text-purple-200 dark:border-purple-700 font-extrabold ring-1 ring-purple-500/20'
+                    ? 'bg-[#fbf7ef] text-[#6b4a1f] border-[#dcbd83] font-extrabold ring-1 ring-[#c9a063]/30'
                     : highestLevel === 'ACT3'
                     ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700'
                     : highestLevel === 'ACT2'
@@ -118,6 +118,20 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               ID: {talent.id.slice(0, 8)} • Ngày tạo: {new Date(talent.created_at || '').toLocaleDateString('vi-VN')}
+              {talent.username && (
+                <>
+                  {' • '}
+                  <span className="font-mono text-foreground">@{talent.username}</span>
+                  {talent.public_profile && talent.review_status === 'approved' && (
+                    <>
+                      {' • '}
+                      <a href={`https://www.dienvienvn.com/${talent.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#8c5f2a] hover:underline">
+                        Trang công khai ↗
+                      </a>
+                    </>
+                  )}
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -212,7 +226,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                     {highestLevel && (
                       <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-sm ${
                         highestLevel === 'ACT4'
-                          ? 'bg-gradient-to-r from-purple-500 to-rose-500 text-white border-purple-400 font-extrabold shadow-purple-500/20'
+                          ? 'act-gold-bg text-black border-[#c9a063] font-extrabold shadow-[#a87b3f]/20'
                           : highestLevel === 'ACT3'
                           ? 'bg-emerald-600 text-white border-emerald-400'
                           : highestLevel === 'ACT2'

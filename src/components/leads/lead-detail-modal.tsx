@@ -819,7 +819,7 @@ export function LeadDetailModal({ lead, isOpen, onClose }: LeadDetailModalProps)
               <button
                 type="button"
                 onClick={handleConvertToTalent}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
+                className="px-4 py-2 rounded-xl act-gold-bg text-black text-xs font-bold shadow-md shadow-[#a87b3f]/30 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
                 title="Tạo hồ sơ Casting Diễn viên và giữ nguyên lộ trình đào tạo ACT"
               >
                 <Sparkles className="w-4 h-4 text-slate-950" />

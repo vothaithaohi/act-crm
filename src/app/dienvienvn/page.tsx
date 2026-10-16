@@ -17,7 +17,7 @@ const jsonLd = {
       url: `${SITE_URL}/`,
       logo: `${SITE_URL}/dienvienvn/apple-icon.png`,
       slogan: 'Đúng người. Đúng vai.',
-      description: 'Nền tảng hồ sơ casting kết nối diễn viên Việt Nam với đạo diễn và nhà sản xuất.'
+      description: 'Nền tảng hồ sơ diễn viên kết nối diễn viên Việt Nam với đạo diễn và nhà sản xuất.'
     },
     {
       '@type': 'WebSite',

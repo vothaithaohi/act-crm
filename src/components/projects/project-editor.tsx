@@ -408,7 +408,7 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-rose-600 text-white text-xs font-bold shadow-md disabled:opacity-60"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1d1d1f] hover:bg-black text-white text-xs font-bold shadow-md disabled:opacity-60"
           >
             <Save className="w-4 h-4" /> {saving ? 'Đang lưu…' : isNew ? 'Tạo dự án' : 'Lưu thay đổi'}
           </button>

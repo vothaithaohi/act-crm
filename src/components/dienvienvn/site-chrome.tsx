@@ -40,14 +40,14 @@ export function SiteFooter() {
             1. Thời gian đếm ngược tính theo giờ Việt Nam (GMT+7). DienVienVN chính thức ra mắt lúc 00:00 ngày 11/11/2026.
           </p>
           <p>
-            2. Hồ sơ casting chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa
+            2. Hồ sơ diễn viên chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa
             hoặc xoá hồ sơ bất kỳ lúc nào.
           </p>
         </div>
         <div className="dv-small flex flex-col gap-2 pt-4 md:flex-row md:items-center md:justify-between">
           <p>Bản quyền © 2026 DienVienVN. Bảo lưu mọi quyền.</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Link href={href('/nop-ho-so')} className="hover:underline">Nộp hồ sơ casting</Link>
+            <Link href={href('/nop-ho-so')} className="hover:underline">Nộp hồ sơ diễn viên</Link>
             <span className="text-[#d2d2d7]">|</span>
             <Link href={`${href('/')}#ra-mat`} className="hover:underline">Ra mắt 11.11.2026</Link>
             <span className="text-[#d2d2d7]">|</span>

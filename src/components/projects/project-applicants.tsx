@@ -12,6 +12,7 @@ import {
   CastingProject,
   ProjectApplication
 } from '@/lib/projects/types';
+import { talentPath } from '@/lib/talent-path';
 
 interface Props {
   project: CastingProject;
@@ -89,7 +90,7 @@ export function ProjectApplicants({ project, applications, onStatus, onRemove, o
                   <div className="min-w-0 space-y-0.5">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {t ? (
-                        <Link href={`/talents/${t.id}`} className="font-bold text-sm hover:text-brand-600 truncate">
+                        <Link href={talentPath(t)} className="font-bold text-sm hover:text-brand-600 truncate">
                           {t.full_name}
                         </Link>
                       ) : (

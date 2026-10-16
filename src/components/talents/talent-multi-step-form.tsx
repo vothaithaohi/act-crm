@@ -1278,7 +1278,7 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
               <button
                 type="button"
                 onClick={handleSave}
-                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-700 hover:to-rose-700 text-white rounded-lg text-xs font-bold shadow-md shadow-brand-500/20 transition-all hover:scale-[1.02]"
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#1d1d1f] hover:bg-black text-white rounded-lg text-xs font-bold shadow-md shadow-black/10 transition-all hover:scale-[1.02]"
               >
                 <Save className="w-4 h-4" />
                 <span>Hoàn Tất & Lưu Hồ Sơ</span>

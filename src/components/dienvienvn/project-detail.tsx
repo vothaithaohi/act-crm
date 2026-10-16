@@ -276,7 +276,7 @@ function ApplySheet({
           // Chế độ demo (chưa có tài khoản diễn viên): ứng tuyển kèm hồ sơ mới
           <div className="mt-6">
             <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Điền hồ sơ casting 7 bước. Vai <span className="font-semibold text-[var(--dv-text)]">{role.name}</span> sẽ được chọn sẵn
+              Điền hồ sơ diễn viên 7 bước. Vai <span className="font-semibold text-[var(--dv-text)]">{role.name}</span> sẽ được chọn sẵn
               {project.selftape_required ? ', và bạn sẽ dán link self-tape ở bước Hình ảnh.' : '.'}
             </p>
             <Link href={formHref} className="dv-btn dv-btn-primary mt-6 w-full">
@@ -286,7 +286,7 @@ function ApplySheet({
         ) : (
           <div className="mt-6 space-y-4">
             <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-              Hồ sơ casting trong tài khoản của bạn sẽ được gửi tới đội ngũ casting của dự án.{' '}
+              Hồ sơ diễn viên trong tài khoản của bạn sẽ được gửi tới đội ngũ casting của dự án.{' '}
               <Link href={href('/tai-khoan/ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
                 Cập nhật hồ sơ
               </Link>{' '}

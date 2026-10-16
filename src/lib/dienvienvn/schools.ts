@@ -1,4 +1,4 @@
-// Danh mục cơ sở đào tạo nghệ thuật tại Việt Nam (tham khảo cho form hồ sơ casting).
+// Danh mục cơ sở đào tạo nghệ thuật tại Việt Nam (tham khảo cho form hồ sơ diễn viên).
 // Nguồn: tài liệu "Danh sách trường nghệ thuật Việt Nam" do ban quản trị cung cấp.
 
 export type SchoolRegion = 'north' | 'central' | 'south';

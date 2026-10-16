@@ -301,6 +301,10 @@ export interface TalentProfile {
   submitted_at?: string | null;
   /** Tài khoản đăng nhập DienVienVN (Supabase Auth) của diễn viên sở hữu hồ sơ. */
   auth_user_id?: string | null;
+  /** Đường dẫn riêng: dienvienvn.com/<username>, admin.dienvienvn.com/<username>. */
+  username?: string | null;
+  /** Diễn viên đồng ý hiển thị hồ sơ trên trang công khai. */
+  public_profile?: boolean | null;
   
   created_at?: string;
   updated_at?: string;

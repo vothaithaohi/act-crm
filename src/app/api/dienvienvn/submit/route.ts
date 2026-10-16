@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   const { error } = await writeTalent(row => supabase.from('talent_profiles').insert(row), record);
 
   if (error) {
-    console.error('[dienvienvn] Không lưu được hồ sơ casting:', error);
+    console.error('[dienvienvn] Không lưu được hồ sơ diễn viên:', error);
     return NextResponse.json(
       { error: 'Hệ thống đang bận, hồ sơ chưa được lưu. Vui lòng thử lại sau ít phút.' },
       { status: 500 }

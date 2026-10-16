@@ -71,7 +71,7 @@ export default function TalentsPage() {
               <button
                 onClick={() => setIsExportModalOpen(true)}
                 disabled={selectedTalents.length === 0}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md shadow-rose-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                className="flex items-center gap-2 act-gold-bg text-black text-xs font-bold px-4 py-2.5 rounded-xl shadow-md shadow-[#a87b3f]/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
               >
                 <Share2 className="w-4 h-4" />
                 <span>Xuất Danh Sách Casting ({selectedTalents.length})</span>
@@ -81,7 +81,7 @@ export default function TalentsPage() {
             {can('talents:write') && (
               <Link
                 href="/talents/new"
-                className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-700 hover:to-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="flex items-center gap-2 bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-black/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>+ Tạo Hồ Sơ Casting Mới</span>
@@ -195,7 +195,7 @@ export default function TalentsPage() {
 
             <button
               onClick={() => setIsExportModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-500 to-rose-500 hover:from-brand-600 hover:to-rose-600 text-white text-xs font-bold shadow-md transition-all hover:scale-105 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1d1d1f] hover:bg-black text-white text-xs font-bold shadow-md transition-all hover:scale-105 active:scale-95"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Xuất Tóm Tắt Gửi Đạo Diễn / NSX (Zalo / Email)</span>

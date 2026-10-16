@@ -5,8 +5,9 @@ import { getActor, writeTalent } from '@/lib/dienvienvn/actor-server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, ProjectApplication, toPublicProject } from '@/lib/projects/types';
 import { getReviewStatus } from '@/lib/types/crm';
+import { RESERVED_USERNAMES, USERNAME_PATTERN } from '@/lib/dienvienvn/hosts';
 
-const NO_PROFILE = 'Tài khoản này chưa gắn với hồ sơ casting nào. Vui lòng liên hệ đội ngũ DienVienVN.';
+const NO_PROFILE = 'Tài khoản này chưa gắn với hồ sơ diễn viên nào. Vui lòng liên hệ đội ngũ DienVienVN.';
 
 // Hồ sơ của diễn viên đang đăng nhập + các vai đã ứng tuyển.
 export async function GET(req: NextRequest) {
@@ -39,6 +40,8 @@ export async function GET(req: NextRequest) {
       email: talent.email,
       headshot_url: talent.headshot_url || null,
       review_status: getReviewStatus(talent),
+      username: talent.username || null,
+      public_profile: !!talent.public_profile,
       updated_at: talent.updated_at || null
     },
     draft: talentToDraft(talent),
@@ -87,4 +90,38 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Hệ thống đang bận, thay đổi chưa được lưu. Vui lòng thử lại.' }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
+}
+
+// Diễn viên đổi username (đường dẫn dienvienvn.com/<username>).
+export async function PATCH(req: NextRequest) {
+  const { mode, db } = getServiceDb();
+  if (mode === 'demo') return NextResponse.json({ error: 'Chế độ demo chưa hỗ trợ tài khoản diễn viên.' }, { status: 400 });
+  if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
+
+  const actor = await getActor(req, db);
+  if (actor instanceof NextResponse) return actor;
+  const { talent } = actor;
+  if (!talent) return NextResponse.json({ error: NO_PROFILE }, { status: 404 });
+
+  const body = await req.json().catch(() => null);
+  const username = String(body?.username || '').trim().toLowerCase();
+  if (!USERNAME_PATTERN.test(username)) {
+    return NextResponse.json(
+      { error: 'Username gồm 3–40 ký tự: chữ thường không dấu, số, dấu gạch ngang (-) hoặc gạch dưới (_), bắt đầu bằng chữ hoặc số.' },
+      { status: 400 }
+    );
+  }
+  if (RESERVED_USERNAMES.has(username)) return NextResponse.json({ error: 'Username này được hệ thống sử dụng. Vui lòng chọn tên khác.' }, { status: 400 });
+  if (username === talent.username) return NextResponse.json({ ok: true, username });
+
+  const { data: taken } = await db.from('talent_profiles').select('id').eq('username', username).neq('id', talent.id).limit(1);
+  if (taken && taken.length) return NextResponse.json({ error: 'Username này đã có người dùng. Vui lòng chọn tên khác.' }, { status: 409 });
+
+  const { error } = await db.from('talent_profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', talent.id);
+  if (error) {
+    if (error.code === '23505') return NextResponse.json({ error: 'Username này đã có người dùng. Vui lòng chọn tên khác.' }, { status: 409 });
+    console.error('[dienvienvn] Không đổi được username:', error);
+    return NextResponse.json({ error: 'Không lưu được username. Vui lòng thử lại.' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, username });
 }

@@ -467,7 +467,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       className={`dv-btn ${readyToSubmit ? 'dv-btn-primary' : 'dv-btn-muted'} ${extra}`}
     >
       {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
-      {editing ? (submitting ? 'Đang lưu…' : 'Lưu thay đổi') : submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ casting'}
+      {editing ? (submitting ? 'Đang lưu…' : 'Lưu thay đổi') : submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ diễn viên'}
     </button>
   );
 
@@ -524,7 +524,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
               <ChevronLeft className="h-4 w-4" /> {editing ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN'}
             </Link>
             <h1 className="dv-display mt-2 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[40px] md:leading-[1.1] md:tracking-normal">
-              {editing ? 'Chỉnh sửa hồ sơ.' : target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ casting.'}
+              {editing ? 'Chỉnh sửa hồ sơ.' : target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ diễn viên.'}
             </h1>
             {target && (
               <div className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3 md:max-w-[640px]">
@@ -762,6 +762,29 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                     {consentError && <p className="dv-field-error">Vui lòng đánh dấu đồng ý để nộp hồ sơ.</p>}
                   </div>
 
+                  {/* Không bắt buộc: cho phép hiện hồ sơ trên trang công khai dienvienvn.com/<username> */}
+                  <div className={`${editing ? 'mt-5 border-t border-[#f0f0f2] pt-5' : 'mt-3'}`}>
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={draft.public_profile}
+                      onClick={() => update({ public_profile: !draft.public_profile })}
+                      className="flex w-full items-start gap-2.5 text-left"
+                    >
+                      <span
+                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
+                          draft.public_profile ? 'border-[var(--dv-accent)] bg-[var(--dv-accent)] text-white' : 'border-[#c7c7cc] bg-white'
+                        }`}
+                      >
+                        {draft.public_profile && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                      </span>
+                      <span className="text-[13px] leading-[1.42] text-[var(--dv-text-secondary)]">
+                        Hiển thị hồ sơ công khai trên DienVienVN sau khi được duyệt (ảnh, nghệ danh, kỹ năng, kinh nghiệm, đào tạo). Số điện
+                        thoại, email, địa chỉ, tuổi và số đo luôn được ẩn. <span className="text-[var(--dv-text-tertiary)]">Không bắt buộc.</span>
+                      </span>
+                    </button>
+                  </div>
+
                   <div className="mt-5">{submitButton('w-full')}</div>
                   {!readyToSubmit && (
                     <p className="mt-2.5 text-center text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
@@ -784,7 +807,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                     : draftSaved === 'failed'
                       ? 'Không lưu được bản nháp trên thiết bị này (bộ nhớ trình duyệt đầy hoặc bị chặn).'
                       : 'Bản nháp sẽ được tự động lưu trên thiết bị này.'}{' '}
-                  Hồ sơ chỉ được gửi đi khi bạn bấm “Nộp hồ sơ casting”.
+                  Hồ sơ chỉ được gửi đi khi bạn bấm “Nộp hồ sơ diễn viên”.
                     </>
                   )}
                 </p>
