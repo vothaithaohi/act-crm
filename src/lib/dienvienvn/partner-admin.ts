@@ -1,6 +1,7 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaffRole } from '@/lib/supabase/auth-guard';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 
 // Quản lý tài khoản đối tác trong CRM (API /api/admin/partners).
@@ -22,3 +23,12 @@ export async function guardPartnerAdmin(req: NextRequest) {
   return { staff, db };
 }
 
+
+/** Chỉ giữ các mã dự án có thật (bỏ trùng, tối đa 100). */
+export async function cleanProjectIds(db: SupabaseClient, ids: string[]): Promise<string[]> {
+  const unique = Array.from(new Set(ids.filter(id => /^[0-9a-f-]{36}$/i.test(id)))).slice(0, 100);
+  if (!unique.length) return [];
+  const { data } = await db.from('casting_projects').select('id').in('id', unique);
+  const existing = new Set((data || []).map(r => r.id as string));
+  return unique.filter(id => existing.has(id));
+}

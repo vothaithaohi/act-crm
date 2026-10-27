@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ExternalLink, Loader2, Mail, Phone, Printer, Video } from 'lucide-react';
 import { ProducerApplicant, ProducerView } from '@/lib/projects/producer';
@@ -29,8 +30,6 @@ function formatPhone(p: string) {
 export function ProducerBoard({ token }: { token: string }) {
   const [view, setView] = useState<ProducerView | null | undefined>(undefined);
   const [error, setError] = useState('');
-  const [role, setRole] = useState('all');
-  const [gender, setGender] = useState<'all' | 'male' | 'female'>('all');
 
   useEffect(() => {
     fetchProducerView(token)
@@ -40,14 +39,6 @@ export function ProducerBoard({ token }: { token: string }) {
         setView(null);
       });
   }, [token]);
-
-  const list = useMemo(
-    () =>
-      (view?.applicants || []).filter(
-        a => (role === 'all' || a.application.role_id === role) && (gender === 'all' || a.talent.gender === gender)
-      ),
-    [view, role, gender]
-  );
 
   if (view === undefined) {
     return (
@@ -72,10 +63,6 @@ export function ProducerBoard({ token }: { token: string }) {
     );
   }
 
-  const { project, applicants } = view;
-  const countFor = (roleId: string) => applicants.filter(a => a.application.role_id === roleId).length;
-  const roleName = (id: string) => project.roles.find(r => r.id === id)?.name || 'Vai khác';
-
   return (
     <>
       <div className="print:hidden">
@@ -83,6 +70,33 @@ export function ProducerBoard({ token }: { token: string }) {
       </div>
       <main className="min-h-screen bg-[var(--dv-bg-alt)] pb-20 print:bg-white print:pb-0">
         <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6 lg:pt-12">
+          <ProducerApplicants view={view} />
+          <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
+            Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.
+          </p>
+        </div>
+      </main>
+    </>
+  );
+}
+
+/** Thông tin dự án + bộ lọc vai/giới tính + danh sách ứng viên (dùng cho link NSX và cổng đối tác). */
+export function ProducerApplicants({ view, profileHref }: { view: ProducerView; profileHref?: (talentId: string) => string | null }) {
+  const [role, setRole] = useState('all');
+  const [gender, setGender] = useState<'all' | 'male' | 'female'>('all');
+  const list = useMemo(
+    () =>
+      view.applicants.filter(
+        a => (role === 'all' || a.application.role_id === role) && (gender === 'all' || a.talent.gender === gender)
+      ),
+    [view, role, gender]
+  );
+  const { project, applicants } = view;
+  const countFor = (roleId: string) => applicants.filter(a => a.application.role_id === roleId).length;
+  const roleName = (id: string) => project.roles.find(r => r.id === id)?.name || 'Vai khác';
+
+  return (
+    <>
           <header>
             <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">
               Danh sách ứng viên · {project.code}
@@ -141,21 +155,15 @@ export function ProducerBoard({ token }: { token: string }) {
           ) : (
             <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-2 print:gap-3">
               {list.map(a => (
-                <ApplicantCard key={a.application.id} applicant={a} roleName={roleName(a.application.role_id)} />
+                <ApplicantCard key={a.application.id} applicant={a} roleName={roleName(a.application.role_id)} profileHref={profileHref?.(a.talent.id) || null} />
               ))}
             </ul>
           )}
-
-          <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
-            Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.
-          </p>
-        </div>
-      </main>
     </>
   );
 }
 
-function ApplicantCard({ applicant, roleName }: { applicant: ProducerApplicant; roleName: string }) {
+function ApplicantCard({ applicant, roleName, profileHref }: { applicant: ProducerApplicant; roleName: string; profileHref?: string | null }) {
   const { talent: t, application } = applicant;
   const photos = [
     { key: 'headshot', label: 'Chân dung', url: t.headshot_url },
@@ -218,7 +226,15 @@ function ApplicantCard({ applicant, roleName }: { applicant: ProducerApplicant; 
         </div>
       )}
       <div className="flex flex-1 flex-col p-5">
-        <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">{t.full_name}</p>
+        <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">
+          {profileHref ? (
+            <Link href={profileHref} className="hover:underline">
+              {t.full_name}
+            </Link>
+          ) : (
+            t.full_name
+          )}
+        </p>
         <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">
           {[
             t.gender === 'female' ? 'Nữ' : t.gender === 'male' ? 'Nam' : 'Khác',

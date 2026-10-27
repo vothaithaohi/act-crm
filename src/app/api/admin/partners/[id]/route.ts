@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
 import { PartnerAccount } from '@/lib/dienvienvn/partners';
-import { EMAIL_RESULT_MESSAGE, guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
+import { cleanProjectIds, EMAIL_RESULT_MESSAGE, guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 
 const patchSchema = z.object({
   full_name: z.string().trim().min(2).max(120).optional(),
@@ -10,6 +10,7 @@ const patchSchema = z.object({
   partner_type: z.enum(['director', 'producer', 'casting', 'agency', 'brand', 'other']).optional(),
   note: z.string().trim().max(1000).optional(),
   status: z.enum(['active', 'disabled']).optional(),
+  project_ids: z.array(z.string()).max(100).optional(),
   /** Gửi lại email mời / đặt mật khẩu */
   resend: z.boolean().optional()
 });
@@ -27,9 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { resend, ...fields } = parsed.data;
 
   const changes: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(fields)) {
+  const { project_ids, ...rest } = fields;
+  for (const [k, v] of Object.entries(rest)) {
     if (v !== undefined) changes[k] = k === 'company' || k === 'note' ? (v as string) || null : v;
   }
+  if (project_ids) changes.project_ids = await cleanProjectIds(g.db, project_ids);
   let partner: PartnerAccount | null = null;
   if (Object.keys(changes).length) {
     const { data, error } = await g.db
@@ -38,7 +41,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .eq('id', id)
       .select('*')
       .maybeSingle();
-    if (error) return NextResponse.json({ error: 'Không lưu được thay đổi.' }, { status: 500 });
+    if (error) {
+      const noColumn = /project_ids/.test(error.message);
+      return NextResponse.json(
+        { error: noColumn ? 'Chưa gắn được dự án — hãy chạy migration 20261027_partner_projects.sql.' : 'Không lưu được thay đổi.' },
+        { status: 500 }
+      );
+    }
     partner = data as PartnerAccount | null;
   } else {
     const { data } = await g.db.from('partner_accounts').select('*').eq('id', id).maybeSingle();

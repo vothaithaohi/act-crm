@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, LogOut, Mail, Phone, Printer, Search, UserRound } from 'lucide-react';
 import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { ageFromDob, ROLE_WILLINGNESS_OPTIONS, TATTOO_OPTIONS } from '@/lib/dienvienvn/casting-form';
-import { PARTNER_TYPE_LABELS, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
+import { PARTNER_TYPE_LABELS, PartnerProjectSummary, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
+import type { ProducerView } from '@/lib/projects/producer';
+import { projectTypeLabel } from '@/lib/projects/types';
+import { ProducerApplicants } from './producer-board';
+import { formatVnDate } from './projects-section';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { experienceGroups, foldVi, skillGroups, trainingList } from '@/lib/dienvienvn/talent-sections';
 import { LoginGate } from './actor-pages';
@@ -158,7 +162,7 @@ function Gate({ session, error, notPartner, demo, next }: { session: ReturnType<
 /* ---------------- Danh sách diễn viên cho đối tác ---------------- */
 export function PartnerDirectory() {
   const href = useDvvnHref();
-  const api = usePartnerApi<{ partner: PartnerInfo; talents: PartnerTalent[] }>('/api/dienvienvn/partner/talents');
+  const api = usePartnerApi<{ partner: PartnerInfo; talents: PartnerTalent[]; projects?: PartnerProjectSummary[] }>('/api/dienvienvn/partner/talents');
   const [q, setQ] = useState('');
   const [gender, setGender] = useState('all');
   const [city, setCity] = useState('all');
@@ -221,6 +225,34 @@ export function PartnerDirectory() {
 
   return (
     <PortalShell partner={api.data.partner}>
+      {(api.data.projects || []).length > 0 && (
+        <section className="mb-12">
+          <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">Dự án của bạn.</h2>
+          <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">Ứng viên đã được đội casting duyệt cho từng vai, tự cập nhật.</p>
+          <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(api.data.projects || []).map(p => (
+              <li key={p.id}>
+                <Link
+                  href={href(`/doi-tac/du-an/${p.id}`)}
+                  className="group flex h-full flex-col rounded-[18px] bg-white p-5 transition-shadow hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.25)]"
+                >
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">
+                    {p.code} · {p.status === 'open' ? 'Đang casting' : 'Đã đóng'}
+                  </p>
+                  <p className="mt-1 text-[19px] font-semibold leading-[1.25]">{p.title}</p>
+                  <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">
+                    {[p.production_company, projectTypeLabel(p.project_type), p.deadline ? `Hạn nộp ${formatVnDate(p.deadline)}` : null].filter(Boolean).join(' · ')}
+                  </p>
+                  <p className="mt-auto pt-4 text-[15px] font-semibold">
+                    {p.applicants} ứng viên · {p.roles} vai <ChevronRight className="inline h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <h1 className="dv-display dv-headline">Kho diễn viên DienVienVN.</h1>
       <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{talents.length} hồ sơ đã duyệt · thông tin đầy đủ dành riêng cho đối tác.</p>
 
@@ -494,6 +526,24 @@ export function PartnerTalentProfile({ username }: { username: string }) {
           )}
         </div>
       </div>
+    </PortalShell>
+  );
+}
+
+/* ---------------- Ứng viên của 1 dự án được gắn cho đối tác ---------------- */
+export function PartnerProjectBoard({ projectId }: { projectId: string }) {
+  const href = useDvvnHref();
+  const api = usePartnerApi<ProducerView & { usernames: Record<string, string> }>(`/api/dienvienvn/partner/projects/${encodeURIComponent(projectId)}`);
+  if (!api.data) return <Gate {...api} next={href(`/doi-tac/du-an/${projectId}`)} />;
+  const usernames = api.data.usernames || {};
+  return (
+    <PortalShell>
+      <div className="mb-6 flex items-center justify-between print:hidden">
+        <Link href={href('/doi-tac')} className="dv-link text-[14px]">
+          <ChevronLeft className="h-4 w-4" /> Cổng đối tác
+        </Link>
+      </div>
+      <ProducerApplicants view={api.data} profileHref={id => (usernames[id] ? href(`/doi-tac/${usernames[id]}`) : null)} />
     </PortalShell>
   );
 }

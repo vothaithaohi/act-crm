@@ -23,6 +23,8 @@ export interface PartnerAccount {
   status: PartnerStatus;
   note: string | null;
   auth_user_id: string | null;
+  /** Dự án casting đối tác được xem danh sách ứng viên */
+  project_ids: string[];
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -38,3 +40,16 @@ export type PartnerTalent = ProducerTalent & {
 };
 
 export const PARTNER_PORTAL_PATH = '/doi-tac';
+
+/** Dự án đối tác được gắn (tóm tắt hiển thị trong cổng đối tác). */
+export interface PartnerProjectSummary {
+  id: string;
+  code: string;
+  title: string;
+  production_company: string | null;
+  project_type: string;
+  status: string;
+  deadline: string | null;
+  roles: number;
+  applicants: number;
+}

@@ -3,14 +3,15 @@ import { z } from 'zod';
 import { isStaffEmail } from '@/lib/dienvienvn/actor-server';
 import { sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
 import { PartnerAccount } from '@/lib/dienvienvn/partners';
-import { EMAIL_RESULT_MESSAGE, guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
+import { cleanProjectIds, EMAIL_RESULT_MESSAGE, guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 
 const createSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(160),
   full_name: z.string().trim().min(2).max(120),
   company: z.string().trim().max(160).optional().default(''),
   partner_type: z.enum(['director', 'producer', 'casting', 'agency', 'brand', 'other']).default('producer'),
-  note: z.string().trim().max(1000).optional().default('')
+  note: z.string().trim().max(1000).optional().default(''),
+  project_ids: z.array(z.string()).max(100).optional().default([])
 });
 
 export async function GET(req: NextRequest) {
@@ -46,12 +47,16 @@ export async function POST(req: NextRequest) {
       company: input.company || null,
       partner_type: input.partner_type,
       note: input.note || null,
+      project_ids: await cleanProjectIds(g.db, input.project_ids),
       created_by: g.staff.email
     })
     .select('*')
     .single();
   if (error) {
     if (error.code === '23505') return NextResponse.json({ error: 'Email này đã có tài khoản đối tác.' }, { status: 409 });
+    if (/project_ids/.test(error.message)) {
+      return NextResponse.json({ error: 'Chưa gắn được dự án — hãy chạy migration 20261027_partner_projects.sql.' }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Không tạo được tài khoản đối tác.' }, { status: 500 });
   }
 

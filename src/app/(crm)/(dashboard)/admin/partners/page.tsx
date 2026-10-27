@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, Handshake, Loader2, Lock, Mail, Plus, Trash2, Unlock, X } from 'lucide-react';
+import { ExternalLink, FolderKanban, Handshake, Loader2, Lock, Mail, Plus, Trash2, Unlock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { PARTNER_TYPE_LABELS, PartnerAccount, PartnerType } from '@/lib/dienvienvn/partners';
+import { useProjects } from '@/lib/projects/use-projects';
+import { CastingProject } from '@/lib/projects/types';
 
 const PORTAL_URL = 'https://www.dienvienvn.com/doi-tac';
 
@@ -26,6 +28,9 @@ export default function AdminPartnersPage() {
   const [demo, setDemo] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [projectsFor, setProjectsFor] = useState<PartnerAccount | null>(null);
+  const { projects } = useProjects();
+  const projectById = new Map(projects.map(pr => [pr.id, pr]));
 
   const load = useCallback(async () => {
     try {
@@ -127,6 +132,7 @@ export default function AdminPartnersPage() {
                 <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b">
                   <th className="px-4 py-3 font-semibold">Đối tác</th>
                   <th className="px-4 py-3 font-semibold">Loại · Công ty</th>
+                  <th className="px-4 py-3 font-semibold">Dự án</th>
                   <th className="px-4 py-3 font-semibold">Trạng thái</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Truy cập gần nhất</th>
                   <th className="px-4 py-3 font-semibold text-right">Thao tác</th>
@@ -144,6 +150,26 @@ export default function AdminPartnersPage() {
                       <div className="font-medium">{PARTNER_TYPE_LABELS[p.partner_type] || p.partner_type}</div>
                       <div className="text-muted-foreground">{p.company || '—'}</div>
                     </td>
+                    <td className="px-4 py-3 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setProjectsFor(p)}
+                        className="text-left hover:underline"
+                        title="Chọn dự án đối tác được xem ứng viên"
+                      >
+                        {(p.project_ids || []).filter(id => projectById.has(id)).length ? (
+                          <span className="flex flex-wrap gap-1">
+                            {(p.project_ids || []).map(id => projectById.get(id)).filter((pr): pr is CastingProject => !!pr).map(pr => (
+                              <span key={pr.id} className="px-1.5 py-0.5 rounded-md border bg-muted font-mono font-semibold" title={pr.title}>
+                                {pr.code}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">+ Gắn dự án</span>
+                        )}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <StatusBadge p={p} />
                     </td>
@@ -151,6 +177,14 @@ export default function AdminPartnersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        <button
+                          title="Gắn dự án"
+                          disabled={busyId === p.id}
+                          onClick={() => setProjectsFor(p)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted disabled:opacity-40"
+                        >
+                          <FolderKanban className="w-4 h-4" />
+                        </button>
                         <button
                           title="Gửi lại email mời / đặt mật khẩu"
                           disabled={busyId === p.id || p.status === 'disabled'}
@@ -191,8 +225,21 @@ export default function AdminPartnersPage() {
         </a>
       </div>
 
+      {projectsFor && (
+        <ProjectsModal
+          partner={projectsFor}
+          projects={projects}
+          onClose={() => setProjectsFor(null)}
+          onSave={async ids => {
+            await patch(projectsFor, { project_ids: ids }, 'Đã cập nhật dự án của đối tác.');
+            setProjectsFor(null);
+          }}
+        />
+      )}
+
       {isModalOpen && (
         <CreatePartnerModal
+          projects={projects}
           onClose={() => setIsModalOpen(false)}
           onCreated={p => {
             setPartners(list => [p, ...(list || [])]);
@@ -204,7 +251,8 @@ export default function AdminPartnersPage() {
   );
 }
 
-function CreatePartnerModal({ onClose, onCreated }: { onClose: () => void; onCreated: (p: PartnerAccount) => void }) {
+function CreatePartnerModal({ projects, onClose, onCreated }: { projects: CastingProject[]; onClose: () => void; onCreated: (p: PartnerAccount) => void }) {
+  const [projectIds, setProjectIds] = useState<string[]>([]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
@@ -222,7 +270,7 @@ function CreatePartnerModal({ onClose, onCreated }: { onClose: () => void; onCre
       const res = await authedFetch('/api/admin/partners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: fullName, email, company, partner_type: type, note })
+        body: JSON.stringify({ full_name: fullName, email, company, partner_type: type, note, project_ids: projectIds })
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) return setError(body.error || 'Không tạo được tài khoản.');
@@ -240,7 +288,7 @@ function CreatePartnerModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <form onSubmit={submit} onClick={e => e.stopPropagation()} className="w-full max-w-md bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
+      <form onSubmit={submit} onClick={e => e.stopPropagation()} className="w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Tạo tài khoản đối tác</h2>
           <button type="button" onClick={onClose} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-muted" aria-label="Đóng">
@@ -275,6 +323,10 @@ function CreatePartnerModal({ onClose, onCreated }: { onClose: () => void; onCre
           <label className={label}>Ghi chú nội bộ</label>
           <input className={input} value={note} onChange={e => setNote(e.target.value)} placeholder="VD: Dự án phim Mai 2" />
         </div>
+        <div className="space-y-1.5">
+          <label className={label}>Dự án của đối tác</label>
+          <ProjectChecklist projects={projects} value={projectIds} onChange={setProjectIds} />
+        </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           Đối tác sẽ nhận email để tự đặt mật khẩu, rồi đăng nhập tại dienvienvn.com/doi-tac. Bạn có thể khoá tài khoản bất cứ lúc nào.
         </p>
@@ -289,6 +341,77 @@ function CreatePartnerModal({ onClose, onCreated }: { onClose: () => void; onCre
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+/** Danh sách dự án (bỏ bản nháp) để tick chọn. */
+function ProjectChecklist({ projects, value, onChange }: { projects: CastingProject[]; value: string[]; onChange: (ids: string[]) => void }) {
+  const list = projects.filter(p => p.status !== 'draft' || value.includes(p.id));
+  if (!list.length) return <p className="text-xs text-muted-foreground">Chưa có dự án casting nào đang mở.</p>;
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
+  return (
+    <div className="max-h-48 overflow-y-auto rounded-lg border divide-y">
+      {list.map(p => (
+        <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/60">
+          <input type="checkbox" checked={value.includes(p.id)} onChange={() => toggle(p.id)} className="h-4 w-4 accent-[#1d1d1f]" />
+          <span className="font-mono text-xs font-semibold shrink-0">{p.code}</span>
+          <span className="truncate flex-1">{p.title}</span>
+          {p.status !== 'open' && <span className="text-[10px] text-muted-foreground shrink-0">{p.status === 'draft' ? 'Nháp' : 'Đã đóng'}</span>}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ProjectsModal({
+  partner,
+  projects,
+  onClose,
+  onSave
+}: {
+  partner: PartnerAccount;
+  projects: CastingProject[];
+  onClose: () => void;
+  onSave: (ids: string[]) => Promise<void>;
+}) {
+  const [ids, setIds] = useState<string[]>(partner.project_ids || []);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-md bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">Dự án của đối tác</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{partner.full_name} · {partner.email}</p>
+          </div>
+          <button type="button" onClick={onClose} className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg hover:bg-muted" aria-label="Đóng">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <ProjectChecklist projects={projects} value={ids} onChange={setIds} />
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Đối tác thấy mục &ldquo;Dự án của bạn&rdquo; trong cổng đối tác, xem được ứng viên đã duyệt (không bị Loại) của từng vai, kèm kho diễn viên như hiện tại.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border text-xs font-semibold hover:bg-muted">
+            Huỷ
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onSave(ids);
+              setBusy(false);
+            }}
+            className="h-10 inline-flex items-center gap-2 px-4 rounded-lg bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold disabled:opacity-60"
+          >
+            {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+            Lưu
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

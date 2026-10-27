@@ -1,11 +1,12 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { toProducerTalent } from '@/lib/projects/producer';
+import { buildProducerView, toProducerTalent } from '@/lib/projects/producer';
 import { TalentProfile } from '@/lib/types/crm';
 import { findAuthUserByEmail, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
-import { PartnerAccount, PartnerTalent } from './partners';
+import { PartnerAccount, PartnerProjectSummary, PartnerTalent } from './partners';
+import { CastingProject, ProjectApplication } from '@/lib/projects/types';
 
 /** Bỏ ký tự đặc biệt của LIKE để so khớp email chính xác (không phân biệt hoa thường). */
 const likeExact = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`);
@@ -104,4 +105,51 @@ export function toPartnerTalent(t: TalentProfile): PartnerTalent {
     preferred_project_types: t.preferred_project_types || [],
     preferred_role_types: t.preferred_role_types || []
   };
+}
+
+/** Ứng viên hiện cho đối tác/NSX: không bị Loại và hồ sơ đã duyệt (như link NSX). */
+async function visibleApplications(db: SupabaseClient, projectIds: string[]) {
+  const { data: apps } = await db.from('project_applications').select('*').in('project_id', projectIds).neq('status', 'rejected');
+  const applications = (apps || []) as ProjectApplication[];
+  const talentIds = Array.from(new Set(applications.map(a => a.talent_id)));
+  const talents: TalentProfile[] = [];
+  for (let i = 0; i < talentIds.length; i += 200) {
+    const { data } = await approvedTalents(db).in('id', talentIds.slice(i, i + 200));
+    talents.push(...((data || []) as TalentProfile[]));
+  }
+  return { applications, talents };
+}
+
+/** Các dự án được gắn cho đối tác (bỏ bản nháp), kèm số vai và số ứng viên đang hiện. */
+export async function partnerProjects(db: SupabaseClient, partner: PartnerAccount): Promise<PartnerProjectSummary[]> {
+  const ids = partner.project_ids || [];
+  if (!ids.length) return [];
+  const { data, error } = await db.from('casting_projects').select('*').in('id', ids).neq('status', 'draft').order('created_at', { ascending: false });
+  if (error || !data?.length) return [];
+  const projects = data as CastingProject[];
+  const { applications, talents } = await visibleApplications(db, projects.map(p => p.id));
+  const approved = new Set(talents.map(t => t.id));
+  return projects.map(p => ({
+    id: p.id,
+    code: p.code,
+    title: p.title,
+    production_company: p.production_company || null,
+    project_type: p.project_type,
+    status: p.status,
+    deadline: p.deadline || null,
+    roles: (p.roles || []).length,
+    applicants: applications.filter(a => a.project_id === p.id && approved.has(a.talent_id)).length
+  }));
+}
+
+/** Chi tiết 1 dự án cho đối tác: như link NSX nhưng luôn có liên hệ, kèm username để mở hồ sơ đầy đủ. */
+export async function partnerProjectView(db: SupabaseClient, partner: PartnerAccount, projectId: string) {
+  if (!(partner.project_ids || []).includes(projectId)) return null;
+  const { data } = await db.from('casting_projects').select('*').eq('id', projectId).neq('status', 'draft').maybeSingle();
+  if (!data) return null;
+  const project = data as CastingProject;
+  const { applications, talents } = await visibleApplications(db, [project.id]);
+  const view = buildProducerView({ ...project, hide_contacts: false }, applications, talents);
+  const usernames = Object.fromEntries(talents.filter(t => t.username).map(t => [t.id, t.username as string]));
+  return { ...view, usernames };
 }

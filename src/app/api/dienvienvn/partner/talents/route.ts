@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { approvedTalents, getPartner, toPartnerTalent } from '@/lib/dienvienvn/partner-server';
+import { approvedTalents, getPartner, partnerProjects, toPartnerTalent } from '@/lib/dienvienvn/partner-server';
 import { TalentProfile } from '@/lib/types/crm';
 
 const PRIVATE = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' };
@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
     {
       mode: 'live',
       partner: { full_name: partner.full_name, company: partner.company, partner_type: partner.partner_type },
-      talents: ((data || []) as TalentProfile[]).map(toPartnerTalent)
+      talents: ((data || []) as TalentProfile[]).map(toPartnerTalent),
+      projects: await partnerProjects(db, partner)
     },
     { headers: PRIVATE }
   );
