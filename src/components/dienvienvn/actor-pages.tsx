@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Check, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LogOut, Pencil, UserRound } from 'lucide-react';
 import { actorClient, actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
-import { PublicProject, isDeadlinePassed, projectSlug, projectTypeLabel } from '@/lib/projects/types';
+import { PublicProject, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
@@ -543,7 +543,7 @@ export function ActorAccount() {
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           {projects.map(p => (
-            <Link key={p.id} href={href(`/du-an/${projectSlug(p.display_name, p.code) || p.id}`)} className="group flex flex-col rounded-[18px] bg-white p-6 transition-colors hover:bg-[#fafafa]">
+            <Link key={p.id} href={href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`)} className="group flex flex-col rounded-[18px] bg-white p-6 transition-colors hover:bg-[#fafafa]">
               <span className="flex items-center justify-between gap-3 text-[14px] font-semibold text-[var(--dv-text-secondary)]">
                 {projectTypeLabel(p.project_type)}
                 {appliedProjects.has(p.id) && <span className="rounded-full bg-[var(--dv-bg-alt)] px-2.5 py-0.5 text-[12px] text-[var(--dv-text)]">Đã ứng tuyển</span>}

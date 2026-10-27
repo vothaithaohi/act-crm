@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
-import { CastingProject, matchesProjectSlug } from './types';
+import { CastingProject, projectSlugScore } from './types';
 
 /**
  * Client Supabase quyền service role cho API công khai (bỏ qua RLS, chỉ chạy trên server).
@@ -28,9 +28,17 @@ export async function findProjectByParam(db: SupabaseClient, param: string): Pro
     return (data as CastingProject | null) || null;
   }
   if (!/^[a-z0-9-]{1,100}$/i.test(key)) return null;
-  const { data: rows, error } = await db.from('casting_projects').select('id, code, title, hide_title').neq('status', 'draft');
+  const { data: rows, error } = await db
+    .from('casting_projects')
+    .select('id, code, title, hide_title, status, created_at')
+    .neq('status', 'draft')
+    .order('created_at', { ascending: false });
   if (error) return 'error';
-  const hit = ((rows || []) as Pick<CastingProject, 'id' | 'code' | 'title' | 'hide_title'>[]).find(p => matchesProjectSlug(key, p));
+  // Trùng tên: ưu tiên khớp chính xác hơn, rồi dự án đang casting, rồi dự án mới nhất
+  const hit = ((rows || []) as Pick<CastingProject, 'id' | 'code' | 'title' | 'hide_title' | 'status'>[])
+    .map(p => ({ p, score: projectSlugScore(key, p) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score || Number(b.p.status === 'open') - Number(a.p.status === 'open'))[0]?.p;
   if (!hit) return null;
   const { data, error: fullErr } = await db.from('casting_projects').select('*').eq('id', hit.id).maybeSingle();
   if (fullErr) return 'error';

@@ -11,7 +11,7 @@ import {
   ProjectApplication,
   readLocal,
   writeLocal,
-  projectSlug,
+  projectPathName,
   publicProjectName,
   slugifyVi
 } from './types';
@@ -41,9 +41,9 @@ export function producerLink(p: Pick<CastingProject, 'share_token' | 'code' | 't
   return `${publicSiteBase()}/nsx/${slug ? `${slug}-` : ''}${p.share_token}`;
 }
 
-/** Link dự án cho diễn viên: tên dự án + mã, VD: …/du-an/mot-phim-linh-dinh-dv-01 (dự án "Ẩn tên" không lộ tên thật). */
+/** Link dự án cho diễn viên: …/du-an/mot-phim-linh-dinh (dự án "Ẩn tên" dùng …/du-an/du-an-dv-01, không lộ tên thật). */
 export function publicProjectLink(p: Pick<CastingProject, 'id' | 'code' | 'title' | 'hide_title'>): string {
-  return `${publicSiteBase()}/du-an/${projectSlug(publicProjectName(p), p.code) || p.id}`;
+  return `${publicSiteBase()}/du-an/${projectPathName(publicProjectName(p), p.code) || p.id}`;
 }
 
 /**

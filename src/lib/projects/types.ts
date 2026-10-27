@@ -224,12 +224,27 @@ export function projectSlug(name: string, code: string): string {
   return `${n}-${c}`;
 }
 
-/** Đường dẫn khớp dự án: đúng slug hiện tại, hoặc kết thúc bằng mã dự án (link cũ vẫn chạy khi đổi tên). */
-export function matchesProjectSlug(param: string, p: Pick<CastingProject, 'code' | 'title' | 'hide_title'>): boolean {
+/** Phần đường dẫn của link dự án cho diễn viên: tên hiển thị, VD: mot-phim-linh-dinh ("Ẩn tên" → du-an-dv-01). */
+export function projectPathName(name: string, code: string): string {
+  return slugifyVi(name) || slugifyVi(code);
+}
+
+/**
+ * Mức khớp giữa đường dẫn và dự án (0 = không khớp):
+ * 3 = đúng tên (mot-phim-linh-dinh), 2 = tên + mã (mot-phim-linh-dinh-dv-01), 1 = kết thúc bằng mã (link cũ khi đã đổi tên).
+ */
+export function projectSlugScore(param: string, p: Pick<CastingProject, 'code' | 'title' | 'hide_title'>): number {
   const key = param.trim().toLowerCase();
+  const name = publicProjectName(p);
   const c = slugifyVi(p.code || '');
-  if (!c) return false;
-  return key === projectSlug(publicProjectName(p), p.code) || key === c || key.endsWith(`-${c}`);
+  if (key === projectPathName(name, p.code)) return 3;
+  if (key === projectSlug(name, p.code)) return 2;
+  if (c && (key === c || key.endsWith(`-${c}`))) return 1;
+  return 0;
+}
+
+export function matchesProjectSlug(param: string, p: Pick<CastingProject, 'code' | 'title' | 'hide_title'>): boolean {
+  return projectSlugScore(param, p) > 0;
 }
 
 /** Lấy mã bí mật từ đường dẫn NSX dạng "ten-du-an-<mã>" (hoặc chỉ "<mã>" với link cũ). */
