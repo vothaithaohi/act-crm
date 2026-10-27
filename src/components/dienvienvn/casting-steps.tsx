@@ -443,9 +443,14 @@ function SkillChips({
               }
               if (e.key === 'Escape') setAdding(false);
             }}
-            className="dv-input !h-10 min-w-0 flex-1 !rounded-full !text-[15px] sm:w-[240px] sm:flex-none"
+            className="h-10 min-w-0 flex-1 rounded-full border border-[#d2d2d7] bg-white px-4 text-[14px] tracking-[-0.016em] text-[var(--dv-text)] outline-none transition-colors placeholder:text-[var(--dv-text-tertiary)] focus:border-[var(--dv-accent)] sm:w-[240px] sm:flex-none"
           />
-          <button type="button" onClick={add} disabled={!text.trim()} className="dv-btn dv-btn-primary !h-10 !px-4 !py-0 text-[15px]">
+          <button
+            type="button"
+            onClick={add}
+            disabled={!text.trim()}
+            className="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[var(--dv-accent)] px-5 text-[14px] font-medium tracking-[-0.016em] text-white transition-opacity hover:bg-[var(--dv-accent-hover)] disabled:cursor-not-allowed disabled:opacity-30"
+          >
             Thêm
           </button>
           <button
@@ -454,7 +459,7 @@ function SkillChips({
               setText('');
               setAdding(false);
             }}
-            className="text-[14px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]"
+            className="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 text-[14px] tracking-[-0.016em] text-[var(--dv-text-secondary)] transition-colors hover:bg-[var(--dv-bg-alt)] hover:text-[var(--dv-text)]"
           >
             Huỷ
           </button>
