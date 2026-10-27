@@ -4,14 +4,14 @@ import { buildProducerView } from '@/lib/projects/producer';
 import { CastingProject, ProjectApplication } from '@/lib/projects/types';
 import { TalentProfile } from '@/lib/types/crm';
 
-// Link gửi nhà sản xuất: ai có link (token ngẫu nhiên 48 ký tự) mới xem được.
+// Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 12 ký tự; link cũ 48 ký tự vẫn dùng được) mới xem được.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const { mode, db } = getServiceDb();
   if (mode === 'demo') return NextResponse.json({ mode: 'demo' });
   if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
 
-  if (!/^[0-9a-f]{32,128}$/i.test(token)) {
+  if (!/^[0-9a-z]{12,128}$/i.test(token)) {
     return NextResponse.json({ error: 'Link không hợp lệ hoặc đã bị thu hồi.' }, { status: 404 });
   }
 

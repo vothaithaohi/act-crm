@@ -12,12 +12,20 @@ import {
   readLocal,
   writeLocal
 } from './types';
+import { SITE_URL } from '@/lib/dienvienvn/hosts';
 
-/** Địa chỉ gốc của trang công khai, dùng để tạo link dự án và link gửi NSX. */
+/**
+ * Địa chỉ gốc của trang công khai, dùng để tạo link dự án và link gửi NSX.
+ * Luôn là tên miền chính (https://www.dienvienvn.com) để link gửi ra ngoài ngắn gọn, không lộ tên miền Vercel;
+ * chỉ khi chạy thử trên máy (localhost) mới dùng đường dẫn nội bộ /dienvienvn.
+ */
 export function publicSiteBase(): string {
   const configured = process.env.NEXT_PUBLIC_DIENVIENVN_URL;
   if (configured) return configured.replace(/\/$/, '');
-  return typeof window !== 'undefined' ? `${window.location.origin}/dienvienvn` : '/dienvienvn';
+  if (typeof window !== 'undefined' && /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(window.location.hostname)) {
+    return `${window.location.origin}/dienvienvn`;
+  }
+  return SITE_URL;
 }
 
 export function producerLink(p: Pick<CastingProject, 'share_token'>): string {

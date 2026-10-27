@@ -133,10 +133,18 @@ export function nextProjectCode(existing: string[]): string {
   return `DV-${String(next).padStart(2, '0')}`;
 }
 
+/** Mã link gửi NSX: 12 ký tự chữ thường + số (~62 bit ngẫu nhiên, không đoán được), VD: k3f9x2m8qa7d. */
 export function newShareToken(): string {
-  const bytes = new Uint8Array(24);
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  // 252 = 7 × 36: bỏ byte ≥ 252 để mọi ký tự có xác suất như nhau
+  let out = '';
+  while (out.length < 12) {
+    for (const b of bytes) if (b < 252 && out.length < 12) out += alphabet[b % 36];
+    crypto.getRandomValues(bytes);
+  }
+  return out;
 }
 
 export function isDeadlinePassed(deadline?: string | null): boolean {
