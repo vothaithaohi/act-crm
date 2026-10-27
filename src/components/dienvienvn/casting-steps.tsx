@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { EXTERNAL_PROGRAM_LABELS, ExternalProgramType } from '@/lib/types/crm';
 import {
@@ -17,6 +18,9 @@ import {
   MARTIAL_ARTS_OPTIONS,
   ROLE_WILLINGNESS_OPTIONS,
   SPORT_OPTIONS,
+  CUSTOM_SKILL_MAX_LENGTH,
+  SKILL_GROUP_MAX,
+  normalizeSkills,
   StepErrors,
   TATTOO_OPTIONS,
   TrainingEntry,
@@ -357,13 +361,13 @@ export function StepExperience({ draft, update }: StepProps) {
 
 /* ---------------- Bước 4 ---------------- */
 export function StepSkills({ draft, update }: StepProps) {
-  const groups: { key: keyof CastingDraft; label: string; options: string[]; format?: (s: string) => string }[] = [
+  const groups: { key: keyof CastingDraft; label: string; options: string[]; format?: (s: string) => string; placeholder?: string }[] = [
     { key: 'accents', label: 'Giọng nói vùng miền', options: ACCENT_OPTIONS, format: s => `Giọng ${s}` },
-    { key: 'languages', label: 'Ngoại ngữ', options: LANGUAGE_OPTIONS },
-    { key: 'martial_arts', label: 'Võ thuật & Cascadeur', options: MARTIAL_ARTS_OPTIONS },
-    { key: 'instruments', label: 'Nhạc cụ biểu diễn', options: INSTRUMENT_OPTIONS },
-    { key: 'dancing', label: 'Vũ đạo', options: DANCE_OPTIONS },
-    { key: 'sports', label: 'Thể thao', options: SPORT_OPTIONS }
+    { key: 'languages', label: 'Ngoại ngữ', options: LANGUAGE_OPTIONS, placeholder: 'VD: Tiếng Indonesia' },
+    { key: 'martial_arts', label: 'Võ thuật & Cascadeur', options: MARTIAL_ARTS_OPTIONS, placeholder: 'VD: Bình Định, Sambo' },
+    { key: 'instruments', label: 'Nhạc cụ biểu diễn', options: INSTRUMENT_OPTIONS, placeholder: 'VD: Sáo trúc, Đàn tranh' },
+    { key: 'dancing', label: 'Vũ đạo', options: DANCE_OPTIONS, placeholder: 'VD: Múa dân gian, Latin' },
+    { key: 'sports', label: 'Thể thao', options: SPORT_OPTIONS, placeholder: 'VD: Bóng rổ, Cưỡi ngựa' }
   ];
   return (
     <div className="space-y-6">
@@ -371,14 +375,98 @@ export function StepSkills({ draft, update }: StepProps) {
         <div key={g.key} className="space-y-3">
           {i > 0 && <Divider />}
           <p className="dv-field-label !mb-0 pt-1">{g.label}</p>
-          <ChipGroup
-            label={g.label}
-            options={g.options.map(o => ({ id: o, label: g.format ? g.format(o) : o }))}
-            value={draft[g.key] as string[]}
-            onChange={v => update({ [g.key]: v } as Partial<CastingDraft>)}
-          />
+          {g.placeholder ? (
+            <SkillChips
+              label={g.label}
+              options={g.options}
+              value={draft[g.key] as string[]}
+              placeholder={g.placeholder}
+              onChange={v => update({ [g.key]: v } as Partial<CastingDraft>)}
+            />
+          ) : (
+            <ChipGroup
+              label={g.label}
+              options={g.options.map(o => ({ id: o, label: g.format ? g.format(o) : o }))}
+              value={draft[g.key] as string[]}
+              onChange={v => update({ [g.key]: v } as Partial<CastingDraft>)}
+            />
+          )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Chip chọn sẵn + nút "Thêm khác" để tự gõ kỹ năng chưa có trong danh sách. */
+function SkillChips({
+  label,
+  options,
+  value,
+  placeholder,
+  onChange
+}: {
+  label: string;
+  options: string[];
+  value: string[];
+  placeholder: string;
+  onChange: (next: string[]) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState('');
+  // Mục tự thêm hiện thành chip ngay sau danh sách có sẵn; bỏ chọn thì ẩn đi
+  const custom = value.filter(v => !options.some(o => o.toLowerCase() === v.toLowerCase()));
+  const full = value.length >= SKILL_GROUP_MAX;
+
+  const add = () => {
+    const next = normalizeSkills(options, [...value, text]);
+    onChange(next);
+    setText('');
+    setAdding(false);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <ChipGroup label={label} options={[...options, ...custom]} value={value} onChange={onChange} />
+      {adding ? (
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <input
+            autoFocus
+            value={text}
+            maxLength={CUSTOM_SKILL_MAX_LENGTH}
+            placeholder={placeholder}
+            aria-label={`Thêm ${label.toLowerCase()} khác`}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (text.trim()) add();
+              }
+              if (e.key === 'Escape') setAdding(false);
+            }}
+            className="dv-input !h-10 min-w-0 flex-1 !rounded-full !text-[15px] sm:w-[240px] sm:flex-none"
+          />
+          <button type="button" onClick={add} disabled={!text.trim()} className="dv-btn dv-btn-primary !h-10 !px-4 !py-0 text-[15px]">
+            Thêm
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setText('');
+              setAdding(false);
+            }}
+            className="text-[14px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]"
+          >
+            Huỷ
+          </button>
+        </div>
+      ) : (
+        !full && (
+          <button type="button" onClick={() => setAdding(true)} className="dv-chip !gap-1.5 !pr-4 text-[var(--dv-accent)]">
+            <Plus className="h-4 w-4" strokeWidth={2.2} />
+            <span>Thêm khác</span>
+          </button>
+        )
+      )}
     </div>
   );
 }

@@ -38,8 +38,29 @@ export const TATTOO_OPTIONS = [
 ];
 
 export const ACCENT_OPTIONS = ['Nam', 'Bắc', 'Trung', 'Huế'];
-export const LANGUAGE_OPTIONS = ['Tiếng Anh', 'Tiếng Hàn', 'Tiếng Trung', 'Tiếng Nhật', 'Tiếng Pháp'];
-export const MARTIAL_ARTS_OPTIONS = ['Boxing', 'Vovinam', 'Taekwondo', 'Karate', 'Muay Thai', 'Võ Cổ Truyền'];
+export const LANGUAGE_OPTIONS = ['Tiếng Anh', 'Tiếng Hàn', 'Tiếng Trung', 'Tiếng Nhật', 'Tiếng Pháp', 'Tiếng Thái', 'Tiếng Đức', 'Tiếng Tây Ban Nha', 'Tiếng Nga', 'Tiếng Ý'];
+export const MARTIAL_ARTS_OPTIONS = [
+  'Boxing', 'Vovinam', 'Taekwondo', 'Karate', 'Muay Thai', 'Võ Cổ Truyền',
+  'Judo', 'Aikido', 'Wushu / Kungfu', 'Vịnh Xuân', 'Kickboxing', 'Jiu-jitsu', 'Đấu kiếm', 'Cascadeur'
+];
+/** Kỹ năng tự thêm ngoài danh sách có sẵn: tối đa 60 ký tự / mục, 20 mục / nhóm. */
+export const CUSTOM_SKILL_MAX_LENGTH = 60;
+export const SKILL_GROUP_MAX = 20;
+
+/**
+ * Chuẩn hoá danh sách kỹ năng: bỏ khoảng trắng thừa, trùng với mục có sẵn (không phân biệt hoa thường)
+ * thì dùng đúng tên có sẵn, bỏ trùng, giới hạn độ dài và số mục.
+ */
+export function normalizeSkills(options: string[], values: (string | undefined | null)[]): string[] {
+  const out: string[] = [];
+  for (const raw of values) {
+    const v = (raw || '').replace(/\s+/g, ' ').trim().slice(0, CUSTOM_SKILL_MAX_LENGTH);
+    if (!v) continue;
+    const canonical = options.find(o => o.toLowerCase() === v.toLowerCase()) || v.charAt(0).toUpperCase() + v.slice(1);
+    if (!out.some(x => x.toLowerCase() === canonical.toLowerCase())) out.push(canonical);
+  }
+  return out.slice(0, SKILL_GROUP_MAX);
+}
 export const INSTRUMENT_OPTIONS = ['Guitar', 'Piano', 'Trống', 'Ukulele', 'Violin'];
 export const DANCE_OPTIONS = ['Kpop', 'Contemporary', 'Hip-hop', 'Ballet'];
 export const SPORT_OPTIONS = ['Bơi lội', 'Điền kinh', 'Cầu lông', 'Bắn súng', 'Gym / Fitness'];
@@ -430,13 +451,18 @@ export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'>
       tiktok: d.social_links.tiktok.trim(),
       showreel_url: d.social_links.showreel_url.trim()
     },
-    languages: [{ language: 'Tiếng Việt', level: 'Bản ngữ' }, ...d.languages.map(l => ({ language: l, level: 'Giao tiếp' }))],
+    languages: [
+      { language: 'Tiếng Việt', level: 'Bản ngữ' },
+      ...normalizeSkills(LANGUAGE_OPTIONS, d.languages)
+        .filter(l => l.toLowerCase() !== 'tiếng việt')
+        .map(l => ({ language: l, level: 'Giao tiếp' }))
+    ],
     vietnamese_accents: accents,
-    instruments: d.instruments.map(n => ({ name: n, level: 'Cơ bản' })),
-    sports: d.sports.map(n => ({ name: n, level: 'Cơ bản' })),
-    dancing: d.dancing.map(s => ({ style: s, level: 'Cơ bản' })),
+    instruments: normalizeSkills(INSTRUMENT_OPTIONS, d.instruments).map(n => ({ name: n, level: 'Cơ bản' })),
+    sports: normalizeSkills(SPORT_OPTIONS, d.sports).map(n => ({ name: n, level: 'Cơ bản' })),
+    dancing: normalizeSkills(DANCE_OPTIONS, d.dancing).map(s => ({ style: s, level: 'Cơ bản' })),
     singing: { genres: [], vocal_range: [], level: '' },
-    martial_arts: d.martial_arts.map(s => ({ style: s, level: 'Cơ bản' })),
+    martial_arts: normalizeSkills(MARTIAL_ARTS_OPTIONS, d.martial_arts).map(s => ({ style: s, level: 'Cơ bản' })),
     transportation: [],
     tattoos_piercings: d.tattoos_piercings.length ? d.tattoos_piercings : ['none'],
     headshot_url: d.headshot_url || null,
@@ -526,11 +552,12 @@ export function talentToDraft(t: TalentProfile): CastingDraft {
       music_videos: (exp.music_videos || []).map(x => ({ id: newId(), title: str(x.song), role: asRole(x.role), character: str(x.artist), year: str(x.year) }))
     },
     accents: option(ACCENT_OPTIONS, (t.vietnamese_accents || []).map(a => a.accent)),
-    languages: option(LANGUAGE_OPTIONS, (t.languages || []).map(l => l.language)),
-    martial_arts: option(MARTIAL_ARTS_OPTIONS, (t.martial_arts || []).map(m => m.style)),
-    instruments: option(INSTRUMENT_OPTIONS, (t.instruments || []).map(i => i.name)),
-    dancing: option(DANCE_OPTIONS, (t.dancing || []).map(d => d.style)),
-    sports: option(SPORT_OPTIONS, (t.sports || []).map(s => s.name)),
+    // Giữ cả mục tự thêm (ngoài danh sách có sẵn) để sửa hồ sơ không làm mất kỹ năng
+    languages: normalizeSkills(LANGUAGE_OPTIONS, (t.languages || []).map(l => l.language).filter(l => l !== 'Tiếng Việt')),
+    martial_arts: normalizeSkills(MARTIAL_ARTS_OPTIONS, (t.martial_arts || []).map(m => m.style || m.name)),
+    instruments: normalizeSkills(INSTRUMENT_OPTIONS, (t.instruments || []).map(i => i.name || i.style)),
+    dancing: normalizeSkills(DANCE_OPTIONS, (t.dancing || []).map(d => d.style || d.name)),
+    sports: normalizeSkills(SPORT_OPTIONS, (t.sports || []).map(s => s.name || s.style)),
     willing_work_cities: t.willing_work_cities?.length ? t.willing_work_cities : base.willing_work_cities,
     role_willingness: t.role_willingness || [],
     headshot_url: str(t.headshot_url),
