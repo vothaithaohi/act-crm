@@ -21,6 +21,7 @@ import seedData from '@/data/seed_data.json';
 import { calculateAge } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/supabase/authed-fetch';
 
 export const INITIAL_TEAM_MEMBERS: Profile[] = [
   {
@@ -166,8 +167,8 @@ interface CRMContextType {
   getTalentById: (id: string) => TalentProfile | undefined;
   saveTalent: (talent: TalentProfile) => Promise<void>;
   deleteTalent: (id: string) => Promise<void>;
-  addTeamMember: (member: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
-  updateTeamMember: (member: Profile) => Promise<void>;
+  addTeamMember: (member: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
+  updateTeamMember: (member: Profile) => Promise<boolean>;
   deleteTeamMember: (id: string) => Promise<void>;
   switchRole: (role: UserRole) => void;
   can: (permission: Permission) => boolean;
@@ -881,54 +882,91 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   // RBAC Team Management
   const addTeamMember = async (memberData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
+    const supabase = createClient();
+    if (supabase) {
+      // Tạo tài khoản đăng nhập thật qua máy chủ (Supabase Auth + bảng profiles)
+      try {
+        const res = await authedFetch('/api/admin/staff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(memberData)
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.profile) {
+          toast.error('Không tạo được nhân sự', { description: body.error || 'Vui lòng thử lại.' });
+          return false;
+        }
+        setTeamMembers(prev => [body.profile as Profile, ...prev]);
+        toast.success('Đã tạo tài khoản nhân sự', {
+          description: body.passwordSet
+            ? `${body.profile.full_name} đăng nhập bằng email và mật khẩu vừa đặt.`
+            : `Email này đã có tài khoản từ trước — ${body.profile.full_name} dùng mật khẩu hiện tại của mình (hoặc đặt mật khẩu mới bằng nút Sửa).`
+        });
+        return true;
+      } catch {
+        toast.error('Mất kết nối mạng. Vui lòng thử lại.');
+        return false;
+      }
+    }
+
     const newMember: Profile = {
       ...memberData,
       id: crypto.randomUUID(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-
-    const updated = [newMember, ...teamMembers];
-    syncTeamMembersLocal(updated);
+    syncTeamMembersLocal([newMember, ...teamMembers]);
     toast.success('Đã thêm nhân sự mới thành công!', {
       description: `${newMember.full_name} (${ROLE_DETAILS[newMember.role]?.label || newMember.role})`
     });
-
-    const supabase = createClient();
-    if (supabase) {
-      try {
-        await supabase.from('profiles').insert(newMember);
-      } catch (err) {
-        console.error('Failed to sync new member to Supabase:', err);
-      }
-    }
+    return true;
   };
 
   const updateTeamMember = async (member: Profile) => {
-    const updated = teamMembers.map(m => m.id === member.id ? { ...member, updated_at: new Date().toISOString() } : m);
-    syncTeamMembersLocal(updated);
-
-    // If updating current user, refresh current user state too
-    if (currentUser && currentUser.id === member.id) {
-      const updatedCurrent = { ...member, updated_at: new Date().toISOString() };
-      setCurrentUser(updatedCurrent);
+    const supabase = createClient();
+    let saved: Profile = { ...member, updated_at: new Date().toISOString() };
+    if (supabase) {
       try {
-        localStorage.setItem('act_crm_current_user', JSON.stringify(updatedCurrent));
+        const res = await authedFetch(`/api/admin/staff/${member.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: member.full_name,
+            phone: member.phone || '',
+            department: member.department || '',
+            role: member.role,
+            status: member.status,
+            password: member.password || ''
+          })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.profile) {
+          toast.error('Không lưu được nhân sự', { description: body.error || 'Vui lòng thử lại.' });
+          return false;
+        }
+        saved = body.profile as Profile;
+      } catch {
+        toast.error('Mất kết nối mạng. Vui lòng thử lại.');
+        return false;
+      }
+      setTeamMembers(prev => prev.map(m => (m.id === saved.id ? saved : m)));
+    } else {
+      // Chế độ demo: để trống mật khẩu = giữ mật khẩu cũ
+      const previous = teamMembers.find(m => m.id === member.id);
+      saved = { ...saved, password: member.password || previous?.password };
+      syncTeamMembersLocal(teamMembers.map(m => (m.id === member.id ? saved : m)));
+    }
+
+    if (currentUser && currentUser.id === member.id) {
+      setCurrentUser(saved);
+      try {
+        localStorage.setItem('act_crm_current_user', JSON.stringify(saved));
       } catch (e) {
         console.error(e);
       }
     }
-
-    toast.success('Đã cập nhật thông tin nhân sự');
-
-    const supabase = createClient();
-    if (supabase) {
-      try {
-        await supabase.from('profiles').update(member).eq('id', member.id);
-      } catch (err) {
-        console.error('Failed to sync member update to Supabase:', err);
-      }
-    }
+    toast.success(member.password && supabase ? 'Đã cập nhật nhân sự và đổi mật khẩu' : 'Đã cập nhật thông tin nhân sự');
+    return true;
   };
 
   const deleteTeamMember = async (id: string) => {

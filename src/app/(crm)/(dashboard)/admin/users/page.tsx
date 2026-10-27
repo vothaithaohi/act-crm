@@ -24,6 +24,14 @@ import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
+/** Gợi ý mật khẩu ngẫu nhiên 10 ký tự (bỏ các ký tự dễ nhầm như 0/O, 1/l). */
+function suggestPassword(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => chars[b % chars.length]).join('');
+}
+
 export default function AdminUsersPage() {
   const { teamMembers, currentUser, addTeamMember, updateTeamMember, deleteTeamMember, switchRole } = useCRM();
 
@@ -43,7 +51,7 @@ export default function AdminUsersPage() {
     setEditingMember(null);
     setFullName('');
     setEmail('');
-    setPassword('Act@2025');
+    setPassword(suggestPassword());
     setPhone('');
     setDepartment('Phòng Tuyển Sinh');
     setRole('sales');
@@ -55,7 +63,7 @@ export default function AdminUsersPage() {
     setEditingMember(member);
     setFullName(member.full_name);
     setEmail(member.email);
-    setPassword(member.password || 'Act@2025');
+    setPassword('');
     setPhone(member.phone || '');
     setDepartment(member.department || 'Phòng Tuyển Sinh');
     setRole(member.role);
@@ -63,29 +71,40 @@ export default function AdminUsersPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !email.trim()) {
       alert('Vui lòng nhập Họ tên và Email!');
       return;
     }
 
+    if (!editingMember && password.trim().length < 8) {
+      alert('Mật khẩu cần ít nhất 8 ký tự.');
+      return;
+    }
+    if (editingMember && password.trim() && password.trim().length < 8) {
+      alert('Mật khẩu mới cần ít nhất 8 ký tự.');
+      return;
+    }
+
+    let ok: boolean;
     if (editingMember) {
-      updateTeamMember({
+      ok = await updateTeamMember({
         ...editingMember,
         full_name: fullName,
         email,
-        password: password.trim() || editingMember.password || 'Act@2025',
+        // Để trống = giữ nguyên mật khẩu hiện tại
+        password: password.trim(),
         phone,
         department,
         role,
         status
       });
     } else {
-      addTeamMember({
+      ok = await addTeamMember({
         full_name: fullName,
         email,
-        password: password.trim() || 'Act@2025',
+        password: password.trim(),
         phone,
         department,
         role,
@@ -94,7 +113,7 @@ export default function AdminUsersPage() {
       });
     }
 
-    setIsModalOpen(false);
+    if (ok) setIsModalOpen(false);
   };
 
   return (
@@ -352,18 +371,21 @@ export default function AdminUsersPage() {
                   placeholder="nhanvien@act.edu.vn"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-lg border bg-background focus:border-brand-500 outline-none text-sm"
+                  readOnly={!!editingMember}
+                  title={editingMember ? 'Email đăng nhập không đổi được' : undefined}
+                  className="w-full px-3.5 py-2 rounded-lg border bg-background focus:border-brand-500 outline-none text-sm read-only:opacity-60"
                 />
               </div>
 
               <div>
                 <label className="block font-semibold uppercase text-muted-foreground mb-1">
-                  Mật khẩu đăng nhập <span className="text-brand-500">*</span>
+                  {editingMember ? 'Đặt mật khẩu mới' : 'Mật khẩu đăng nhập'} {!editingMember && <span className="text-brand-500">*</span>}
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="Nhập mật khẩu (ví dụ: Act@2025)"
+                  required={!editingMember}
+                  minLength={editingMember ? undefined : 8}
+                  placeholder={editingMember ? 'Để trống nếu giữ nguyên mật khẩu' : 'Ít nhất 8 ký tự'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg border bg-background focus:border-brand-500 outline-none text-sm font-mono"
