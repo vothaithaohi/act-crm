@@ -10,11 +10,20 @@ export function requestHost(headers: Headers): string {
 }
 
 /** Đường dẫn gốc của trang DienVienVN theo host đang truy cập (VD: https://dienvienvn.com hoặc https://x.vercel.app/dienvienvn). */
+/**
+ * Địa chỉ trang công khai dùng trong link email (đặt mật khẩu…).
+ * Gửi từ CRM (admin.dienvienvn.com) hay tên miền Vercel vẫn trỏ về tên miền chính,
+ * vì Supabase chỉ chấp nhận các địa chỉ đã khai báo trong Redirect URLs.
+ */
 export function publicSiteUrl(headers: Headers): string {
   const host = requestHost(headers);
-  const proto = headers.get('x-forwarded-proto')?.split(',')[0].trim() || (host.startsWith('localhost') ? 'http' : 'https');
-  const base = PUBLIC_HOSTS.includes(host.split(':')[0]) ? '' : '/dienvienvn';
-  return `${proto}://${host}${base}`;
+  const bare = host.split(':')[0];
+  if (bare === 'localhost' || bare === '127.0.0.1') return `http://${host}/dienvienvn`;
+  if (PUBLIC_HOSTS.includes(bare)) {
+    const proto = headers.get('x-forwarded-proto')?.split(',')[0].trim() || 'https';
+    return `${proto}://${host}`;
+  }
+  return SITE_URL;
 }
 
 /** Địa chỉ chính thức (canonical) của DienVienVN. */

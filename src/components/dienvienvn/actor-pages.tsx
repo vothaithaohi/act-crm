@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Check, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LogOut, Pencil, UserRound } from 'lucide-react';
 import { actorClient, actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
@@ -268,6 +268,10 @@ export function SetPassword() {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [reason, setReason] = useState('');
+  // Mã xác minh trong link email: chỉ dùng khi người dùng bấm lưu mật khẩu, không dùng lúc mở trang,
+  // để trình quét link của Gmail/Outlook (tự mở link trước) không làm link hết hiệu lực.
+  const pending = useRef<{ tokenHash: string; type: LinkType } | null>(null);
 
   useEffect(() => {
     const c = actorClient();
@@ -285,9 +289,9 @@ export function SetPassword() {
       // 1) Mẫu email dùng token_hash (khuyến nghị)
       const tokenHash = query.get('token_hash');
       if (tokenHash) {
-        const { error: err } = await c.auth.verifyOtp({ token_hash: tokenHash, type: (type || 'invite') as 'invite' });
+        pending.current = { tokenHash, type: type || 'invite' };
         clearUrl();
-        return setPhase(err ? 'invalid' : 'form');
+        return setPhase('form');
       }
       // 2) Mẫu email mặc định của Supabase: token trả về trong #hash
       const access = hash.get('access_token');
@@ -298,6 +302,7 @@ export function SetPassword() {
         return setPhase(err ? 'invalid' : 'form');
       }
       if (hash.get('error') || hash.get('error_code') || query.get('error')) {
+        setReason(hash.get('error_code') || hash.get('error') || query.get('error') || '');
         clearUrl();
         return setPhase('invalid');
       }
@@ -317,7 +322,18 @@ export function SetPassword() {
     if (password.length < MIN_PASSWORD) return setError(`Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`);
     if (password !== confirm) return setError('Hai mật khẩu chưa khớp nhau.');
     setBusy(true);
-    const { error: err } = await actorClient()!.auth.updateUser({ password });
+    const c = actorClient()!;
+    if (pending.current) {
+      const { tokenHash, type } = pending.current;
+      const { error: verifyErr } = await c.auth.verifyOtp({ token_hash: tokenHash, type: type as 'invite' });
+      if (verifyErr) {
+        setBusy(false);
+        setReason(verifyErr.message);
+        return setPhase('invalid');
+      }
+      pending.current = null;
+    }
+    const { error: err } = await c.auth.updateUser({ password });
     setBusy(false);
     if (err) {
       setError(/different|same/i.test(err.message) ? 'Mật khẩu mới phải khác mật khẩu cũ.' : 'Không lưu được mật khẩu. Link có thể đã hết hạn — vui lòng yêu cầu email mới.');
@@ -338,8 +354,9 @@ export function SetPassword() {
           <>
             <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">Link đã hết hạn.</h1>
             <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Link trong email chỉ dùng được một lần và có thời hạn. Nhập email để nhận link mới.
+              Link trong email chỉ dùng được một lần, trong vòng 1 giờ, và chỉ <strong>email mới nhất</strong> còn hiệu lực. Nhập email để nhận link mới, rồi mở link trong email mới nhất.
             </p>
+            {reason && <p className="mt-2 text-[12px] text-[var(--dv-text-tertiary)]">Mã lỗi: {reason}</p>}
             <div className="mt-6">
               <ResendForm />
             </div>
