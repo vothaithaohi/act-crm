@@ -3,21 +3,35 @@ import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { buildProducerView } from '@/lib/projects/producer';
 import { CastingProject, ProjectApplication, producerTokenFromParam } from '@/lib/projects/types';
 import { TalentProfile } from '@/lib/types/crm';
+import { clientIp, isBlocked, recordHit } from '@/lib/dienvienvn/rate-limit';
 
-// Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 12 ký tự; link cũ 48 ký tự vẫn dùng được) mới xem được.
+// Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 6 ký tự; link cũ 12 / 48 ký tự vẫn dùng được) mới xem được.
+// IP thử link sai quá nhiều lần bị chặn tạm thời, để không ai dò được mã.
 // Đường dẫn dạng "ten-du-an-<mã>": phần tên chỉ để dễ đọc, chỉ mã sau dấu "-" cuối cùng được kiểm tra.
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+const FAIL_LIMIT = 20;
+const FAIL_WINDOW_MS = 60 * 60 * 1000;
+const NOT_FOUND = 'Link không hợp lệ hoặc đã bị thu hồi.';
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const token = producerTokenFromParam((await params).token);
   const { mode, db } = getServiceDb();
   if (mode === 'demo') return NextResponse.json({ mode: 'demo' });
   if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
 
-  if (!/^[0-9a-z]{12,128}$/i.test(token)) {
-    return NextResponse.json({ error: 'Link không hợp lệ hoặc đã bị thu hồi.' }, { status: 404 });
+  const failKey = `nsx-fail:${clientIp(req.headers)}`;
+  if (isBlocked(failKey, FAIL_LIMIT, FAIL_WINDOW_MS)) {
+    return NextResponse.json({ error: 'Bạn đã mở sai link quá nhiều lần. Vui lòng thử lại sau 1 giờ.' }, { status: 429 });
+  }
+  if (!/^[0-9a-z]{6,128}$/i.test(token)) {
+    recordHit(failKey);
+    return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
   }
 
   const { data: project } = await db.from('casting_projects').select('*').eq('share_token', token).maybeSingle();
-  if (!project) return NextResponse.json({ error: 'Link không hợp lệ hoặc đã bị thu hồi.' }, { status: 404 });
+  if (!project) {
+    recordHit(failKey);
+    return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
+  }
 
   const { data: applications, error: appErr } = await db
     .from('project_applications')

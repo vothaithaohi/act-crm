@@ -134,14 +134,20 @@ export function nextProjectCode(existing: string[]): string {
 }
 
 /** Mã link gửi NSX: 12 ký tự chữ thường + số (~62 bit ngẫu nhiên, không đoán được), VD: k3f9x2m8qa7d. */
+/**
+ * Mã bảo mật của link gửi NSX: 6 ký tự chữ thường + số (~2,2 tỷ khả năng). Máy chủ chặn IP thử sai nhiều lần,
+ * nên không thể dò ra mã. Link cũ 12 / 48 ký tự vẫn dùng được.
+ */
+export const SHARE_TOKEN_LENGTH = 6;
+
 export function newShareToken(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = new Uint8Array(12);
+  const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   // 252 = 7 × 36: bỏ byte ≥ 252 để mọi ký tự có xác suất như nhau
   let out = '';
-  while (out.length < 12) {
-    for (const b of bytes) if (b < 252 && out.length < 12) out += alphabet[b % 36];
+  while (out.length < SHARE_TOKEN_LENGTH) {
+    for (const b of bytes) if (b < 252 && out.length < SHARE_TOKEN_LENGTH) out += alphabet[b % 36];
     crypto.getRandomValues(bytes);
   }
   return out;
@@ -245,6 +251,11 @@ export function projectSlugScore(param: string, p: Pick<CastingProject, 'code' |
 
 export function matchesProjectSlug(param: string, p: Pick<CastingProject, 'code' | 'title' | 'hide_title'>): boolean {
   return projectSlugScore(param, p) > 0;
+}
+
+/** Đường dẫn dự án trong cổng đối tác: tên phim thật (đối tác là chủ dự án), VD: mot-phim-linh-dinh. */
+export function partnerProjectPath(p: Pick<CastingProject, 'title' | 'code'>): string {
+  return slugifyVi(p.title || '') || slugifyVi(p.code || '');
 }
 
 /** Lấy mã bí mật từ đường dẫn NSX dạng "ten-du-an-<mã>" (hoặc chỉ "<mã>" với link cũ). */

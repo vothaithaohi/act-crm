@@ -6,7 +6,7 @@ import { TalentProfile } from '@/lib/types/crm';
 import { findAuthUserByEmail, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
 import { PartnerAccount, PartnerProjectSummary, PartnerTalent } from './partners';
-import { CastingProject, ProjectApplication } from '@/lib/projects/types';
+import { CastingProject, ProjectApplication, partnerProjectPath, projectSlugScore, slugifyVi } from '@/lib/projects/types';
 
 /** Bỏ ký tự đặc biệt của LIKE để so khớp email chính xác (không phân biệt hoa thường). */
 const likeExact = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`);
@@ -131,6 +131,7 @@ export async function partnerProjects(db: SupabaseClient, partner: PartnerAccoun
   const approved = new Set(talents.map(t => t.id));
   return projects.map(p => ({
     id: p.id,
+    path: partnerProjectPath(p),
     code: p.code,
     title: p.title,
     production_company: p.production_company || null,
@@ -142,12 +143,21 @@ export async function partnerProjects(db: SupabaseClient, partner: PartnerAccoun
   }));
 }
 
-/** Chi tiết 1 dự án cho đối tác: như link NSX nhưng luôn có liên hệ, kèm username để mở hồ sơ đầy đủ. */
-export async function partnerProjectView(db: SupabaseClient, partner: PartnerAccount, projectId: string) {
-  if (!(partner.project_ids || []).includes(projectId)) return null;
-  const { data } = await db.from('casting_projects').select('*').eq('id', projectId).neq('status', 'draft').maybeSingle();
-  if (!data) return null;
-  const project = data as CastingProject;
+/**
+ * Chi tiết 1 dự án cho đối tác: như link NSX nhưng luôn có liên hệ, kèm username để mở hồ sơ đầy đủ.
+ * Tìm theo UUID hoặc đường dẫn tên phim (mot-phim-linh-dinh), chỉ trong các dự án được gắn cho đối tác.
+ */
+export async function partnerProjectView(db: SupabaseClient, partner: PartnerAccount, param: string) {
+  const ids = partner.project_ids || [];
+  if (!ids.length) return null;
+  const key = decodeURIComponent(param).trim().toLowerCase();
+  const { data: rows } = await db.from('casting_projects').select('*').in('id', ids).neq('status', 'draft').order('created_at', { ascending: false });
+  const list = (rows || []) as CastingProject[];
+  const project =
+    list.find(p => p.id === key) ||
+    list.find(p => partnerProjectPath(p) === key) ||
+    list.find(p => slugifyVi(p.code || '') === key || projectSlugScore(key, p) > 0);
+  if (!project) return null;
   const { applications, talents } = await visibleApplications(db, [project.id]);
   const view = buildProducerView({ ...project, hide_contacts: false }, applications, talents);
   const usernames = Object.fromEntries(talents.filter(t => t.username).map(t => [t.id, t.username as string]));

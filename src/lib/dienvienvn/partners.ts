@@ -44,6 +44,8 @@ export const PARTNER_PORTAL_PATH = '/doi-tac';
 /** Dự án đối tác được gắn (tóm tắt hiển thị trong cổng đối tác). */
 export interface PartnerProjectSummary {
   id: string;
+  /** Đường dẫn dễ đọc: /doi-tac/du-an/<path> */
+  path: string;
   code: string;
   title: string;
   production_company: string | null;

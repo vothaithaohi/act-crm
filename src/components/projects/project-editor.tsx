@@ -13,9 +13,12 @@ import {
   RoleGender,
   newShareToken,
   nextProjectCode,
-  publicProjectName
+  publicProjectName,
+  SHARE_TOKEN_LENGTH,
+  partnerProjectPath
 } from '@/lib/projects/types';
-import { producerLink, publicProjectLink, useProjects } from '@/lib/projects/use-projects';
+import { producerLink, publicProjectLink, publicSiteBase, useProjects } from '@/lib/projects/use-projects';
+import Link from 'next/link';
 import { VN_CITIES, VN_PROVINCES, ABROAD } from '@/lib/dienvienvn/provinces';
 import { useCRM } from '@/lib/store/crm-context';
 
@@ -145,6 +148,7 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
   };
 
   const nsxLink = producerLink(p);
+  const partnerLink = `${publicSiteBase()}/doi-tac/du-an/${partnerProjectPath(p) || p.id}`;
 
   return (
     <div className="space-y-5">
@@ -372,6 +376,30 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
               )}
             </div>
           </div>
+          {p.share_token.length > SHARE_TOKEN_LENGTH && (
+            <p className="text-[10px] text-muted-foreground">Bấm &ldquo;Link mới&rdquo; rồi Lưu để có link ngắn hơn (mã 6 ký tự). Link cũ sẽ ngừng hoạt động.</p>
+          )}
+        </div>
+
+        <div className="p-3.5 rounded-xl border bg-muted/30 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold">Link cho đối tác có tài khoản</span>
+            <span className="text-[10px] text-muted-foreground">Không có mã · cần đăng nhập</span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input readOnly value={partnerLink} className={`${inputCls} font-mono text-[11px]`} onFocus={e => e.target.select()} />
+            <div className="flex gap-2 shrink-0">
+              <button type="button" onClick={() => copy(partnerLink, 'Đã sao chép link đối tác')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted">
+                <Copy className="w-3.5 h-3.5" /> Sao chép
+              </button>
+              <Link href="/admin/partners" className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted">
+                Gắn đối tác
+              </Link>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Chỉ đối tác được gắn vào dự án này (mục Tài khoản đối tác) mới xem được. Đối tác thấy ứng viên đã duyệt kèm SĐT, email.
+          </p>
         </div>
       </section>
 

@@ -233,7 +233,7 @@ export function PartnerDirectory() {
             {(api.data.projects || []).map(p => (
               <li key={p.id}>
                 <Link
-                  href={href(`/doi-tac/du-an/${p.id}`)}
+                  href={href(`/doi-tac/du-an/${p.path || p.id}`)}
                   className="group flex h-full flex-col rounded-[18px] bg-white p-5 transition-shadow hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.25)]"
                 >
                   <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">
