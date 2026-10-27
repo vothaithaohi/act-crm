@@ -20,8 +20,9 @@ import { SITE_URL } from '@/lib/dienvienvn/hosts';
  * chỉ khi chạy thử trên máy (localhost) mới dùng đường dẫn nội bộ /dienvienvn.
  */
 export function publicSiteBase(): string {
+  // Bỏ qua địa chỉ *.vercel.app (đặt nhầm trong biến môi trường) để link gửi ra ngoài luôn là tên miền chính
   const configured = process.env.NEXT_PUBLIC_DIENVIENVN_URL;
-  if (configured) return configured.replace(/\/$/, '');
+  if (configured && !/\.vercel\.app/i.test(configured)) return configured.replace(/\/$/, '');
   if (typeof window !== 'undefined' && /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(window.location.hostname)) {
     return `${window.location.origin}/dienvienvn`;
   }

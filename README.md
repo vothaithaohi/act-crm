@@ -116,7 +116,7 @@ Hồ sơ mới nộp có trạng thái **Chờ duyệt**, hiện ngay trong CRM 
 * **CRM → Dự Án Casting** (`/projects`): tạo dự án, mã tự động `DV-01…`, công tắc *Ẩn tên thật*, vai cần tuyển, công tắc *NSX bắt buộc self-tape*, *Ẩn SĐT/Email trên link NSX*, quản lý ứng viên.
 * **Công khai:** dự án "Đang casting" hiện dưới đồng hồ đếm ngược trên trang chủ → `/du-an/<id>` → ứng tuyển (hồ sơ mới qua form 7 bước, hoặc ứng tuyển nhanh bằng SĐT + ngày sinh).
 * **Link NSX:** `/nsx/<token>`, chỉ hiện hồ sơ **Đã duyệt** và không bị "Loại", không bị Google lập chỉ mục, thu hồi được bằng nút "Link mới".
-* Biến môi trường tuỳ chọn: `NEXT_PUBLIC_DIENVIENVN_URL=https://dienvienvn.com` để link sao chép trong CRM dùng tên miền công khai.
+* Link sao chép trong CRM (link NSX, link dự án) luôn dùng `https://www.dienvienvn.com`. Biến tuỳ chọn `NEXT_PUBLIC_DIENVIENVN_URL` chỉ để đổi sang tên miền khác (địa chỉ `*.vercel.app` bị bỏ qua).
 
 ## 🔐 Khoá quyền truy cập database (bắt buộc trước khi chạy thật)
 

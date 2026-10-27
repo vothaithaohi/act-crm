@@ -18,7 +18,11 @@ export function publicSiteUrl(headers: Headers): string {
 }
 
 /** Địa chỉ chính thức (canonical) của DienVienVN. */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dienvienvn.com').replace(/\/$/, '');
+// Không bao giờ dùng địa chỉ *.vercel.app làm địa chỉ chính (link chia sẻ, canonical, sitemap)
+const CONFIGURED_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+export const SITE_URL = (
+  CONFIGURED_SITE_URL && !/\.vercel\.app/i.test(CONFIGURED_SITE_URL) ? CONFIGURED_SITE_URL : 'https://www.dienvienvn.com'
+).replace(/\/$/, '');
 
 export function isPublicHost(headers: Headers): boolean {
   return PUBLIC_HOSTS.includes(requestHost(headers).split(':')[0]);
