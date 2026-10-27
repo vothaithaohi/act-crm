@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, ExternalLink, Plus, Trash2, Video } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export function ProjectApplicants({ project, applications, onStatus, onRemove, onAdd }: Props) {
-  const { talents, reviewTalent, can } = useCRM();
+  const { talents, reviewTalent, refreshTalents, can } = useCRM();
   const canEdit = can('talents:write');
   const [roleFilter, setRoleFilter] = useState('all');
   const [addRole, setAddRole] = useState(project.roles[0]?.id || '');
@@ -34,6 +34,17 @@ export function ProjectApplicants({ project, applications, onStatus, onRemove, o
   const rows = applications
     .filter(a => a.project_id === project.id && (roleFilter === 'all' || a.role_id === roleFilter))
     .map(a => ({ a, t: talentById.get(a.talent_id) }));
+
+  // Hồ sơ vừa nộp/ứng tuyển sau khi mở CRM có thể chưa có trong danh sách đã tải → tải lại một lần
+  const missingKey = rows.filter(r => !r.t).map(r => r.a.talent_id).sort().join(',');
+  const triedKey = useRef('');
+  const [reloading, setReloading] = useState(false);
+  useEffect(() => {
+    if (!missingKey || triedKey.current === missingKey) return;
+    triedKey.current = missingKey;
+    setReloading(true);
+    refreshTalents().finally(() => setReloading(false));
+  }, [missingKey, refreshTalents]);
 
   const visibleToProducer = applications.filter(a => {
     const t = talentById.get(a.talent_id);
@@ -94,7 +105,7 @@ export function ProjectApplicants({ project, applications, onStatus, onRemove, o
                           {t.full_name}
                         </Link>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Hồ sơ đã bị xoá</span>
+                        <span className="text-sm text-muted-foreground">{reloading ? 'Đang tải hồ sơ…' : 'Không tìm thấy hồ sơ — hãy tải lại trang'}</span>
                       )}
                       {review && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[review].badgeClass}`}>

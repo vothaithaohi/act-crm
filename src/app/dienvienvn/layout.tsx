@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   applicationName: 'DienVienVN',
+  // Google Search Console: dán mã xác minh (thẻ HTML) vào biến môi trường GOOGLE_SITE_VERIFICATION trên Vercel
+  ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
   openGraph: {
     title: TITLE,
     description: 'Chính thức ra mắt 11.11.2026. Nộp hồ sơ diễn viên ngay hôm nay.',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   Lead, 
   TalentProfile, 
@@ -807,6 +807,21 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     }
     setTalents(prev => sortByNewest(mergeLocalSubmissions(prev)));
   };
+
+  // Quay lại tab CRM: tải lại hồ sơ (tối đa 1 lần/phút) để thấy ngay hồ sơ mới nộp / ứng tuyển,
+  // phòng khi Realtime không gửi được sự kiện.
+  const lastTalentRefresh = useRef(Date.now());
+  useEffect(() => {
+    if (!currentUser || !createClient()) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastTalentRefresh.current < 60_000) return;
+      lastTalentRefresh.current = Date.now();
+      refreshTalents();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
   const reviewTalent = async (id: string, status: TalentReviewStatus, notes?: string) => {
     const now = new Date().toISOString();
