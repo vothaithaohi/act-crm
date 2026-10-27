@@ -198,3 +198,42 @@ export function checkApplication(
   if (tape && !isValidHttpUrl(tape)) return 'Link self-tape không hợp lệ (cần bắt đầu bằng http:// hoặc https://).';
   return null;
 }
+
+/* ---------------- Đường dẫn dễ đọc theo tên dự án ---------------- */
+
+/** "Một Phim Linh Đình" → "mot-phim-linh-dinh" */
+export function slugifyVi(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/g, '');
+}
+
+/** Phần đường dẫn của dự án: tên hiển thị (không lộ tên thật khi "Ẩn tên") + mã dự án, VD: mot-phim-linh-dinh-dv-01. */
+export function projectSlug(name: string, code: string): string {
+  const n = slugifyVi(name);
+  const c = slugifyVi(code);
+  if (!c) return n;
+  if (!n || n === c || n.endsWith(`-${c}`)) return n || c;
+  return `${n}-${c}`;
+}
+
+/** Đường dẫn khớp dự án: đúng slug hiện tại, hoặc kết thúc bằng mã dự án (link cũ vẫn chạy khi đổi tên). */
+export function matchesProjectSlug(param: string, p: Pick<CastingProject, 'code' | 'title' | 'hide_title'>): boolean {
+  const key = param.trim().toLowerCase();
+  const c = slugifyVi(p.code || '');
+  if (!c) return false;
+  return key === projectSlug(publicProjectName(p), p.code) || key === c || key.endsWith(`-${c}`);
+}
+
+/** Lấy mã bí mật từ đường dẫn NSX dạng "ten-du-an-<mã>" (hoặc chỉ "<mã>" với link cũ). */
+export function producerTokenFromParam(param: string): string {
+  const v = decodeURIComponent(param).trim();
+  return v.slice(v.lastIndexOf('-') + 1);
+}

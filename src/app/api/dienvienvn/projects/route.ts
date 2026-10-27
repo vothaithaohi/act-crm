@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActor } from '@/lib/dienvienvn/actor-server';
-import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
+import { findProjectByParam, getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, toPublicProject } from '@/lib/projects/types';
 
 // Dự án đang casting — chỉ diễn viên đã đăng nhập mới xem được.
-// Danh sách dự án mở, hoặc 1 dự án theo ?id= (trừ bản nháp).
+// Danh sách dự án mở, hoặc 1 dự án theo ?id= (UUID hoặc đường dẫn tên dự án, VD: mot-phim-linh-dinh-dv-01; trừ bản nháp).
 // Tên thật / công ty sản xuất bị loại bỏ ngay trên server khi dự án bật "Ẩn tên".
 export async function GET(req: NextRequest) {
   const { mode, db } = getServiceDb();
@@ -16,9 +16,8 @@ export async function GET(req: NextRequest) {
 
   const id = req.nextUrl.searchParams.get('id');
   if (id) {
-    if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'Không tìm thấy dự án.' }, { status: 404 });
-    const { data, error } = await db.from('casting_projects').select('*').eq('id', id).neq('status', 'draft').maybeSingle();
-    if (error) return NextResponse.json({ error: 'Không tải được dự án.' }, { status: 500 });
+    const data = await findProjectByParam(db, id);
+    if (data === 'error') return NextResponse.json({ error: 'Không tải được dự án.' }, { status: 500 });
     if (!data) return NextResponse.json({ error: 'Không tìm thấy dự án.' }, { status: 404 });
     return NextResponse.json({ mode: 'live', project: toPublicProject(data as CastingProject) });
   }

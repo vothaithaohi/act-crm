@@ -10,7 +10,10 @@ import {
   LOCAL_PROJECTS_KEY,
   ProjectApplication,
   readLocal,
-  writeLocal
+  writeLocal,
+  projectSlug,
+  publicProjectName,
+  slugifyVi
 } from './types';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
 
@@ -29,12 +32,18 @@ export function publicSiteBase(): string {
   return SITE_URL;
 }
 
-export function producerLink(p: Pick<CastingProject, 'share_token'>): string {
-  return `${publicSiteBase()}/nsx/${p.share_token}`;
+/**
+ * Link gửi NSX: tên phim thật (NSX là chủ dự án, trang NSX cũng hiện tên thật) + mã bí mật,
+ * VD: …/nsx/mot-phim-linh-dinh-k3f9x2m8qa7d. Chỉ mã bí mật quyết định quyền xem.
+ */
+export function producerLink(p: Pick<CastingProject, 'share_token' | 'code' | 'title'>): string {
+  const slug = slugifyVi(p.title || '') || slugifyVi(p.code || '');
+  return `${publicSiteBase()}/nsx/${slug ? `${slug}-` : ''}${p.share_token}`;
 }
 
-export function publicProjectLink(p: Pick<CastingProject, 'id'>): string {
-  return `${publicSiteBase()}/du-an/${p.id}`;
+/** Link dự án cho diễn viên: tên dự án + mã, VD: …/du-an/mot-phim-linh-dinh-dv-01 (dự án "Ẩn tên" không lộ tên thật). */
+export function publicProjectLink(p: Pick<CastingProject, 'id' | 'code' | 'title' | 'hide_title'>): string {
+  return `${publicSiteBase()}/du-an/${projectSlug(publicProjectName(p), p.code) || p.id}`;
 }
 
 /**

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { PublicProject, isDeadlinePassed, projectTypeLabel } from '@/lib/projects/types';
+import { PublicProject, isDeadlinePassed, projectSlug, projectTypeLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
@@ -42,7 +42,7 @@ export function ProjectsSection() {
         {projects.map((p, i) => (
           <Reveal key={p.id} delay={i * 80} className="h-full">
             <Link
-              href={href(`/du-an/${p.id}`)}
+              href={href(`/du-an/${projectSlug(p.display_name, p.code) || p.id}`)}
               className="group flex h-full flex-col rounded-[18px] bg-[var(--dv-bg-alt)] p-6 transition-colors hover:bg-[#ededf0] md:p-8"
             >
               <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{projectTypeLabel(p.project_type)}</span>

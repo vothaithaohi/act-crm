@@ -13,6 +13,8 @@ import {
   ProjectApplication,
   PublicProject,
   checkApplication,
+  matchesProjectSlug,
+  producerTokenFromParam,
   readLocal,
   toPublicProject,
   writeLocal
@@ -46,7 +48,7 @@ export async function fetchPublicProject(id: string): Promise<PublicProject | nu
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) throw new AuthRequiredError(data.error);
   if (data.mode === 'demo') {
-    const p = readLocal<CastingProject>(LOCAL_PROJECTS_KEY).find(x => x.id === id && x.status !== 'draft');
+    const p = readLocal<CastingProject>(LOCAL_PROJECTS_KEY).find(x => (x.id === id || matchesProjectSlug(id, x)) && x.status !== 'draft');
     return p ? toPublicProject(p) : null;
   }
   if (res.status === 404) return null;
@@ -94,7 +96,8 @@ export async function fetchProducerView(token: string): Promise<ProducerView | n
   const res = await fetch(`/api/dienvienvn/producer/${encodeURIComponent(token)}`, { cache: 'no-store' });
   const data = await res.json().catch(() => ({}));
   if (data.mode === 'demo') {
-    const project = readLocal<CastingProject>(LOCAL_PROJECTS_KEY).find(p => p.share_token === token);
+    const secret = producerTokenFromParam(token);
+    const project = readLocal<CastingProject>(LOCAL_PROJECTS_KEY).find(p => p.share_token === secret);
     if (!project) return null;
     return buildProducerView(project, readLocal<ProjectApplication>(LOCAL_APPLICATIONS_KEY), localTalents());
   }

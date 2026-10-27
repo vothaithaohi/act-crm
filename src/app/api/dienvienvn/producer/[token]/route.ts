@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { buildProducerView } from '@/lib/projects/producer';
-import { CastingProject, ProjectApplication } from '@/lib/projects/types';
+import { CastingProject, ProjectApplication, producerTokenFromParam } from '@/lib/projects/types';
 import { TalentProfile } from '@/lib/types/crm';
 
 // Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 12 ký tự; link cũ 48 ký tự vẫn dùng được) mới xem được.
+// Đường dẫn dạng "ten-du-an-<mã>": phần tên chỉ để dễ đọc, chỉ mã sau dấu "-" cuối cùng được kiểm tra.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+  const token = producerTokenFromParam((await params).token);
   const { mode, db } = getServiceDb();
   if (mode === 'demo') return NextResponse.json({ mode: 'demo' });
   if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
