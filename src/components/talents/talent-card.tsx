@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { TalentProfile } from '@/lib/types/crm';
+import { TalentProfile, REVIEW_STATUS_DETAILS, getReviewStatus } from '@/lib/types/crm';
 import { calculateAge } from '@/lib/utils';
-import { Sparkles, MapPin, Film, Eye, Edit3, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
+import { MapPin, Film, Eye, Edit3, IdCard, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
+import { talentPath } from '@/lib/talent-path';
 
 interface TalentCardProps {
   talent: TalentProfile;
@@ -31,7 +32,9 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
     lingerie: 'Nội y',
     partial_nudity: 'Bán khỏa thân',
     hair_color: 'Nhuộm tóc',
-    cut_hair: 'Cắt tóc'
+    cut_hair: 'Cắt tóc',
+    intimate_scene: 'Cảnh nóng 18+',
+    learn_new_skills: 'Học kỹ năng mới'
   };
 
   const highestLevel = talent.academic_profile?.highest_act_level;
@@ -90,7 +93,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
           {highestLevel && (
             <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-md border ${
               highestLevel === 'ACT4'
-                ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white border-purple-400/60 ring-1 ring-white/20'
+                ? 'act-gold-bg text-black border-[#c9a063]/60 ring-1 ring-white/20'
                 : highestLevel === 'ACT3'
                 ? 'bg-emerald-600 text-white border-emerald-400/60'
                 : highestLevel === 'ACT2'
@@ -101,6 +104,20 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
             </span>
           )}
         </div>
+
+        {/* Hồ sơ tự nộp từ dienvienvn.com */}
+        {talent.submission_source === 'dienvienvn' && (
+          <div className="absolute top-10 left-3 z-10 flex items-center gap-1">
+            <span className="text-[9px] font-bold bg-white/90 text-slate-900 px-2 py-0.5 rounded-full shadow-xs">
+              DienVienVN
+            </span>
+            {getReviewStatus(talent) !== 'approved' && (
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[getReviewStatus(talent)].badgeClass}`}>
+                {REVIEW_STATUS_DETAILS[getReviewStatus(talent)].label}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Cities Badge */}
         {talent.willing_work_cities && talent.willing_work_cities.length > 0 && (
@@ -161,6 +178,13 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
           </div>
         )}
 
+        {!highestLevel && (talent.academic_profile?.external_trainings || []).length > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] p-2 rounded-xl bg-muted/50 border border-border/60 font-semibold text-foreground">
+            <GraduationCap className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+            <span className="truncate">{talent.academic_profile?.external_trainings?.[0]?.school_name}</span>
+          </div>
+        )}
+
         {/* Skills & Accents Tags */}
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1">
@@ -192,20 +216,20 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         {/* Action Buttons */}
         <div className="pt-2 border-t flex items-center gap-2">
           <Link
-            href={`/talents/${talent.id}`}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold shadow-xs transition-all hover:scale-[1.02]"
+            href={talentPath(talent)}
+            className="flex-1 h-9 inline-flex items-center justify-center gap-1.5 px-3 bg-brand-500 hover:bg-black text-white rounded-lg text-xs font-semibold leading-none whitespace-nowrap shadow-xs transition-colors"
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Xem Hồ Sơ</span>
+            <Eye className="w-4 h-4 shrink-0" />
+            <span>Xem</span>
           </Link>
 
           {can('talents:export') && (
             <Link
-              href={`/talents/${talent.id}#compcard`}
-              className="px-2.5 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1"
+              href={`${talentPath(talent)}#compcard`}
+              className="h-9 inline-flex items-center justify-center gap-1.5 px-3 bg-muted hover:bg-muted/70 text-foreground rounded-lg text-xs font-semibold leading-none whitespace-nowrap border transition-colors"
               title="Xuất Comp-Card"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <IdCard className="w-4 h-4 shrink-0 text-[#8c5f2a]" />
               <span className="hidden sm:inline">Comp-Card</span>
             </Link>
           )}
@@ -213,10 +237,10 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
           {can('talents:write') && (
             <Link
               href={`/talents/${talent.id}/edit`}
-              className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg border transition-colors"
+              className="h-9 w-9 shrink-0 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg border transition-colors"
               title="Sửa hồ sơ"
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <Edit3 className="w-4 h-4" />
             </Link>
           )}
         </div>

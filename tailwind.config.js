@@ -42,18 +42,21 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // CRM ACT: đen/trắng theo DienVienVN + vàng logo ACT cho điểm nhấn.
+        // 50–400: các sắc vàng (nền nhạt, viền, chữ trên nền tối); 500–950: đen.
         brand: {
-          50: '#fff1f2',
-          100: '#ffe4e6',
-          200: '#fecdd3',
-          300: '#fda4af',
-          400: '#fb7185',
-          500: '#e11d48', // ACT Crimson / Cinema Red
-          600: '#be123c',
-          700: '#9f1239',
-          800: '#881337',
-          900: '#4c0519',
-          gold: '#eab308'
+          50: '#fbf7ef',
+          100: '#f5ecd9',
+          200: '#ead7b1',
+          300: '#dcbd83',
+          400: '#c9a063',
+          500: '#1d1d1f',
+          600: '#1d1d1f',
+          700: '#424245',
+          800: '#2c2c2e',
+          900: '#000000',
+          950: '#0b0b0c',
+          gold: '#c9a063'
         }
       },
       borderRadius: {
