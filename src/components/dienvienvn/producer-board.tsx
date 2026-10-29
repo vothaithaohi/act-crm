@@ -261,10 +261,11 @@ function ApplicantCard({ applicant, roleName, profileHref }: { applicant: Produc
 
   return (
     <li className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] break-inside-avoid print:border print:border-[#e8e8ed] print:shadow-none">
-      <div className="relative aspect-[4/5] bg-[#e8e8ed]">
+      {/* Khung ảnh cố định 4:5 cho mọi ứng viên: ảnh lấp đầy và cắt phần dư (ưu tiên phần mặt ở trên) */}
+      <div className="relative aspect-[4/5] w-full shrink-0 overflow-hidden bg-[#e8e8ed]">
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt={t.full_name} className="h-full w-full object-cover object-top" loading="lazy" />
+          <img src={photo} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
         )}
         <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[13px] font-semibold shadow-sm backdrop-blur">{roleName}</span>
         {photos.length > 1 && (
