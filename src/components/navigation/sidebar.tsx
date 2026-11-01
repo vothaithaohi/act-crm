@@ -16,7 +16,8 @@ import {
   Activity,
   Globe,
   Film,
-  Handshake
+  Handshake,
+  Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
@@ -60,6 +61,13 @@ export function Sidebar() {
       icon: Globe,
       badge: pendingSubmissionsCount > 0 ? pendingSubmissionsCount : null,
       visible: can('talents:read')
+    },
+    {
+      title: 'Khách mời showcase',
+      href: '/guests',
+      icon: Mic,
+      badge: null,
+      visible: can('talents:write')
     },
     {
       title: 'Tài khoản đối tác',
@@ -121,7 +129,7 @@ export function Sidebar() {
             Nghiệp vụ cốt lõi
           </div>
           {mainNavItems.filter(item => item.visible).map((item) => {
-            const isActive = pathname === item.href || (item.href === '/projects' && pathname.startsWith('/projects/'));
+            const isActive = pathname === item.href || ((item.href === '/projects' || item.href === '/guests') && pathname.startsWith(`${item.href}/`));
             const Icon = item.icon;
             return (
               <Link
