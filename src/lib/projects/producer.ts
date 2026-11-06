@@ -1,5 +1,7 @@
 // Dữ liệu cho link gửi nhà sản xuất: chỉ hồ sơ ĐÃ DUYỆT, bỏ địa chỉ / người giám hộ,
 // và ẩn SĐT/email khi dự án bật "Ẩn liên hệ".
+// Người mở link chưa đăng nhập tài khoản đối tác (limited) chỉ thấy: họ tên, ảnh, self-tape, kinh nghiệm diễn xuất,
+// kỹ năng & ngôn ngữ, định hướng & mức độ sẵn sàng. Thông tin cá nhân, số đo, liên hệ bị loại bỏ ngay trên máy chủ.
 import { TalentProfile, getReviewStatus } from '@/lib/types/crm';
 import { CastingProject, ProjectApplication } from './types';
 
@@ -44,10 +46,32 @@ export interface ProducerView {
     'code' | 'title' | 'production_company' | 'project_type' | 'location' | 'shooting_time' | 'deadline' | 'roles' | 'description' | 'hide_contacts'
   >;
   applicants: ProducerApplicant[];
+  /** true: chỉ thông tin công khai (chưa đăng nhập đối tác). */
+  limited?: boolean;
 }
 
-export function toProducerTalent(t: TalentProfile, hideContacts: boolean): ProducerTalent {
+/** Bỏ thông tin cá nhân & số đo: chỉ giữ phần công khai của hồ sơ. */
+function limitTalent(t: ProducerTalent): ProducerTalent {
   return {
+    ...t,
+    dob: null,
+    city: null,
+    height_cm: null,
+    weight_kg: null,
+    shoe_size: null,
+    chest_cm: null,
+    waist_cm: null,
+    hip_cm: null,
+    social_links: {},
+    tattoos_piercings: [],
+    academic_profile: null,
+    phone: null,
+    email: null
+  } as unknown as ProducerTalent;
+}
+
+export function toProducerTalent(t: TalentProfile, hideContacts: boolean, limited = false): ProducerTalent {
+  const full: ProducerTalent = {
     id: t.id,
     full_name: t.full_name,
     gender: t.gender,
@@ -77,12 +101,14 @@ export function toProducerTalent(t: TalentProfile, hideContacts: boolean): Produ
     phone: hideContacts ? null : t.phone,
     email: hideContacts ? null : t.email || null
   };
+  return limited ? limitTalent(full) : full;
 }
 
 export function buildProducerView(
   project: CastingProject,
   applications: ProjectApplication[],
-  talents: TalentProfile[]
+  talents: TalentProfile[],
+  limited = false
 ): ProducerView {
   const byId = new Map(talents.map(t => [t.id, t]));
   const applicants: ProducerApplicant[] = applications
@@ -90,8 +116,8 @@ export function buildProducerView(
     .map(a => ({ a, t: byId.get(a.talent_id) }))
     .filter((x): x is { a: ProjectApplication; t: TalentProfile } => !!x.t && getReviewStatus(x.t) === 'approved')
     .map(({ a, t }) => ({
-      application: { id: a.id, role_id: a.role_id, selftape_url: a.selftape_url, note: a.note, created_at: a.created_at },
-      talent: toProducerTalent(t, project.hide_contacts)
+      application: { id: a.id, role_id: a.role_id, selftape_url: a.selftape_url, note: limited ? null : a.note, created_at: a.created_at },
+      talent: toProducerTalent(t, project.hide_contacts, limited)
     }));
   return {
     project: {
@@ -106,6 +132,7 @@ export function buildProducerView(
       description: project.description,
       hide_contacts: project.hide_contacts
     },
-    applicants
+    applicants,
+    limited
   };
 }

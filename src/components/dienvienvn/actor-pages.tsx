@@ -185,7 +185,7 @@ export function ActorLogin() {
   const params = useSearchParams();
   const session = useActorSession();
   const next = safeNext(params.get('next'), href('/tai-khoan'));
-  const forPartner = next.startsWith(href('/doi-tac'));
+  const forPartner = next.startsWith(href('/doi-tac')) || next.startsWith(href('/nsx'));
   const [mode, setMode] = useState<'login' | 'resend'>(params.get('quen-mat-khau') ? 'resend' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

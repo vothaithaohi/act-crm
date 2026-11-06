@@ -4,9 +4,11 @@ import { buildProducerView } from '@/lib/projects/producer';
 import { CastingProject, ProjectApplication, producerTokenFromParam } from '@/lib/projects/types';
 import { TalentProfile } from '@/lib/types/crm';
 import { clientIp, isBlocked, recordHit } from '@/lib/dienvienvn/rate-limit';
+import { getPartner } from '@/lib/dienvienvn/partner-server';
 
 // Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 6 ký tự; link cũ 12 / 48 ký tự vẫn dùng được) mới xem được.
 // IP thử link sai quá nhiều lần bị chặn tạm thời, để không ai dò được mã.
+// Người mở link chỉ thấy thông tin công khai của diễn viên; đối tác đăng nhập (được gắn với dự án) mới thấy đầy đủ.
 // Đường dẫn dạng "ten-du-an-<mã>": phần tên chỉ để dễ đọc, chỉ mã sau dấu "-" cuối cùng được kiểm tra.
 const FAIL_LIMIT = 20;
 const FAIL_WINDOW_MS = 60 * 60 * 1000;
@@ -49,7 +51,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     talents = (data || []) as TalentProfile[];
   }
 
-  const view = buildProducerView(project as CastingProject, (applications || []) as ProjectApplication[], talents);
+  // Đối tác đã đăng nhập và được gắn với dự án → xem đầy đủ; còn lại chỉ thông tin công khai
+  let full = false;
+  if (req.headers.get('authorization')) {
+    const partner = await getPartner(req, db);
+    if (!(partner instanceof NextResponse)) {
+      full = (partner.project_ids || []).includes(project.id) || project.partner_id === partner.id;
+    }
+  }
+
+  const view = buildProducerView(project as CastingProject, (applications || []) as ProjectApplication[], talents, !full);
   return NextResponse.json(
     { mode: 'live', ...view },
     { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } }

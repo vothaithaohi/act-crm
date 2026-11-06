@@ -93,7 +93,8 @@ export function checkLocalApplication(projectId: string, roleId: string, selftap
 }
 
 export async function fetchProducerView(token: string): Promise<ProducerView | null> {
-  const res = await fetch(`/api/dienvienvn/producer/${encodeURIComponent(token)}`, { cache: 'no-store' });
+  // Gửi kèm phiên đăng nhập (nếu có): đối tác được gắn với dự án sẽ xem được đầy đủ thông tin
+  const res = await actorFetch(`/api/dienvienvn/producer/${encodeURIComponent(token)}`);
   const data = await res.json().catch(() => ({}));
   if (data.mode === 'demo') {
     const secret = producerTokenFromParam(token);
@@ -103,5 +104,5 @@ export async function fetchProducerView(token: string): Promise<ProducerView | n
   }
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(data.error || 'Không tải được danh sách ứng viên.');
-  return { project: data.project, applicants: data.applicants };
+  return { project: data.project, applicants: data.applicants, limited: !!data.limited };
 }

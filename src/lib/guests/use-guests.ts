@@ -5,14 +5,14 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { readLocal, writeLocal } from '@/lib/projects/types';
 import { ImportedGuest } from './import-csv';
+import { planGuestImport } from './import-plan';
 import {
   LOCAL_GUEST_REVIEWS_KEY,
   LOCAL_GUESTS_KEY,
   LOCAL_INVITATIONS_KEY,
   ShowcaseGuest,
   ShowcaseGuestReview,
-  ShowcaseInvitation,
-  foldVi
+  ShowcaseInvitation
 } from './types';
 
 const MIGRATION_HINT = 'Hãy chạy migration 20261101_showcase_guests.sql trong Supabase.';
@@ -156,65 +156,14 @@ export function useGuests() {
    * và các lượt mời chưa có; khách mời mới thì thêm mới. Nhập lại cùng file nhiều lần không bị trùng.
    */
   const importGuests = async (items: ImportedGuest[], createdBy: string | null): Promise<{ added: number; updated: number; invitations: number } | null> => {
-    const key = (s?: string | null) => (s ? foldVi(s).replace(/\s+/g, ' ').trim() : '');
-    const digits = (s?: string | null) => (s || '').replace(/\D/g, '');
-    const existing = [...guests];
-    const findMatch = (g: ImportedGuest) =>
-      existing.find(
-        e =>
-          (g.email && e.email && key(e.email) === key(g.email)) ||
-          (digits(g.phone).length >= 9 && digits(e.phone) === digits(g.phone)) ||
-          key(e.full_name) === key(g.full_name)
-      );
-
-    const guestRows: ShowcaseGuest[] = [];
-    const invRows: ShowcaseInvitation[] = [];
-    let added = 0;
-    let updated = 0;
-    const now = nowIso();
-    for (const g of items) {
-      const match = findMatch(g);
-      const { invitations: invs, ...fields } = g;
-      let guest: ShowcaseGuest;
-      if (match) {
-        guest = { ...match };
-        let changed = false;
-        for (const [k, v] of Object.entries(fields) as [keyof typeof fields, unknown][]) {
-          const cur = (guest as unknown as Record<string, unknown>)[k];
-          const empty = cur === null || cur === undefined || cur === '' || (Array.isArray(cur) && cur.length === 0);
-          if (empty && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)) {
-            (guest as unknown as Record<string, unknown>)[k] = v;
-            changed = true;
-          }
-        }
-        if (changed) {
-          guest.updated_at = now;
-          guestRows.push(guest);
-          updated++;
-        }
-      } else {
-        guest = { id: crypto.randomUUID(), ...fields, talkativity: null, created_by: createdBy, created_at: now, updated_at: now };
-        guestRows.push(guest);
-        existing.push(guest);
-        added++;
-      }
-      const have = new Set(
-        [...invitations, ...invRows].filter(x => x.guest_id === guest.id).map(x => `${x.term}|${x.class_code || ''}|${x.session || ''}`)
-      );
-      for (const inv of invs) {
-        const k = `${inv.term}|${inv.class_code || ''}|${inv.session || ''}`;
-        if (have.has(k)) continue;
-        have.add(k);
-        invRows.push({ id: crypto.randomUUID(), guest_id: guest.id, ...inv, created_at: now, updated_at: now });
-      }
-    }
-
+    const { guestRows, invRows, added, updated } = planGuestImport(items, guests, invitations, createdBy, nowIso());
     const supabase = createClient();
     if (supabase) {
       for (let i = 0; i < guestRows.length; i += 200) {
         const { error } = await supabase.from('showcase_guests').upsert(guestRows.slice(i, i + 200));
         if (error) {
-          toast.error('Nhập khách mời bị lỗi', { description: `${error.message}. ${MIGRATION_HINT}` });
+          const missing = error.code === '42P01' || error.code === 'PGRST205' || /does not exist|schema cache/i.test(error.message);
+          toast.error('Nhập khách mời bị lỗi', { description: missing ? `${error.message}. ${MIGRATION_HINT}` : error.message });
           return null;
         }
       }

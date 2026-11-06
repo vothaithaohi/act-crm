@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, Loader2, Mail, Phone, Printer, Video } from 'lucide-react';
+import { ExternalLink, Loader2, Lock, Mail, Phone, Printer, Video } from 'lucide-react';
 import { ProducerApplicant, ProducerView } from '@/lib/projects/producer';
 import { fetchProducerView } from '@/lib/projects/public-client';
 import { projectTypeLabel, roleSummary } from '@/lib/projects/types';
@@ -10,6 +10,7 @@ import { ageFromDob } from '@/lib/dienvienvn/casting-form';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { formatVnDate } from './projects-section';
 import { GlobalNav } from './site-chrome';
+import { useDvvnHref } from './base-path';
 
 const WILLINGNESS: Record<string, string> = {
   kissing_scene: 'Cảnh hôn',
@@ -28,6 +29,7 @@ function formatPhone(p: string) {
 }
 
 export function ProducerBoard({ token }: { token: string }) {
+  const href = useDvvnHref();
   const [view, setView] = useState<ProducerView | null | undefined>(undefined);
   const [error, setError] = useState('');
 
@@ -70,6 +72,20 @@ export function ProducerBoard({ token }: { token: string }) {
       </div>
       <main className="min-h-screen bg-[var(--dv-bg-alt)] pb-20 print:bg-white print:pb-0">
         <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6 lg:pt-12">
+          {view.limited && (
+            <div className="mb-6 flex flex-col gap-3 rounded-[18px] bg-white p-4 sm:flex-row sm:items-center sm:justify-between md:p-5 print:hidden">
+              <div className="flex items-start gap-3">
+                <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
+                <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
+                  <span className="font-semibold text-[var(--dv-text)]">Đang xem thông tin công khai.</span> Tuổi, số đo, nơi ở và liên hệ của diễn viên chỉ hiện
+                  khi bạn đăng nhập tài khoản đối tác DienVienVN.
+                </p>
+              </div>
+              <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/nsx/${token}`))}`)} className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]">
+                Đăng nhập đối tác
+              </Link>
+            </div>
+          )}
           <ProducerApplicants view={view} />
           <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
             Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.
@@ -119,6 +135,7 @@ function derive(applicant: ProducerApplicant) {
     ...(t.academic_profile?.external_trainings || []).map(e => e.school_name)
   ].filter(Boolean) as string[];
   const willingness = Array.from(new Set((t.role_willingness || []).map(w => WILLINGNESS[w] || w)));
+  const workCities = Array.from(new Set((t.willing_work_cities || []).map(c => provinceLabel(c) || c))).filter(Boolean);
   const socials = [
     { label: 'Showreel', url: t.social_links?.showreel_url },
     { label: 'Facebook', url: t.social_links?.facebook },
@@ -126,7 +143,7 @@ function derive(applicant: ProducerApplicant) {
     { label: 'TikTok', url: t.social_links?.tiktok }
   ].filter((x): x is { label: string; url: string } => !!x.url);
   const gender = t.gender === 'female' ? 'Nữ' : t.gender === 'male' ? 'Nam' : 'Khác';
-  return { t, application, photos, age, measurements, skills, credits, training, willingness, socials, gender, note: application.note?.trim() || '' };
+  return { t, application, photos, age, measurements, skills, credits, training, willingness, workCities, socials, gender, note: application.note?.trim() || '' };
 }
 
 export function ProducerApplicants({ view, profileHref }: { view: ProducerView; profileHref?: (talentId: string) => string | null }) {
@@ -231,13 +248,13 @@ export function ProducerApplicants({ view, profileHref }: { view: ProducerView; 
               {mode === 'grid' ? (
                 <ul className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 print:grid-cols-3 print:gap-3">
                   {g.items.map(a => (
-                    <ApplicantCard key={a.application.id} applicant={a} profileHref={profileHref?.(a.talent.id) || null} />
+                    <ApplicantCard key={a.application.id} applicant={a} limited={!!view.limited} profileHref={profileHref?.(a.talent.id) || null} />
                   ))}
                 </ul>
               ) : (
                 <ul className="space-y-2">
                   {g.items.map(a => (
-                    <ApplicantRow key={a.application.id} applicant={a} profileHref={profileHref?.(a.talent.id) || null} />
+                    <ApplicantRow key={a.application.id} applicant={a} limited={!!view.limited} profileHref={profileHref?.(a.talent.id) || null} />
                   ))}
                 </ul>
               )}
@@ -309,7 +326,7 @@ function SelftapeButton({ url, compact }: { url: string; compact?: boolean }) {
 }
 
 /* ---------- Dạng lưới: ảnh → chỉ số → kinh nghiệm & kỹ năng → hành động; thông tin phụ trong "Chi tiết" ---------- */
-function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplicant; profileHref?: string | null }) {
+function ApplicantCard({ applicant, profileHref, limited = false }: { applicant: ProducerApplicant; profileHref?: string | null; limited?: boolean }) {
   const d = derive(applicant);
   const { t } = d;
   const [photo, setPhoto] = useState(d.photos[0]?.url || '');
@@ -320,7 +337,9 @@ function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplican
     ['Nặng', t.weight_kg ? `${t.weight_kg}` : null],
     ['Số đo', d.measurements]
   ];
-  const hasDetails = d.training.length || d.willingness.length || d.note || d.socials.length || t.email || t.shoe_size || d.credits.length > 2;
+  // Bản công khai: định hướng & mức độ sẵn sàng hiện luôn trên thẻ thay cho chỉ số ngoại hình
+  const showWillingInline = limited && (d.willingness.length > 0 || d.workCities.length > 0);
+  const hasDetails = d.training.length || (!showWillingInline && (d.willingness.length || d.workCities.length)) || d.note || d.socials.length || t.email || t.shoe_size || d.credits.length > 2;
 
   return (
     <li className="flex flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] break-inside-avoid print:border print:border-[#e8e8ed] print:shadow-none">
@@ -356,7 +375,8 @@ function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplican
         <Name name={t.full_name} href={profileHref} className="text-[18px] font-semibold leading-[1.22]" />
         <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
 
-        {/* Chỉ số ngoại hình: đọc lướt theo cột */}
+        {/* Chỉ số ngoại hình: đọc lướt theo cột (ẩn ở bản công khai) */}
+        {!limited && (
         <dl className="mt-3 grid grid-cols-[0.8fr_0.9fr_0.9fr_1.7fr] gap-1 rounded-[12px] bg-[var(--dv-bg-alt)] px-2 py-2 text-center">
           {stats.map(([k, v]) => (
             <div key={k} className="min-w-0">
@@ -365,6 +385,7 @@ function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplican
             </div>
           ))}
         </dl>
+        )}
 
         <div className="mt-3 space-y-2.5">
           {d.credits.length > 0 && (
@@ -388,6 +409,7 @@ function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplican
               </div>
             </div>
           )}
+          {showWillingInline && <WillingBlock willingness={d.willingness} cities={d.workCities} />}
         </div>
 
         {/* Chi tiết: mở khi cần (in ra PDF thì luôn hiện) */}
@@ -409,14 +431,7 @@ function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplican
                 <p className="mt-1">{d.training.join(' · ')}</p>
               </div>
             )}
-            {d.willingness.length > 0 && (
-              <div>
-                <Label>Sẵn sàng</Label>
-                <div className="mt-1">
-                  <Chips items={d.willingness} max={8} />
-                </div>
-              </div>
-            )}
+            {!showWillingInline && (d.willingness.length > 0 || d.workCities.length > 0) && <WillingBlock willingness={d.willingness} cities={d.workCities} />}
             {t.shoe_size && (
               <div>
                 <Label>Size giày</Label>
@@ -475,7 +490,7 @@ function ApplicantCard({ applicant, profileHref }: { applicant: ProducerApplican
 }
 
 /* ---------- Dạng danh sách: mỗi ứng viên 1 dòng để so sánh nhanh ---------- */
-function ApplicantRow({ applicant, profileHref }: { applicant: ProducerApplicant; profileHref?: string | null }) {
+function ApplicantRow({ applicant, profileHref, limited = false }: { applicant: ProducerApplicant; profileHref?: string | null; limited?: boolean }) {
   const d = derive(applicant);
   const { t } = d;
   const thumb = d.photos[0]?.url;
@@ -492,7 +507,10 @@ function ApplicantRow({ applicant, profileHref }: { applicant: ProducerApplicant
         <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
       </div>
       <p className="col-start-2 flex flex-wrap gap-x-2 text-[13px] md:col-start-auto md:text-[14px]">
-        {[d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
+        {(limited
+          ? d.willingness.slice(0, 3)
+          : [d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
+        )
           .filter(Boolean)
           .map(x => (
             <span key={x as string} className="whitespace-nowrap">
@@ -513,5 +531,27 @@ function ApplicantRow({ applicant, profileHref }: { applicant: ProducerApplicant
         )}
       </div>
     </li>
+  );
+}
+
+/** Định hướng & mức độ sẵn sàng cho vai diễn. */
+function WillingBlock({ willingness, cities }: { willingness: string[]; cities: string[] }) {
+  return (
+    <div className="space-y-2.5">
+      {willingness.length > 0 && (
+        <div>
+          <Label>Sẵn sàng</Label>
+          <div className="mt-1">
+            <Chips items={willingness} max={8} />
+          </div>
+        </div>
+      )}
+      {cities.length > 0 && (
+        <div>
+          <Label>Nhận quay tại</Label>
+          <p className="mt-1 text-[13px] leading-[1.4]">{cities.join(' · ')}</p>
+        </div>
+      )}
+    </div>
   );
 }
