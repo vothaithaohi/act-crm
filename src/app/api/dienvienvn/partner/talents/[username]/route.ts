@@ -14,10 +14,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
   const partner = await getPartner(req, db);
   if (partner instanceof NextResponse) return partner;
 
-  const username = decodeURIComponent((await params).username).trim().toLowerCase();
-  if (!USERNAME_PATTERN.test(username)) return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
+  // Hồ sơ mở theo mã hồ sơ (UUID) — đối tác không được biết username vì username thường là tên thật
+  const key = decodeURIComponent((await params).username).trim().toLowerCase();
+  const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(key);
+  if (!isId && !USERNAME_PATTERN.test(key)) return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
 
-  const { data } = await approvedTalents(db).eq('username', username).limit(1);
+  const { data } = await approvedTalents(db).eq(isId ? 'id' : 'username', key).limit(1);
   const talent = (data?.[0] as TalentProfile | undefined) || null;
   if (!talent) return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
 

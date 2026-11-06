@@ -1,7 +1,11 @@
-// Dữ liệu cho link gửi nhà sản xuất: chỉ hồ sơ ĐÃ DUYỆT, bỏ địa chỉ / người giám hộ,
-// và ẩn SĐT/email khi dự án bật "Ẩn liên hệ".
-// Người mở link chưa đăng nhập tài khoản đối tác (limited) chỉ thấy: họ tên, ảnh, self-tape, kinh nghiệm diễn xuất,
-// kỹ năng & ngôn ngữ, định hướng & mức độ sẵn sàng. Thông tin cá nhân, số đo, liên hệ bị loại bỏ ngay trên máy chủ.
+// Dữ liệu cho link shortlist gửi đối tác (link NSX) và cổng đối tác: chỉ hồ sơ ĐÃ DUYỆT, chỉ ứng viên ACT đã chọn
+// (Shortlist / Đã gửi NSX). Mọi phần bị ẩn đều được loại bỏ ngay trên máy chủ.
+//  - 'partner' (đối tác đã đăng nhập): ảnh, tên ẩn một phần ("Nguyễn T. A."), self-tape, tuổi, chiều cao, cân nặng,
+//    kinh nghiệm, kỹ năng & ngôn ngữ, định hướng & sẵn sàng. KHÔNG có tên đầy đủ, SĐT, email, mạng xã hội, ngày sinh,
+//    nơi ở, số đo 3 vòng — chỉ cấp khi đối tác liên hệ trực tiếp DienVienVN.
+//  - 'public' (chưa đăng nhập): bản rút gọn ẩn danh "Ứng viên 1, 2…": giới tính, kinh nghiệm, kỹ năng, định hướng.
+//    Không ảnh, không tên, không self-tape, không chỉ số.
+//  - 'full': chỉ dùng cho chế độ demo trên máy (không có máy chủ).
 import { TalentProfile, getReviewStatus } from '@/lib/types/crm';
 import { CastingProject, ProjectApplication } from './types';
 
@@ -33,7 +37,30 @@ export type ProducerTalent = Pick<
   | 'fullbody_url'
   | 'compcard_url'
   | 'academic_profile'
-> & { phone: string | null; email: string | null };
+> & { phone: string | null; email: string | null; age?: number | null };
+
+export type ProducerLevel = 'public' | 'partner' | 'full';
+
+/** Danh sách link chỉ gồm ứng viên ACT đã chọn. */
+export const SHORTLIST_STATUSES: ProjectApplication['status'][] = ['shortlisted', 'sent'];
+
+/** "Nguyễn Thị Anh" → "Nguyễn T. A."; tên một chữ "Linh" → "L." */
+export function maskName(full: string): string {
+  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'Ứng viên';
+  if (parts.length === 1) return `${Array.from(parts[0])[0].toUpperCase()}.`;
+  return [parts[0], ...parts.slice(1).map(p => `${Array.from(p)[0].toUpperCase()}.`)].join(' ');
+}
+
+function ageOf(dob?: string | null): number | null {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  let a = now.getFullYear() - d.getFullYear();
+  if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) a--;
+  return a >= 0 && a < 120 ? a : null;
+}
 
 export interface ProducerApplicant {
   application: Pick<ProjectApplication, 'id' | 'role_id' | 'selftape_url' | 'note' | 'created_at'>;
@@ -46,31 +73,32 @@ export interface ProducerView {
     'code' | 'title' | 'production_company' | 'project_type' | 'location' | 'shooting_time' | 'deadline' | 'roles' | 'description' | 'hide_contacts'
   >;
   applicants: ProducerApplicant[];
-  /** true: chỉ thông tin công khai (chưa đăng nhập đối tác). */
+  /** true: bản rút gọn (chưa đăng nhập đối tác). */
   limited?: boolean;
 }
 
-/** Bỏ thông tin cá nhân & số đo: chỉ giữ phần công khai của hồ sơ. */
-function limitTalent(t: ProducerTalent): ProducerTalent {
-  return {
+/** Bỏ mọi thông tin nhận diện / liên hệ; 'public' bỏ thêm ảnh và chỉ số. */
+function restrictTalent(t: ProducerTalent, level: 'public' | 'partner', alias: string): ProducerTalent {
+  const base = {
     ...t,
+    full_name: level === 'public' ? alias : maskName(t.full_name),
+    age: level === 'public' ? null : ageOf(t.dob),
     dob: null,
     city: null,
-    height_cm: null,
-    weight_kg: null,
     shoe_size: null,
     chest_cm: null,
     waist_cm: null,
     hip_cm: null,
     social_links: {},
     tattoos_piercings: [],
-    academic_profile: null,
     phone: null,
     email: null
-  } as unknown as ProducerTalent;
+  };
+  if (level === 'public') Object.assign(base, { height_cm: null, weight_kg: null, headshot_url: null, fullbody_url: null, compcard_url: null });
+  return base as unknown as ProducerTalent;
 }
 
-export function toProducerTalent(t: TalentProfile, hideContacts: boolean, limited = false): ProducerTalent {
+export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level: ProducerLevel = 'full', alias = 'Ứng viên'): ProducerTalent {
   const full: ProducerTalent = {
     id: t.id,
     full_name: t.full_name,
@@ -101,23 +129,30 @@ export function toProducerTalent(t: TalentProfile, hideContacts: boolean, limite
     phone: hideContacts ? null : t.phone,
     email: hideContacts ? null : t.email || null
   };
-  return limited ? limitTalent(full) : full;
+  return level === 'full' ? { ...full, age: ageOf(t.dob) } : restrictTalent(full, level, alias);
 }
 
 export function buildProducerView(
   project: CastingProject,
   applications: ProjectApplication[],
   talents: TalentProfile[],
-  limited = false
+  level: ProducerLevel = 'partner'
 ): ProducerView {
   const byId = new Map(talents.map(t => [t.id, t]));
   const applicants: ProducerApplicant[] = applications
-    .filter(a => a.project_id === project.id && a.status !== 'rejected')
+    .filter(a => a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status))
     .map(a => ({ a, t: byId.get(a.talent_id) }))
     .filter((x): x is { a: ProjectApplication; t: TalentProfile } => !!x.t && getReviewStatus(x.t) === 'approved')
-    .map(({ a, t }) => ({
-      application: { id: a.id, role_id: a.role_id, selftape_url: a.selftape_url, note: limited ? null : a.note, created_at: a.created_at },
-      talent: toProducerTalent(t, project.hide_contacts, limited)
+    .map(({ a, t }, i) => ({
+      application: {
+        id: a.id,
+        role_id: a.role_id,
+        selftape_url: level === 'public' ? null : a.selftape_url,
+        // Lời nhắn của diễn viên có thể chứa SĐT / tên → chỉ bản demo mới có
+        note: level === 'full' ? a.note : null,
+        created_at: a.created_at
+      },
+      talent: toProducerTalent(t, project.hide_contacts, level, `Ứng viên ${i + 1}`)
     }));
   return {
     project: {
@@ -133,6 +168,6 @@ export function buildProducerView(
       hide_contacts: project.hide_contacts
     },
     applicants,
-    limited
+    limited: level === 'public'
   };
 }

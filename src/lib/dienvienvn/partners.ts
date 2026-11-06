@@ -31,7 +31,7 @@ export interface PartnerAccount {
   last_seen_at: string | null;
 }
 
-/** Hồ sơ đầy đủ cho đối tác: như link NSX (có SĐT, email; không có địa chỉ nhà, người giám hộ) + username, ca hát. */
+/** Hồ sơ cho đối tác: như link shortlist khi đăng nhập (tên ẩn một phần, không SĐT / email / username) + ca hát. */
 export type PartnerTalent = ProducerTalent & {
   username: string | null;
   singing: TalentProfile['singing'] | null;

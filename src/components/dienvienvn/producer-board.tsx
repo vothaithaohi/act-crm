@@ -23,6 +23,11 @@ const WILLINGNESS: Record<string, string> = {
   learn_new_skills: 'Học kỹ năng mới'
 };
 
+/** Mã hồ sơ đối tác gửi DienVienVN khi cần tên đầy đủ / liên hệ của diễn viên. */
+function profileCode(id: string) {
+  return `DV-${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+}
+
 function formatPhone(p: string) {
   const d = p.replace(/\D/g, '');
   return d.length === 10 ? `${d.slice(0, 4)} ${d.slice(4, 7)} ${d.slice(7)}` : p;
@@ -77,8 +82,8 @@ export function ProducerBoard({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Đang xem thông tin công khai.</span> Tuổi, số đo, nơi ở và liên hệ của diễn viên chỉ hiện
-                  khi bạn đăng nhập tài khoản đối tác DienVienVN.
+                  <span className="font-semibold text-[var(--dv-text)]">Đang xem bản rút gọn.</span> Ảnh, self-tape, chiều cao, cân nặng của ứng viên chỉ
+                  hiện khi bạn đăng nhập tài khoản đối tác DienVienVN.
                 </p>
               </div>
               <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/nsx/${token}`))}`)} className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]">
@@ -107,7 +112,7 @@ function derive(applicant: ProducerApplicant) {
     { key: 'fullbody', label: 'Toàn thân', url: t.fullbody_url },
     { key: 'compcard', label: 'Nghiêng', url: t.compcard_url }
   ].filter(p => p.url) as { key: string; label: string; url: string }[];
-  const age = t.dob ? ageFromDob(t.dob) : null;
+  const age = t.age ?? (t.dob ? ageFromDob(t.dob) : null);
   const measurements = [t.chest_cm, t.waist_cm, t.hip_cm].some(Boolean) ? `${t.chest_cm || '–'}-${t.waist_cm || '–'}-${t.hip_cm || '–'}` : null;
   const skills = Array.from(
     new Set(
@@ -171,7 +176,7 @@ export function ProducerApplicants({ view, profileHref }: { view: ProducerView; 
   return (
     <>
       <header>
-        <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Danh sách ứng viên · {project.code}</p>
+        <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Shortlist ứng viên · {project.code}</p>
         <h1 className="dv-display dv-headline mt-1">{project.title}</h1>
         <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">
           {[
@@ -184,6 +189,11 @@ export function ProducerApplicants({ view, profileHref }: { view: ProducerView; 
             .filter(Boolean)
             .join(' · ')}
         </p>
+        {!view.limited && (
+          <p className="mt-3 text-[14px] leading-[1.45] text-[var(--dv-text-secondary)] print:hidden">
+            Tên đầy đủ và liên hệ của diễn viên chỉ được DienVienVN cung cấp khi bạn liên hệ trực tiếp — gửi kèm mã hồ sơ (VD: DV-1A2B3C) của ứng viên bạn quan tâm.
+          </p>
+        )}
       </header>
 
       {/* Bộ lọc */}
@@ -234,7 +244,7 @@ export function ProducerApplicants({ view, profileHref }: { view: ProducerView; 
       {list.length === 0 ? (
         <div className="mt-10 rounded-[18px] bg-white p-12 text-center">
           <p className="text-[21px] font-semibold">Chưa có ứng viên.</p>
-          <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">Danh sách sẽ tự cập nhật khi đội casting duyệt thêm hồ sơ. Bạn chỉ cần mở lại link này.</p>
+          <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">Danh sách sẽ tự cập nhật khi đội ngũ DienVienVN chọn thêm ứng viên vào shortlist. Bạn chỉ cần mở lại link này.</p>
         </div>
       ) : (
         <div className="mt-6 space-y-10 print:space-y-6">
@@ -333,9 +343,9 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
   const [open, setOpen] = useState(false);
   const stats: [string, string | null][] = [
     ['Tuổi', d.age !== null ? String(d.age) : null],
-    ['Cao', t.height_cm ? `${t.height_cm}` : null],
-    ['Nặng', t.weight_kg ? `${t.weight_kg}` : null],
-    ['Số đo', d.measurements]
+    ['Cao (cm)', t.height_cm ? `${t.height_cm}` : null],
+    ['Nặng (kg)', t.weight_kg ? `${t.weight_kg}` : null],
+    ...(d.measurements ? ([['Số đo', d.measurements]] as [string, string][]) : [])
   ];
   // Bản công khai: định hướng & mức độ sẵn sàng hiện luôn trên thẻ thay cho chỉ số ngoại hình
   const showWillingInline = limited && (d.willingness.length > 0 || d.workCities.length > 0);
@@ -343,6 +353,7 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
 
   return (
     <li className="flex flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] break-inside-avoid print:border print:border-[#e8e8ed] print:shadow-none">
+      {!limited && (
       <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden bg-[#e8e8ed]">
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -370,14 +381,22 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
           </span>
         )}
       </div>
+      )}
 
       <div className="flex flex-1 flex-col p-4">
-        <Name name={t.full_name} href={profileHref} className="text-[18px] font-semibold leading-[1.22]" />
+        <div className="flex items-start justify-between gap-2">
+          <Name name={t.full_name} href={limited ? null : profileHref} className="text-[18px] font-semibold leading-[1.22]" />
+          {!limited && (
+            <span className="shrink-0 rounded-full bg-[var(--dv-bg-alt)] px-2 py-0.5 text-[11px] font-semibold tracking-[0.03em] text-[var(--dv-text-secondary)]">
+              {profileCode(t.id)}
+            </span>
+          )}
+        </div>
         <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
 
         {/* Chỉ số ngoại hình: đọc lướt theo cột (ẩn ở bản công khai) */}
         {!limited && (
-        <dl className="mt-3 grid grid-cols-[0.8fr_0.9fr_0.9fr_1.7fr] gap-1 rounded-[12px] bg-[var(--dv-bg-alt)] px-2 py-2 text-center">
+        <dl className={`mt-3 grid ${stats.length > 3 ? 'grid-cols-[0.8fr_0.9fr_0.9fr_1.7fr]' : 'grid-cols-3'} gap-1 rounded-[12px] bg-[var(--dv-bg-alt)] px-2 py-2 text-center`}>
           {stats.map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="text-[10px] uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{k}</dt>
@@ -497,6 +516,7 @@ function ApplicantRow({ applicant, profileHref, limited = false }: { applicant: 
   return (
     <li className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-[14px] bg-white p-3 md:grid-cols-[64px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.4fr)_264px] break-inside-avoid">
       <div className="relative row-span-2 aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#e8e8ed] md:row-span-1">
+        {limited && <span className="absolute inset-0 flex items-center justify-center text-[18px] font-semibold text-[var(--dv-text-tertiary)]">{t.full_name.replace(/\D/g, '') || '?'}</span>}
         {thumb && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={thumb} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />

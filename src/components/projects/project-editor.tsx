@@ -291,13 +291,13 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
           checked={p.hide_contacts}
           onChange={v => canEdit && set({ hide_contacts: v })}
           label="Ẩn SĐT / Email trên link NSX"
-          desc={p.hide_contacts ? 'NSX không thấy thông tin liên hệ của diễn viên.' : 'NSX thấy SĐT và email của diễn viên.'}
+          desc="Link shortlist và cổng đối tác không bao giờ hiện tên đầy đủ, SĐT, email của diễn viên — đối tác phải liên hệ DienVienVN để xin."
         />
 
         <div className="p-3.5 rounded-xl border bg-muted/30 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold">Link gửi NSX</span>
-            <span className="text-[10px] text-muted-foreground">Chỉ hiện hồ sơ đã duyệt · {isNew ? 'dùng được sau khi lưu' : 'tự cập nhật'}</span>
+            <span className="text-xs font-semibold">Link shortlist gửi NSX</span>
+            <span className="text-[10px] text-muted-foreground">Chỉ hiện ứng viên Shortlist / Đã gửi NSX · {isNew ? 'dùng được sau khi lưu' : 'tự cập nhật'}</span>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <input readOnly value={nsxLink} className={`${inputCls} font-mono text-[11px]`} onFocus={e => e.target.select()} />

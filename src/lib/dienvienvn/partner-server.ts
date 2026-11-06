@@ -1,7 +1,7 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { buildProducerView, toProducerTalent } from '@/lib/projects/producer';
+import { SHORTLIST_STATUSES, buildProducerView, toProducerTalent } from '@/lib/projects/producer';
 import { TalentProfile } from '@/lib/types/crm';
 import { findAuthUserByEmail, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
@@ -100,17 +100,18 @@ export function approvedTalents(db: SupabaseClient) {
 
 export function toPartnerTalent(t: TalentProfile): PartnerTalent {
   return {
-    ...toProducerTalent(t, false),
-    username: t.username || null,
+    // Đối tác không thấy tên đầy đủ / SĐT / email / username (username thường là tên thật)
+    ...toProducerTalent(t, true, 'partner'),
+    username: null,
     singing: t.singing || null,
     preferred_project_types: t.preferred_project_types || [],
     preferred_role_types: t.preferred_role_types || []
   };
 }
 
-/** Ứng viên hiện cho đối tác/NSX: không bị Loại và hồ sơ đã duyệt (như link NSX). */
+/** Ứng viên hiện cho đối tác: chỉ người ACT đã chọn (Shortlist / Đã gửi NSX) và hồ sơ đã duyệt (như link NSX). */
 async function visibleApplications(db: SupabaseClient, projectIds: string[]) {
-  const { data: apps } = await db.from('project_applications').select('*').in('project_id', projectIds).neq('status', 'rejected');
+  const { data: apps } = await db.from('project_applications').select('*').in('project_id', projectIds).in('status', SHORTLIST_STATUSES);
   const applications = (apps || []) as ProjectApplication[];
   const talentIds = Array.from(new Set(applications.map(a => a.talent_id)));
   const talents: TalentProfile[] = [];
@@ -155,7 +156,7 @@ async function partnerProjectRows(db: SupabaseClient, partner: PartnerAccount): 
 }
 
 /**
- * Chi tiết 1 dự án cho đối tác: như link NSX nhưng luôn có liên hệ, kèm username để mở hồ sơ đầy đủ.
+ * Chi tiết 1 dự án cho đối tác: như link shortlist khi đối tác đăng nhập (ảnh, tên ẩn một phần, chỉ số; không SĐT).
  * Tìm theo UUID hoặc đường dẫn tên phim (mot-phim-linh-dinh), chỉ trong các dự án được gắn cho đối tác.
  */
 export async function partnerProjectView(db: SupabaseClient, partner: PartnerAccount, param: string) {
@@ -168,11 +169,9 @@ export async function partnerProjectView(db: SupabaseClient, partner: PartnerAcc
   if (!project) return null;
   const { applications, talents } = await visibleApplications(db, [project.id]);
   const view = buildProducerView({ ...project, hide_contacts: false }, applications, talents);
-  const usernames = Object.fromEntries(talents.filter(t => t.username).map(t => [t.id, t.username as string]));
   const own = project.partner_id === partner.id;
   return {
     ...view,
-    usernames,
     id: project.id,
     status: project.status,
     own,

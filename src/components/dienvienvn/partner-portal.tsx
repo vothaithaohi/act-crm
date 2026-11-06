@@ -40,8 +40,14 @@ function photosOf(t: PartnerTalent) {
   ].filter((p): p is { label: string; url: string } => !!p.url);
 }
 
+/** Tuổi: máy chủ chỉ gửi số tuổi (không gửi ngày sinh) cho đối tác. */
+const ageOfTalent = (t: PartnerTalent) => t.age ?? (t.dob ? ageFromDob(t.dob) : null);
+
+/** Mã hồ sơ đối tác gửi cho DienVienVN khi cần tên đầy đủ / liên hệ của diễn viên. */
+const profileCode = (id: string) => `DV-${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+
 function summaryLine(t: PartnerTalent) {
-  const age = t.dob ? ageFromDob(t.dob) : null;
+  const age = ageOfTalent(t);
   return [GENDER_LABEL[t.gender] || null, age !== null ? `${age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.city ? provinceLabel(t.city) : null]
     .filter(Boolean)
     .join(' · ');
@@ -178,12 +184,11 @@ export function PartnerDirectory() {
     () =>
       talents.map(t => ({
         t,
-        age: t.dob ? ageFromDob(t.dob) : null,
+        age: ageOfTalent(t),
         text: foldVi(
           [
             t.full_name,
-            t.username,
-            t.city ? provinceLabel(t.city) : '',
+            ...(t.willing_work_cities || []).map(c => provinceLabel(c)),
             ...skillGroups(t).flatMap(g => g.items),
             ...experienceGroups(t.acting_experience).flatMap(g => g.items),
             ...trainingList(t.academic_profile)
@@ -192,7 +197,8 @@ export function PartnerDirectory() {
       })),
     [talents]
   );
-  const cities = useMemo(() => Array.from(new Set(talents.map(t => t.city).filter((c): c is string => !!c))).sort(), [talents]);
+  // Lọc theo nơi diễn viên nhận quay (đối tác không được biết nơi ở)
+  const cities = useMemo(() => Array.from(new Set(talents.flatMap(t => t.willing_work_cities || []).filter(Boolean))).sort(), [talents]);
 
   const list = useMemo(() => {
     const words = foldVi(q.trim()).split(/\s+/).filter(Boolean);
@@ -202,7 +208,7 @@ export function PartnerDirectory() {
       .filter(({ t, age, text }) => {
         if (words.some(w => !text.includes(w))) return false;
         if (gender !== 'all' && t.gender !== gender) return false;
-        if (city !== 'all' && t.city !== city) return false;
+        if (city !== 'all' && !(t.willing_work_cities || []).includes(city)) return false;
         if (a1 !== null && (age === null || age < a1)) return false;
         if (a2 !== null && (age === null || age > a2)) return false;
         if (h1 !== null && (!t.height_cm || t.height_cm < h1)) return false;
@@ -334,13 +340,9 @@ export function PartnerDirectory() {
           const cls = 'group block overflow-hidden rounded-[18px] bg-white transition-shadow hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.25)]';
           return (
             <li key={t.id}>
-              {t.username ? (
-                <Link href={href(`/doi-tac/${t.username}`)} className={cls}>
-                  {inner}
-                </Link>
-              ) : (
-                <div className={cls}>{inner}</div>
-              )}
+              <Link href={href(`/doi-tac/${t.id}`)} className={cls}>
+                {inner}
+              </Link>
             </li>
           );
         })}
@@ -365,6 +367,7 @@ function RangeInput({ label, min, max, onMin, onMax }: { label: string; min: str
 
 /* ---------------- Hồ sơ đầy đủ cho đối tác ---------------- */
 export function PartnerTalentProfile({ username }: { username: string }) {
+  // "username" ở đây là mã hồ sơ (UUID); link cũ theo username vẫn mở được
   const href = useDvvnHref();
   const api = usePartnerApi<{ talent: PartnerTalent }>(`/api/dienvienvn/partner/talents/${encodeURIComponent(username)}`);
   const [i, setI] = useState(0);
@@ -374,7 +377,7 @@ export function PartnerTalentProfile({ username }: { username: string }) {
   const photos = photosOf(t);
   const n = photos.length;
   const current = photos[Math.min(i, Math.max(n - 1, 0))];
-  const age = t.dob ? ageFromDob(t.dob) : null;
+  const age = ageOfTalent(t);
   const experience = experienceGroups(t.acting_experience);
   const skills = skillGroups(t);
   const trainings = trainingList(t.academic_profile);
@@ -454,6 +457,14 @@ export function PartnerTalentProfile({ username }: { username: string }) {
         <div>
           <h1 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">{t.full_name}</h1>
           <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">{summaryLine(t)}</p>
+
+          <section className="dv-card mt-6 p-6 print:hidden">
+            <h2 className="text-[19px] font-semibold">Muốn liên hệ diễn viên này?</h2>
+            <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
+              Tên đầy đủ và thông tin liên hệ chỉ được DienVienVN cung cấp khi bạn liên hệ trực tiếp. Vui lòng gửi mã hồ sơ{' '}
+              <span className="font-semibold text-[var(--dv-text)]">{profileCode(t.id)}</span> cho đội ngũ DienVienVN.
+            </p>
+          </section>
 
           {(t.phone || t.email || socials.length > 0) && (
             <section className="dv-card mt-6 p-6">
@@ -552,7 +563,6 @@ export function PartnerTalentProfile({ username }: { username: string }) {
 
 /* ---------------- Ứng viên của 1 dự án được gắn cho đối tác ---------------- */
 type BoardData = ProducerView & {
-  usernames: Record<string, string>;
   id: string;
   status: 'draft' | 'open' | 'closed';
   own: boolean;
@@ -564,7 +574,6 @@ export function PartnerProjectBoard({ projectId }: { projectId: string }) {
   const href = useDvvnHref();
   const api = usePartnerApi<BoardData>(`/api/dienvienvn/partner/projects/${encodeURIComponent(projectId)}`);
   if (!api.data) return <Gate {...api} next={href(`/doi-tac/du-an/${projectId}`)} />;
-  const usernames = api.data.usernames || {};
   const d = api.data;
   return (
     <PortalShell>
@@ -594,7 +603,7 @@ export function PartnerProjectBoard({ projectId }: { projectId: string }) {
           </p>
         </div>
       )}
-      <ProducerApplicants view={d} profileHref={id => (usernames[id] ? href(`/doi-tac/${usernames[id]}`) : null)} />
+      <ProducerApplicants view={d} profileHref={id => href(`/doi-tac/${id}`)} />
     </PortalShell>
   );
 }
