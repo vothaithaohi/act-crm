@@ -7,52 +7,34 @@ import {
   ProjectRole,
   PublicProject,
   isAcceptingApplications,
+  projectPathName,
   projectTypeLabel,
   roleSummary
 } from '@/lib/projects/types';
 import { applyToRole, fetchPublicProject } from '@/lib/projects/public-client';
-import { AuthRequiredError, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
-import { LoginGate } from './actor-pages';
 
 export function ProjectDetail({ projectId }: { projectId: string }) {
   const href = useDvvnHref();
   const [project, setProject] = useState<PublicProject | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [applyRole, setApplyRole] = useState<ProjectRole | null>(null);
-  const [needsLogin, setNeedsLogin] = useState(false);
   const session = useActorSession();
 
-  // Chỉ diễn viên đã đăng nhập mới xem được dự án (chế độ demo không có tài khoản nên cho xem)
+  // Trang dự án công khai: ai cũng xem được; ứng tuyển cần đăng nhập hoặc nộp hồ sơ mới
   useEffect(() => {
-    if (session.status === 'loading') return;
-    if (session.status === 'signed-out') {
-      setNeedsLogin(true);
-      return;
-    }
-    setNeedsLogin(false);
     fetchPublicProject(projectId)
       .then(setProject)
       .catch(e => {
-        if (e instanceof AuthRequiredError) return setNeedsLogin(true);
         setError(e instanceof Error ? e.message : 'Không tải được dự án.');
         setProject(null);
       });
-  }, [projectId, session.status]);
-
-  if (needsLogin) {
-    return (
-      <LoginGate
-        title="Đăng nhập để xem dự án."
-        description="Dự án đang casting chỉ dành cho diễn viên đã có hồ sơ trên DienVienVN. Đăng nhập để xem chi tiết và tự ứng tuyển vai phù hợp."
-        next={href(`/du-an/${projectId}`)}
-      />
-    );
-  }
+  }, [projectId]);
 
   if (project === undefined) {
     return (
@@ -174,7 +156,13 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       <SiteFooter />
 
       {applyRole && (
-        <ApplySheet project={project} role={applyRole} signedIn={session.status === 'signed-in'} onClose={() => setApplyRole(null)} />
+        <ApplySheet
+          project={project}
+          role={applyRole}
+          signedIn={session.status === 'signed-in'}
+          canLogin={session.status === 'signed-out'}
+          onClose={() => setApplyRole(null)}
+        />
       )}
     </>
   );
@@ -185,11 +173,13 @@ function ApplySheet({
   project,
   role,
   signedIn,
+  canLogin,
   onClose
 }: {
   project: PublicProject;
   role: ProjectRole;
   signedIn: boolean;
+  canLogin: boolean;
   onClose: () => void;
 }) {
   const href = useDvvnHref();
@@ -273,7 +263,7 @@ function ApplySheet({
             </div>
           </div>
         ) : !signedIn ? (
-          // Chế độ demo (chưa có tài khoản diễn viên): ứng tuyển kèm hồ sơ mới
+          // Chưa đăng nhập: nộp hồ sơ mới kèm vai này, hoặc đăng nhập để ứng tuyển bằng hồ sơ có sẵn
           <div className="mt-6">
             <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
               Điền hồ sơ diễn viên 7 bước. Vai <span className="font-semibold text-[var(--dv-text)]">{role.name}</span> sẽ được chọn sẵn
@@ -282,6 +272,17 @@ function ApplySheet({
             <Link href={formHref} className="dv-btn dv-btn-primary mt-6 w-full">
               Điền hồ sơ &amp; ứng tuyển <ChevronRight className="h-4 w-4" />
             </Link>
+            {canLogin && (
+              <p className="mt-4 text-center text-[14px] text-[var(--dv-text-secondary)]">
+                Đã có hồ sơ trên DienVienVN?{' '}
+                <Link
+                  href={href(`/dang-nhap?next=${encodeURIComponent(href(`/du-an/${projectPathName(project.display_name, project.code) || project.id}`))}`)}
+                  className="font-semibold text-[var(--dv-text)] underline underline-offset-2"
+                >
+                  Đăng nhập để ứng tuyển
+                </Link>
+              </p>
+            )}
           </div>
         ) : (
           <div className="mt-6 space-y-4">

@@ -42,7 +42,7 @@ function TileIcon({ children }: { children: React.ReactNode }) {
  * các phần khác vẫn giữ nguyên code — đổi sang `true` để hiện lại.
  */
 const HOMEPAGE_SECTIONS = {
-  projects: false, // "Dự án đang casting"
+  projects: true, // "Dự án đang casting"
   tiles: false, // Hồ sơ diễn viên / Nhà sản xuất / Đào tạo diễn xuất / Riêng tư
   process: false, // "Bảy bước. Khoảng mười phút."
   closing: false, // "Vai diễn tiếp theo có thể là của bạn."
