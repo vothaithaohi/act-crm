@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ExternalLink, Loader2, LogOut, Mail, Phone, Printer, Search, UserRound } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2, LogOut, Mail, Phone, Plus, Printer, Search, Trash2, UserRound } from 'lucide-react';
 import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { ageFromDob, ROLE_WILLINGNESS_OPTIONS, TATTOO_OPTIONS } from '@/lib/dienvienvn/casting-form';
 import { PARTNER_TYPE_LABELS, PartnerProjectSummary, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
 import type { ProducerView } from '@/lib/projects/producer';
-import { projectTypeLabel } from '@/lib/projects/types';
+import { PROJECT_TYPES, ProjectRole, RoleGender, projectTypeLabel } from '@/lib/projects/types';
+import { ABROAD, ALL_PROVINCES } from '@/lib/dienvienvn/provinces';
+import { CheckOption, Field, SelectInput, TextInput } from './form-fields';
 import { ProducerApplicants } from './producer-board';
 import { formatVnDate } from './projects-section';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
@@ -225,10 +227,21 @@ export function PartnerDirectory() {
 
   return (
     <PortalShell partner={api.data.partner}>
-      {(api.data.projects || []).length > 0 && (
-        <section className="mb-12">
-          <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">Dự án của bạn.</h2>
-          <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">Ứng viên đã được đội casting duyệt cho từng vai, tự cập nhật.</p>
+      <section className="mb-12">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">Dự án của bạn.</h2>
+              <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">
+                {(api.data.projects || []).length
+                  ? 'Ứng viên đã được đội casting duyệt cho từng vai, tự cập nhật.'
+                  : 'Đăng casting call để diễn viên trên DienVienVN ứng tuyển vào dự án của bạn.'}
+              </p>
+            </div>
+            <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-primary !h-11 !py-0 text-[15px]">
+              <Plus className="h-4 w-4" /> Đăng casting mới
+            </Link>
+          </div>
+          {(api.data.projects || []).length > 0 && (
           <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(api.data.projects || []).map(p => (
               <li key={p.id}>
@@ -236,8 +249,15 @@ export function PartnerDirectory() {
                   href={href(`/doi-tac/du-an/${p.path || p.id}`)}
                   className="group flex h-full flex-col rounded-[18px] bg-white p-5 transition-shadow hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.25)]"
                 >
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">
-                    {p.code} · {p.status === 'open' ? 'Đang casting' : 'Đã đóng'}
+                  <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">
+                    <span>{p.code}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 normal-case tracking-normal ${
+                        p.status === 'draft' ? 'bg-[#fff6e0] text-[#8c5f2a]' : p.status === 'open' ? 'bg-[#e8f5ec] text-[#1e6b3a]' : 'bg-[var(--dv-bg-alt)]'
+                      }`}
+                    >
+                      {p.status === 'draft' ? 'Chờ DienVienVN duyệt' : p.status === 'open' ? 'Đang casting' : 'Đã đóng'}
+                    </span>
                   </p>
                   <p className="mt-1 text-[19px] font-semibold leading-[1.25]">{p.title}</p>
                   <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">
@@ -250,8 +270,8 @@ export function PartnerDirectory() {
               </li>
             ))}
           </ul>
-        </section>
-      )}
+          )}
+      </section>
 
       <h1 className="dv-display dv-headline">Kho diễn viên DienVienVN.</h1>
       <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{talents.length} hồ sơ đã duyệt · thông tin đầy đủ dành riêng cho đối tác.</p>
@@ -531,19 +551,346 @@ export function PartnerTalentProfile({ username }: { username: string }) {
 }
 
 /* ---------------- Ứng viên của 1 dự án được gắn cho đối tác ---------------- */
+type BoardData = ProducerView & {
+  usernames: Record<string, string>;
+  id: string;
+  status: 'draft' | 'open' | 'closed';
+  own: boolean;
+  editable: boolean;
+  form: ProjectForm | null;
+};
+
 export function PartnerProjectBoard({ projectId }: { projectId: string }) {
   const href = useDvvnHref();
-  const api = usePartnerApi<ProducerView & { usernames: Record<string, string> }>(`/api/dienvienvn/partner/projects/${encodeURIComponent(projectId)}`);
+  const api = usePartnerApi<BoardData>(`/api/dienvienvn/partner/projects/${encodeURIComponent(projectId)}`);
   if (!api.data) return <Gate {...api} next={href(`/doi-tac/du-an/${projectId}`)} />;
   const usernames = api.data.usernames || {};
+  const d = api.data;
   return (
     <PortalShell>
-      <div className="mb-6 flex items-center justify-between print:hidden">
+      <div className="mb-6 flex items-center justify-between gap-3 print:hidden">
         <Link href={href('/doi-tac')} className="dv-link text-[14px]">
           <ChevronLeft className="h-4 w-4" /> Cổng đối tác
         </Link>
+        {d.editable && (
+          <Link href={href(`/doi-tac/du-an/${d.id}/sua`)} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
+            Sửa casting
+          </Link>
+        )}
       </div>
-      <ProducerApplicants view={api.data} profileHref={id => (usernames[id] ? href(`/doi-tac/${usernames[id]}`) : null)} />
+      {d.own && d.status === 'draft' && (
+        <div className="mb-6 rounded-[16px] border border-[#f1e2bf] bg-[#fff8e8] px-5 py-4 text-[15px] leading-[1.47] print:hidden">
+          <p className="font-semibold">Đang chờ DienVienVN duyệt.</p>
+          <p className="mt-0.5 text-[var(--dv-text-secondary)]">
+            Casting call chưa hiện với diễn viên. Đội ngũ DienVienVN sẽ kiểm tra và mở nhận hồ sơ. Trong lúc chờ, bạn vẫn sửa được thông tin.
+          </p>
+        </div>
+      )}
+      {d.own && d.status === 'open' && (
+        <div className="mb-6 rounded-[16px] border border-[#cfe9d6] bg-[#f0faf3] px-5 py-4 text-[15px] leading-[1.47] print:hidden">
+          <p className="font-semibold">Đang nhận hồ sơ trên DienVienVN.</p>
+          <p className="mt-0.5 text-[var(--dv-text-secondary)]">
+            Diễn viên ứng tuyển và được đội casting duyệt sẽ tự hiện bên dưới. Cần chỉnh sửa dự án, vui lòng liên hệ DienVienVN.
+          </p>
+        </div>
+      )}
+      <ProducerApplicants view={d} profileHref={id => (usernames[id] ? href(`/doi-tac/${usernames[id]}`) : null)} />
+    </PortalShell>
+  );
+}
+
+/* ---------------- Đối tác đăng / sửa casting call ---------------- */
+type ProjectForm = {
+  title: string;
+  hide_title: boolean;
+  production_company: string;
+  project_type: string;
+  description: string;
+  location: string;
+  shooting_time: string;
+  compensation: string;
+  deadline: string;
+  roles: ProjectRole[];
+  selftape_required: boolean;
+  selftape_brief: string;
+};
+
+const newRoleId = () => Math.random().toString(36).slice(2, 10);
+const blankRole = (name = ''): ProjectRole => ({ id: newRoleId(), name, gender: 'any', age_min: null, age_max: null, quantity: 1, description: '' });
+const blankForm = (): ProjectForm => ({
+  title: '',
+  hide_title: false,
+  production_company: '',
+  project_type: 'feature_film',
+  description: '',
+  location: '',
+  shooting_time: '',
+  compensation: '',
+  deadline: '',
+  roles: [blankRole()],
+  selftape_required: false,
+  selftape_brief: ''
+});
+
+export function PartnerProjectForm({ projectId }: { projectId?: string }) {
+  const href = useDvvnHref();
+  const router = useRouter();
+  const editing = !!projectId;
+  // Đăng mới: kiểm tra quyền đối tác qua API danh sách; sửa: tải dự án
+  const api = usePartnerApi<{ partner?: PartnerInfo; form?: ProjectForm | null; editable?: boolean; id?: string }>(
+    editing ? `/api/dienvienvn/partner/projects/${encodeURIComponent(projectId as string)}` : '/api/dienvienvn/partner/talents'
+  );
+  const [form, setForm] = useState<ProjectForm | null>(null);
+  const [bulk, setBulk] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!api.data || form) return;
+    if (editing) {
+      if (api.data.form) setForm({ ...blankForm(), ...api.data.form, roles: api.data.form.roles?.length ? api.data.form.roles : [blankRole()] });
+    } else setForm({ ...blankForm(), production_company: api.data.partner?.company || '' });
+  }, [api.data, editing, form]);
+
+  const next = editing ? href(`/doi-tac/du-an/${projectId}/sua`) : href('/doi-tac/du-an/moi');
+  if (!api.data) return <Gate {...api} next={next} />;
+  if (editing && (!api.data.form || !api.data.editable)) {
+    return (
+      <PortalShell>
+        <div className="dv-card mx-auto max-w-[520px] p-8 text-center">
+          <h1 className="dv-display text-[24px] font-semibold">Không sửa được dự án này.</h1>
+          <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
+            Chỉ sửa được casting call do bạn đăng khi còn chờ duyệt. Dự án đã mở nhận hồ sơ, vui lòng liên hệ DienVienVN để chỉnh sửa.
+          </p>
+          <Link href={href(`/doi-tac/du-an/${projectId}`)} className="dv-btn dv-btn-secondary mt-6">
+            Về dự án
+          </Link>
+        </div>
+      </PortalShell>
+    );
+  }
+  if (!form) return <Gate {...api} next={next} />;
+
+  const set = (patch: Partial<ProjectForm>) => setForm(f => (f ? { ...f, ...patch } : f));
+  const setRole = (id: string, patch: Partial<ProjectRole>) => set({ roles: form.roles.map(r => (r.id === id ? { ...r, ...patch } : r)) });
+  const num = (v: string) => (v.replace(/\D/g, '') ? Number(v.replace(/\D/g, '').slice(0, 3)) : null);
+
+  const submit = async () => {
+    setError('');
+    if (form.title.trim().length < 2) return setError('Vui lòng nhập tên dự án.');
+    const roles = form.roles.filter(r => r.name.trim() || (r.description || '').trim());
+    if (!roles.length || roles.some(r => !r.name.trim())) return setError('Mỗi vai cần có tên vai.');
+    if (roles.some(r => r.age_min && r.age_max && r.age_min > r.age_max)) return setError('Độ tuổi "từ" phải nhỏ hơn "đến".');
+    setBusy(true);
+    try {
+      const res = await actorFetch(editing ? `/api/dienvienvn/partner/projects/${projectId}` : '/api/dienvienvn/partner/projects', {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, roles, deadline: form.deadline || null })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.id) return setError(body.error || 'Không lưu được. Vui lòng thử lại.');
+      router.push(href(`/doi-tac/du-an/${body.id}`));
+    } catch {
+      setError('Mất kết nối mạng. Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addBulk = () => {
+    const names = (bulk || '').split('\n').map(x => x.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 50);
+    if (names.length) set({ roles: [...form.roles.filter(r => r.name.trim() || (r.description || '').trim()), ...names.map(n => blankRole(n))] });
+    setBulk(null);
+  };
+
+  return (
+    <PortalShell>
+      <div className="mx-auto max-w-[780px]">
+        <Link href={href(editing ? `/doi-tac/du-an/${projectId}` : '/doi-tac')} className="dv-link text-[14px]">
+          <ChevronLeft className="h-4 w-4" /> {editing ? 'Về dự án' : 'Cổng đối tác'}
+        </Link>
+        <h1 className="dv-display dv-headline mt-4">{editing ? 'Sửa casting call.' : 'Đăng casting call.'}</h1>
+        <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
+          Casting call sẽ hiện cho diễn viên trên DienVienVN sau khi đội ngũ DienVienVN duyệt.
+        </p>
+
+        <section className="dv-card mt-8 space-y-5 p-6 md:p-8">
+          <h2 className="text-[21px] font-semibold">Thông tin dự án</h2>
+          <Field label="Tên dự án / tên phim" required htmlFor="pp-title">
+            <TextInput id="pp-title" value={form.title} onChange={e => set({ title: e.target.value })} placeholder="VD: Một Phim Linh Đình" />
+          </Field>
+          <CheckOption checked={form.hide_title} onChange={() => set({ hide_title: !form.hide_title })}>
+            Ẩn tên dự án với diễn viên (diễn viên chỉ thấy &ldquo;Dự án DV-xx&rdquo;)
+          </CheckOption>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Field label="Công ty sản xuất" htmlFor="pp-company">
+              <TextInput id="pp-company" value={form.production_company} onChange={e => set({ production_company: e.target.value })} />
+            </Field>
+            <Field label="Loại dự án" htmlFor="pp-type">
+              <SelectInput id="pp-type" value={form.project_type} onChange={e => set({ project_type: e.target.value })}>
+                {PROJECT_TYPES.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </SelectInput>
+            </Field>
+            <Field label="Địa điểm quay" htmlFor="pp-location">
+              <SelectInput id="pp-location" value={form.location} onChange={e => set({ location: e.target.value })}>
+                <option value="">Chưa xác định</option>
+                {ALL_PROVINCES.map(p => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+                <option value={ABROAD}>Nước ngoài</option>
+              </SelectInput>
+            </Field>
+            <Field label="Thời gian quay" htmlFor="pp-time">
+              <TextInput id="pp-time" value={form.shooting_time} onChange={e => set({ shooting_time: e.target.value })} placeholder="VD: Tháng 12/2026" />
+            </Field>
+            <Field label="Thù lao" htmlFor="pp-pay">
+              <TextInput id="pp-pay" value={form.compensation} onChange={e => set({ compensation: e.target.value })} placeholder="VD: Thoả thuận" />
+            </Field>
+            <Field label="Hạn nộp hồ sơ" htmlFor="pp-deadline">
+              <TextInput id="pp-deadline" type="date" value={form.deadline} onChange={e => set({ deadline: e.target.value })} />
+            </Field>
+          </div>
+          <Field label="Giới thiệu dự án" htmlFor="pp-desc" hint="Nội dung phim, yêu cầu chung… (diễn viên sẽ đọc phần này)">
+            <textarea id="pp-desc" rows={4} className="dv-input" value={form.description} onChange={e => set({ description: e.target.value })} />
+          </Field>
+        </section>
+
+        <section className="dv-card mt-4 space-y-4 p-6 md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[21px] font-semibold">Vai cần tuyển ({form.roles.length})</h2>
+            <button type="button" onClick={() => setBulk(bulk === null ? '' : null)} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
+              Thêm nhanh nhiều vai
+            </button>
+          </div>
+          {bulk !== null && (
+            <div className="space-y-2 rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
+              <Field label="Mỗi dòng một tên vai" htmlFor="pp-bulk">
+                <textarea id="pp-bulk" rows={5} autoFocus className="dv-input" value={bulk} onChange={e => setBulk(e.target.value)} placeholder={'Chàng trai 1\nCô gái số 1\nNgười mẹ…'} />
+              </Field>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setBulk(null)} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
+                  Huỷ
+                </button>
+                <button type="button" onClick={addBulk} disabled={!bulk.trim()} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+                  Thêm vai
+                </button>
+              </div>
+            </div>
+          )}
+          <ol className="space-y-3">
+            {form.roles.map((r, i) => (
+              <li key={r.id} className="rounded-[16px] border border-[#e8e8ed] p-4 md:p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-[var(--dv-text-tertiary)]">VAI {i + 1}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      title="Nhân bản vai"
+                      aria-label="Nhân bản vai"
+                      onClick={() => {
+                        const copy = { ...r, id: newRoleId(), name: r.name ? `${r.name} (bản sao)` : '' };
+                        const roles = [...form.roles];
+                        roles.splice(i + 1, 0, copy);
+                        set({ roles });
+                      }}
+                      className="rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Xoá vai"
+                      aria-label="Xoá vai"
+                      disabled={form.roles.length === 1}
+                      onClick={() => (!r.name.trim() || window.confirm(`Xoá vai "${r.name}"?`)) && set({ roles: form.roles.filter(x => x.id !== r.id) })}
+                      className="rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[#fff0f0] hover:text-[#b00020] disabled:opacity-30"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_80px_80px_90px]">
+                  <Field label="Tên vai" required htmlFor={`pp-r-${r.id}`} className="col-span-2 sm:col-span-1">
+                    <TextInput id={`pp-r-${r.id}`} value={r.name} onChange={e => setRole(r.id, { name: e.target.value })} placeholder="VD: Nữ chính – Linh" />
+                  </Field>
+                  <Field label="Giới tính" htmlFor={`pp-g-${r.id}`}>
+                    <SelectInput id={`pp-g-${r.id}`} value={r.gender} onChange={e => setRole(r.id, { gender: e.target.value as RoleGender })}>
+                      <option value="any">Nam / Nữ</option>
+                      <option value="female">Nữ</option>
+                      <option value="male">Nam</option>
+                    </SelectInput>
+                  </Field>
+                  <Field label="Tuổi từ" htmlFor={`pp-a1-${r.id}`}>
+                    <TextInput id={`pp-a1-${r.id}`} inputMode="numeric" value={r.age_min ?? ''} onChange={e => setRole(r.id, { age_min: num(e.target.value) })} />
+                  </Field>
+                  <Field label="Đến" htmlFor={`pp-a2-${r.id}`}>
+                    <TextInput id={`pp-a2-${r.id}`} inputMode="numeric" value={r.age_max ?? ''} onChange={e => setRole(r.id, { age_max: num(e.target.value) })} />
+                  </Field>
+                  <Field label="Số lượng" htmlFor={`pp-q-${r.id}`}>
+                    <TextInput id={`pp-q-${r.id}`} inputMode="numeric" value={r.quantity ?? ''} onChange={e => setRole(r.id, { quantity: num(e.target.value) })} />
+                  </Field>
+                </div>
+                <Field label="Mô tả vai" htmlFor={`pp-d-${r.id}`} className="mt-3">
+                  <textarea
+                    id={`pp-d-${r.id}`}
+                    rows={3}
+                    className="dv-input"
+                    value={r.description || ''}
+                    onChange={e => setRole(r.id, { description: e.target.value })}
+                    placeholder="Tính cách, ngoại hình, kỹ năng cần có…"
+                  />
+                </Field>
+              </li>
+            ))}
+          </ol>
+          <button
+            type="button"
+            onClick={() => set({ roles: [...form.roles, blankRole()] })}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border-2 border-dashed border-[#d2d2d7] text-[15px] font-semibold text-[var(--dv-text-secondary)] hover:border-[var(--dv-accent)] hover:text-[var(--dv-text)]"
+          >
+            <Plus className="h-4 w-4" /> Thêm vai
+          </button>
+        </section>
+
+        <section className="dv-card mt-4 space-y-4 p-6 md:p-8">
+          <h2 className="text-[21px] font-semibold">Self-tape</h2>
+          <CheckOption checked={form.selftape_required} onChange={() => set({ selftape_required: !form.selftape_required })}>
+            Bắt buộc diễn viên gửi video self-tape khi ứng tuyển
+          </CheckOption>
+          <Field label="Hướng dẫn quay self-tape" htmlFor="pp-tape" hint="Không bắt buộc">
+            <textarea
+              id="pp-tape"
+              rows={3}
+              className="dv-input"
+              value={form.selftape_brief}
+              onChange={e => set({ selftape_brief: e.target.value })}
+              placeholder="VD: Quay ngang, giới thiệu bản thân 30 giây, đọc đoạn thoại đính kèm…"
+            />
+          </Field>
+        </section>
+
+        {error && (
+          <p role="alert" className="mt-4 rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">
+            {error}
+          </p>
+        )}
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Link href={href(editing ? `/doi-tac/du-an/${projectId}` : '/doi-tac')} className="dv-btn dv-btn-secondary">
+            Huỷ
+          </Link>
+          <button type="button" onClick={submit} disabled={busy} className="dv-btn dv-btn-primary">
+            {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
+            {editing ? 'Lưu thay đổi' : 'Gửi DienVienVN duyệt'}
+          </button>
+        </div>
+      </div>
     </PortalShell>
   );
 }

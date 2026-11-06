@@ -6,7 +6,8 @@ import { TalentProfile } from '@/lib/types/crm';
 import { findAuthUserByEmail, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
 import { PartnerAccount, PartnerProjectSummary, PartnerTalent } from './partners';
-import { CastingProject, ProjectApplication, partnerProjectPath, projectSlugScore, slugifyVi } from '@/lib/projects/types';
+import { CastingProject, ProjectApplication, newShareToken, nextProjectCode, partnerProjectPath, projectSlugScore, slugifyVi } from '@/lib/projects/types';
+import { PartnerProjectInput, toProjectColumns } from './partner-project-input';
 
 /** Bỏ ký tự đặc biệt của LIKE để so khớp email chính xác (không phân biệt hoa thường). */
 const likeExact = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`);
@@ -122,11 +123,8 @@ async function visibleApplications(db: SupabaseClient, projectIds: string[]) {
 
 /** Các dự án được gắn cho đối tác (bỏ bản nháp), kèm số vai và số ứng viên đang hiện. */
 export async function partnerProjects(db: SupabaseClient, partner: PartnerAccount): Promise<PartnerProjectSummary[]> {
-  const ids = partner.project_ids || [];
-  if (!ids.length) return [];
-  const { data, error } = await db.from('casting_projects').select('*').in('id', ids).neq('status', 'draft').order('created_at', { ascending: false });
-  if (error || !data?.length) return [];
-  const projects = data as CastingProject[];
+  const projects = await partnerProjectRows(db, partner);
+  if (!projects.length) return [];
   const { applications, talents } = await visibleApplications(db, projects.map(p => p.id));
   const approved = new Set(talents.map(t => t.id));
   return projects.map(p => ({
@@ -139,8 +137,21 @@ export async function partnerProjects(db: SupabaseClient, partner: PartnerAccoun
     status: p.status,
     deadline: p.deadline || null,
     roles: (p.roles || []).length,
-    applicants: applications.filter(a => a.project_id === p.id && approved.has(a.talent_id)).length
+    applicants: applications.filter(a => a.project_id === p.id && approved.has(a.talent_id)).length,
+    own: p.partner_id === partner.id
   }));
+}
+
+/** Dự án đối tác xem được: dự án ACT gắn cho đối tác (trừ nháp) + dự án đối tác tự đăng (kể cả đang chờ duyệt). */
+async function partnerProjectRows(db: SupabaseClient, partner: PartnerAccount): Promise<CastingProject[]> {
+  const ids = partner.project_ids || [];
+  const [assigned, own] = await Promise.all([
+    ids.length ? db.from('casting_projects').select('*').in('id', ids).neq('status', 'draft') : Promise.resolve({ data: [] as CastingProject[] }),
+    db.from('casting_projects').select('*').eq('partner_id', partner.id)
+  ]);
+  const map = new Map<string, CastingProject>();
+  [...((assigned.data || []) as CastingProject[]), ...((own.data || []) as CastingProject[])].forEach(p => map.set(p.id, p));
+  return Array.from(map.values()).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 }
 
 /**
@@ -148,11 +159,8 @@ export async function partnerProjects(db: SupabaseClient, partner: PartnerAccoun
  * Tìm theo UUID hoặc đường dẫn tên phim (mot-phim-linh-dinh), chỉ trong các dự án được gắn cho đối tác.
  */
 export async function partnerProjectView(db: SupabaseClient, partner: PartnerAccount, param: string) {
-  const ids = partner.project_ids || [];
-  if (!ids.length) return null;
   const key = decodeURIComponent(param).trim().toLowerCase();
-  const { data: rows } = await db.from('casting_projects').select('*').in('id', ids).neq('status', 'draft').order('created_at', { ascending: false });
-  const list = (rows || []) as CastingProject[];
+  const list = await partnerProjectRows(db, partner);
   const project =
     list.find(p => p.id === key) ||
     list.find(p => partnerProjectPath(p) === key) ||
@@ -161,5 +169,81 @@ export async function partnerProjectView(db: SupabaseClient, partner: PartnerAcc
   const { applications, talents } = await visibleApplications(db, [project.id]);
   const view = buildProducerView({ ...project, hide_contacts: false }, applications, talents);
   const usernames = Object.fromEntries(talents.filter(t => t.username).map(t => [t.id, t.username as string]));
-  return { ...view, usernames };
+  const own = project.partner_id === partner.id;
+  return {
+    ...view,
+    usernames,
+    id: project.id,
+    status: project.status,
+    own,
+    // Đối tác chỉ sửa được dự án tự đăng khi còn chờ ACT duyệt
+    editable: own && project.status === 'draft',
+    form: own ? partnerProjectForm(project) : null
+  };
+}
+
+/** Dữ liệu điền sẵn vào form sửa dự án của đối tác. */
+function partnerProjectForm(p: CastingProject) {
+  return {
+    title: p.title,
+    hide_title: p.hide_title,
+    production_company: p.production_company || '',
+    project_type: p.project_type,
+    description: p.description || '',
+    location: p.location || '',
+    shooting_time: p.shooting_time || '',
+    compensation: p.compensation || '',
+    deadline: p.deadline || '',
+    roles: p.roles || [],
+    selftape_required: p.selftape_required,
+    selftape_brief: p.selftape_brief || ''
+  };
+}
+
+/**
+ * Đối tác đăng dự án mới: luôn ở trạng thái "Nháp" (chờ ACT duyệt), tự gắn vào tài khoản đối tác.
+ * Mã dự án DV-xx tự tăng; trùng mã (2 người đăng cùng lúc) thì thử lại.
+ */
+export async function createPartnerProject(db: SupabaseClient, partner: PartnerAccount, input: PartnerProjectInput) {
+  const columns = toProjectColumns(input);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: codes } = await db.from('casting_projects').select('code');
+    const code = nextProjectCode(((codes || []) as { code: string }[]).map(c => c.code));
+    const { data, error } = await db
+      .from('casting_projects')
+      .insert({
+        ...columns,
+        production_company: columns.production_company || partner.company || null,
+        code,
+        status: 'draft',
+        share_token: newShareToken(),
+        hide_contacts: false,
+        partner_id: partner.id
+      })
+      .select('*')
+      .single();
+    if (!error) {
+      const project = data as CastingProject;
+      await db
+        .from('partner_accounts')
+        .update({ project_ids: Array.from(new Set([...(partner.project_ids || []), project.id])) })
+        .eq('id', partner.id);
+      return { project };
+    }
+    if (error.code !== '23505') {
+      console.error('[dienvienvn] Đối tác không tạo được dự án:', error.message);
+      return { error: /partner_id/.test(error.message) ? 'Hệ thống chưa sẵn sàng cho đối tác đăng dự án. Vui lòng liên hệ DienVienVN.' : 'Không lưu được dự án. Vui lòng thử lại.' };
+    }
+  }
+  return { error: 'Không lưu được dự án. Vui lòng thử lại.' };
+}
+
+/** Đối tác sửa dự án tự đăng, chỉ khi còn chờ ACT duyệt. */
+export async function updatePartnerProject(db: SupabaseClient, partner: PartnerAccount, id: string, input: PartnerProjectInput) {
+  const { data: existing } = await db.from('casting_projects').select('id, status, partner_id').eq('id', id).maybeSingle();
+  if (!existing || existing.partner_id !== partner.id) return { error: 'Không tìm thấy dự án.', status: 404 };
+  if (existing.status !== 'draft') return { error: 'Dự án đã được ACT duyệt. Vui lòng liên hệ DienVienVN để chỉnh sửa.', status: 409 };
+  const { data, error } = await db.from('casting_projects').update(toProjectColumns(input)).eq('id', id).eq('partner_id', partner.id).select('*').single();
+  if (error) return { error: 'Không lưu được thay đổi.', status: 500 };
+  return { project: data as CastingProject };
 }

@@ -67,6 +67,11 @@ export function ProjectsList() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-white">{p.code}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.badgeClass}`}>{status.label}</span>
+                  {p.partner_id && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-[#c9a063]/10 text-[#8a6a35] border-[#c9a063]/40">
+                      {p.status === 'draft' ? 'Đối tác đăng · chờ duyệt' : 'Đối tác đăng'}
+                    </span>
+                  )}
                   {expired && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-300">Quá hạn nộp</span>}
                   {p.hide_title && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground">

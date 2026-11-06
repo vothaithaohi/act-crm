@@ -54,4 +54,6 @@ export interface PartnerProjectSummary {
   deadline: string | null;
   roles: number;
   applicants: number;
+  /** Đối tác tự đăng dự án này */
+  own: boolean;
 }

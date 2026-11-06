@@ -32,6 +32,8 @@ export interface CastingProject {
   status: ProjectStatus;
   share_token: string;
   hide_contacts: boolean;
+  /** Đối tác đã đăng dự án này trong cổng đối tác (null = ACT tạo trong CRM) */
+  partner_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
