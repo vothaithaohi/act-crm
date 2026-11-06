@@ -10,6 +10,7 @@ const patchSchema = z.object({
   partner_type: z.enum(['director', 'producer', 'casting', 'agency', 'brand', 'other']).optional(),
   note: z.string().trim().max(1000).optional(),
   status: z.enum(['active', 'disabled']).optional(),
+  phone: z.string().trim().max(20).optional(),
   project_ids: z.array(z.string()).max(100).optional(),
   /** Gửi lại email mời / đặt mật khẩu */
   resend: z.boolean().optional()
@@ -30,8 +31,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const changes: Record<string, unknown> = {};
   const { project_ids, ...rest } = fields;
   for (const [k, v] of Object.entries(rest)) {
-    if (v !== undefined) changes[k] = k === 'company' || k === 'note' ? (v as string) || null : v;
+    if (v !== undefined) changes[k] = k === 'company' || k === 'note' || k === 'phone' ? (v as string) || null : v;
   }
+  // Duyệt đăng ký (Chờ duyệt → Hoạt động): gửi luôn email để đối tác tự đặt mật khẩu
+  const { data: before } = await g.db.from('partner_accounts').select('status').eq('id', id).maybeSingle();
+  const approving = before?.status === 'pending' && changes.status === 'active';
   if (project_ids) changes.project_ids = await cleanProjectIds(g.db, project_ids);
   let partner: PartnerAccount | null = null;
   if (Object.keys(changes).length) {
@@ -55,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (!partner) return NextResponse.json({ error: 'Không tìm thấy đối tác.' }, { status: 404 });
 
-  if (resend) {
+  if (resend || approving) {
     if (partner.status !== 'active') return NextResponse.json({ error: 'Tài khoản đang bị khoá. Mở khoá trước khi gửi email.' }, { status: 400 });
     const result = await sendPartnerEmail(g.db, partner, req.headers);
     const { data: fresh } = await g.db.from('partner_accounts').select('*').eq('id', id).single();

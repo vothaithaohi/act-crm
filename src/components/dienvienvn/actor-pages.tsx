@@ -79,7 +79,11 @@ export function LoginGate({ title, description, next, partner = false }: { title
           <Link href={href(`/dang-nhap?next=${encodeURIComponent(next)}`)} className="dv-btn dv-btn-primary w-full">
             Đăng nhập
           </Link>
-          {!partner && (
+          {partner ? (
+            <Link href={href('/doi-tac/dang-ky')} className="dv-btn dv-btn-secondary w-full">
+              Chưa có tài khoản? Đăng ký đối tác
+            </Link>
+          ) : (
             <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-secondary w-full">
               Chưa có hồ sơ? Nộp hồ sơ diễn viên
             </Link>
@@ -87,7 +91,7 @@ export function LoginGate({ title, description, next, partner = false }: { title
         </div>
         {partner && (
           <p className="mt-6 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-            Tài khoản đối tác do DienVienVN cấp cho đạo diễn, nhà sản xuất và đối tác casting. Liên hệ đội ngũ DienVienVN để được cấp tài khoản.
+            Dành cho đạo diễn, nhà sản xuất và đối tác casting. Tài khoản đăng ký mới được DienVienVN duyệt trước khi sử dụng.
           </p>
         )}
       </div>

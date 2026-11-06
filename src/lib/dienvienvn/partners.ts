@@ -3,7 +3,8 @@ import type { ProducerTalent } from '@/lib/projects/producer';
 import type { TalentProfile } from '@/lib/types/crm';
 
 export type PartnerType = 'director' | 'producer' | 'casting' | 'agency' | 'brand' | 'other';
-export type PartnerStatus = 'active' | 'disabled';
+/** pending: tự đăng ký, chờ DienVienVN duyệt; active: đang dùng; disabled: đã khoá / từ chối */
+export type PartnerStatus = 'pending' | 'active' | 'disabled';
 
 export const PARTNER_TYPE_LABELS: Record<PartnerType, string> = {
   director: 'Đạo diễn',
@@ -19,6 +20,7 @@ export interface PartnerAccount {
   email: string;
   full_name: string;
   company: string | null;
+  phone?: string | null;
   partner_type: PartnerType;
   status: PartnerStatus;
   note: string | null;

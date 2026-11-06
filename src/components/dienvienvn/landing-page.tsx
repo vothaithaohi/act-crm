@@ -188,8 +188,8 @@ function Hero({ stats }: { stats: HomeStats }) {
                 <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-light">
                   Đăng casting call
                 </Link>
-                <Link href={href('/doi-tac')} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
-                  Cổng đối tác <ChevronRight className="h-4 w-4" />
+                <Link href={href('/doi-tac/dang-ky')} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
+                  Đăng ký tài khoản đối tác <ChevronRight className="h-4 w-4" />
                 </Link>
               </>
             )}
@@ -296,7 +296,7 @@ function AudienceTiles() {
       eyebrow: 'Dành cho đạo diễn & nhà sản xuất',
       title: 'Tìm đúng gương mặt, nhanh hơn.',
       points: [
-        'Tự đăng casting call, đội ngũ DienVienVN duyệt và mở nhận hồ sơ',
+        'Tự đăng ký tài khoản, tự đăng casting call; DienVienVN duyệt và mở nhận hồ sơ',
         'Ứng viên được sàng lọc sẵn, xem theo từng vai',
         'Xem ảnh, self-tape, chiều cao, kinh nghiệm trên một đường link'
       ],

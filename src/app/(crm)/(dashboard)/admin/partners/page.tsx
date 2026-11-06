@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, FolderKanban, Handshake, Loader2, Lock, Mail, Plus, Trash2, Unlock, X } from 'lucide-react';
+import { Check, ExternalLink, FolderKanban, Handshake, Loader2, Lock, Mail, Plus, Trash2, Unlock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
@@ -17,6 +17,7 @@ function formatDateTime(iso: string | null) {
 }
 
 function StatusBadge({ p }: { p: PartnerAccount }) {
+  if (p.status === 'pending') return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-300 whitespace-nowrap">Chờ duyệt</span>;
   if (p.status === 'disabled') return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Đã khoá</span>;
   if (!p.last_seen_at) return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-brand-50 text-[#8c5f2a] border-brand-200">Chờ kích hoạt</span>;
   return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">Đang hoạt động</span>;
@@ -39,7 +40,9 @@ export default function AdminPartnersPage() {
       if (body.mode === 'demo') return setDemo(true);
       if (!res.ok) return setProblem(body.error || 'Không tải được danh sách đối tác.');
       setProblem('');
-      setPartners(body.partners || []);
+      // Đăng ký chờ duyệt lên đầu danh sách
+      const list = (body.partners || []) as PartnerAccount[];
+      setPartners([...list.filter(x => x.status === 'pending'), ...list.filter(x => x.status !== 'pending')]);
     } catch {
       setProblem('Mất kết nối mạng. Vui lòng tải lại trang.');
     }
@@ -95,8 +98,14 @@ export default function AdminPartnersPage() {
               <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground underline underline-offset-2 whitespace-nowrap">
                 dienvienvn.com/doi-tac
               </a>{' '}
-              để xem đầy đủ hồ sơ diễn viên đã duyệt (gồm số điện thoại, email, số đo).
+              để xem shortlist ứng viên (ảnh, tên ẩn một phần, self-tape, chỉ số — không có SĐT). Đối tác cũng có thể tự đăng ký tại
+              dienvienvn.com/doi-tac/dang-ky; đăng ký mới hiện ở đầu danh sách với nhãn &ldquo;Chờ duyệt&rdquo;.
             </p>
+            {!!partners?.some(x => x.status === 'pending') && (
+              <p className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+                {partners.filter(x => x.status === 'pending').length} đăng ký đối tác đang chờ duyệt
+              </p>
+            )}
           </div>
           {!demo && (
             <button
@@ -144,6 +153,8 @@ export default function AdminPartnersPage() {
                     <td className="px-4 py-3">
                       <div className="font-semibold">{p.full_name}</div>
                       <div className="text-xs text-muted-foreground">{p.email}</div>
+                      {p.phone && <div className="text-xs text-muted-foreground">{p.phone}</div>}
+                      {p.created_by === 'Tự đăng ký' && <div className="text-[10px] font-semibold uppercase tracking-wider text-[#8c5f2a] mt-0.5">Tự đăng ký</div>}
                       {p.note && <div className="text-xs text-muted-foreground italic mt-0.5">{p.note}</div>}
                     </td>
                     <td className="px-4 py-3 text-xs">
@@ -177,6 +188,26 @@ export default function AdminPartnersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        {p.status === 'pending' && (
+                          <>
+                            <button
+                              title="Duyệt: kích hoạt và gửi email đặt mật khẩu"
+                              disabled={busyId === p.id}
+                              onClick={() => patch(p, { status: 'active' }, 'Đã duyệt tài khoản đối tác.')}
+                              className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold disabled:opacity-40"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Duyệt
+                            </button>
+                            <button
+                              title="Từ chối đăng ký (khoá tài khoản)"
+                              disabled={busyId === p.id}
+                              onClick={() => window.confirm(`Từ chối đăng ký của "${p.full_name}"?`) && patch(p, { status: 'disabled' }, 'Đã từ chối đăng ký.')}
+                              className="h-8 inline-flex items-center px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted disabled:opacity-40"
+                            >
+                              Từ chối
+                            </button>
+                          </>
+                        )}
                         <button
                           title="Gắn dự án"
                           disabled={busyId === p.id}
@@ -187,7 +218,7 @@ export default function AdminPartnersPage() {
                         </button>
                         <button
                           title="Gửi lại email mời / đặt mật khẩu"
-                          disabled={busyId === p.id || p.status === 'disabled'}
+                          disabled={busyId === p.id || p.status !== 'active'}
                           onClick={() => patch(p, { resend: true })}
                           className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted disabled:opacity-40"
                         >
@@ -195,7 +226,7 @@ export default function AdminPartnersPage() {
                         </button>
                         <button
                           title={p.status === 'active' ? 'Khoá tài khoản' : 'Mở khoá tài khoản'}
-                          disabled={busyId === p.id}
+                          disabled={busyId === p.id || p.status === 'pending'}
                           onClick={() =>
                             patch(p, { status: p.status === 'active' ? 'disabled' : 'active' }, p.status === 'active' ? 'Đã khoá tài khoản.' : 'Đã mở khoá tài khoản.')
                           }

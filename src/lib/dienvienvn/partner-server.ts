@@ -28,6 +28,9 @@ export async function getPartner(req: NextRequest, db: SupabaseClient): Promise<
   if (!partner) {
     return NextResponse.json({ error: 'Tài khoản này chưa được cấp quyền đối tác.', notPartner: true }, { status: 403 });
   }
+  if (partner.status === 'pending') {
+    return NextResponse.json({ error: 'Tài khoản đối tác đang chờ DienVienVN duyệt. Bạn sẽ nhận email khi tài khoản được kích hoạt.', notPartner: true }, { status: 403 });
+  }
   if (partner.status !== 'active') {
     return NextResponse.json({ error: 'Tài khoản đối tác đã bị tạm khoá. Vui lòng liên hệ DienVienVN.', notPartner: true }, { status: 403 });
   }
