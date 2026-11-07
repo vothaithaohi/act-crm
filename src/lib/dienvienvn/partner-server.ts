@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { SHORTLIST_STATUSES, buildProducerView, toProducerTalent } from '@/lib/projects/producer';
 import { TalentProfile } from '@/lib/types/crm';
-import { findAuthUserByEmail, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
+import { findAuthUserByEmail, isSelfSignup, isStaffEmail, reclaimSelfSignup, SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
 import { PartnerAccount, PartnerProjectSummary, PartnerTalent } from './partners';
 import { CastingProject, ProjectApplication, newShareToken, nextProjectCode, partnerProjectPath, projectSlugScore, slugifyVi } from '@/lib/projects/types';
@@ -46,14 +46,16 @@ export async function findPartnerForUser(db: SupabaseClient, user: User): Promis
   const { data: byId } = await db.from('partner_accounts').select('*').eq('auth_user_id', user.id).limit(1);
   if (byId?.[0]) return byId[0] as PartnerAccount;
   const clean = (user.email || '').trim().toLowerCase();
-  if (!clean || !user.email_confirmed_at) return null;
+  // Chỉ gắn theo email khi email đã được chứng minh (không phải tài khoản tự đặt mật khẩu)
+  if (!clean || !user.email_confirmed_at || isSelfSignup(user)) return null;
   const { data: byEmail } = await db.from('partner_accounts').select('*').ilike('email', likeExact(clean)).is('auth_user_id', null).limit(1);
   const found = (byEmail?.[0] as PartnerAccount | undefined) || null;
   if (found) await db.from('partner_accounts').update({ auth_user_id: user.id }).eq('id', found.id);
   return found;
 }
 
-export type PartnerEmailResult = 'invited' | 'reset' | 'staff' | 'failed';
+/** ready: đối tác đã tự đặt mật khẩu khi đăng ký → duyệt xong đăng nhập được ngay, không cần email. */
+export type PartnerEmailResult = 'invited' | 'reset' | 'ready' | 'staff' | 'failed';
 
 /**
  * Gửi email cho đối tác: lần đầu là email mời tạo mật khẩu, đã kích hoạt rồi thì là email đặt lại mật khẩu.
@@ -74,6 +76,8 @@ export async function sendPartnerEmail(db: SupabaseClient, partner: PartnerAccou
 
   if (partner.auth_user_id) {
     const { data } = await db.auth.admin.getUserById(partner.auth_user_id);
+    // Đối tác tự đăng ký kèm mật khẩu: ACT duyệt chính là bước xác minh → không cần gửi email
+    if (data?.user && isSelfSignup(data.user) && partner.created_by === 'Tự đăng ký') return 'ready';
     if (data?.user && (data.user.last_sign_in_at || data.user.email_confirmed_at)) return reset();
   }
 
@@ -86,6 +90,13 @@ export async function sendPartnerEmail(db: SupabaseClient, partner: PartnerAccou
       // Email đã có tài khoản DienVienVN (VD: cũng là diễn viên): gắn vào đối tác và gửi email đặt mật khẩu.
       const existing = await findAuthUserByEmail(db, email);
       if (!existing) return 'failed';
+      if (isSelfSignup(existing)) {
+        // Ai đó đã tự tạo tài khoản bằng email này: lấy lại, chỉ chủ hộp thư nhận được lời mời
+        const newId = await reclaimSelfSignup(db, existing, redirectTo);
+        if (!newId) return 'failed';
+        await link(newId);
+        return 'invited';
+      }
       await link(existing.id);
       return reset();
     }

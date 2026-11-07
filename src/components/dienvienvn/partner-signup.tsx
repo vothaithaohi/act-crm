@@ -12,6 +12,8 @@ import { GlobalNav } from './site-chrome';
 export function PartnerSignup() {
   const href = useDvvnHref();
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', company: '', partner_type: 'producer' as PartnerType, note: '', website: '' });
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
@@ -30,12 +32,14 @@ export function PartnerSignup() {
     if (form.full_name.trim().length < 2) return setError('Vui lòng nhập họ tên.');
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return setError('Email chưa đúng định dạng.');
     if (form.phone.replace(/\D/g, '').length < 9) return setError('Số điện thoại chưa đúng.');
+    if (password.length < 8) return setError('Mật khẩu cần ít nhất 8 ký tự.');
+    if (password !== password2) return setError('Hai mật khẩu chưa khớp nhau.');
     setBusy(true);
     try {
       const res = await fetch('/api/dienvienvn/partner/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, password })
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.ok) return setError(body.error || 'Không gửi được đăng ký. Vui lòng thử lại.');
@@ -65,7 +69,7 @@ export function PartnerSignup() {
                 Đã nhận đăng ký.
               </h1>
               <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                {done} Hãy kiểm tra hộp thư (cả mục Spam) tại <span className="font-semibold text-[var(--dv-text)]">{form.email.trim()}</span>.
+                {done} Đội ngũ DienVienVN có thể gọi tới số <span className="font-semibold text-[var(--dv-text)]">{form.phone.trim()}</span> để xác minh.
               </p>
               <Link href={next.includes('/nsx/') ? next : href('/')} className="dv-btn dv-btn-secondary mt-8">
                 {next.includes('/nsx/') ? 'Quay lại danh sách diễn viên' : 'Về trang chủ'}
@@ -103,6 +107,14 @@ export function PartnerSignup() {
                     <TextInput id="ps-company" autoComplete="organization" value={form.company} onChange={e => set({ company: e.target.value })} />
                   </Field>
                 </div>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Field label="Mật khẩu" required htmlFor="ps-pw" hint="Ít nhất 8 ký tự — dùng để đăng nhập khi được duyệt">
+                    <TextInput id="ps-pw" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} />
+                  </Field>
+                  <Field label="Nhập lại mật khẩu" required htmlFor="ps-pw2">
+                    <TextInput id="ps-pw2" type="password" autoComplete="new-password" value={password2} onChange={e => setPassword2(e.target.value)} />
+                  </Field>
+                </div>
                 <Field label="Giới thiệu ngắn" htmlFor="ps-note" hint="Dự án đã / đang làm, nhu cầu casting… giúp DienVienVN duyệt nhanh hơn">
                   <textarea id="ps-note" rows={4} className="dv-input" value={form.note} onChange={e => set({ note: e.target.value })} />
                 </Field>
@@ -118,7 +130,7 @@ export function PartnerSignup() {
                   Gửi đăng ký
                 </button>
                 <p className="text-center text-[13px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  DienVienVN xem xét từng đăng ký. Khi được duyệt, bạn nhận email để tự đặt mật khẩu và đăng nhập.
+                  DienVienVN xem xét từng đăng ký. Khi được duyệt, bạn đăng nhập ngay bằng email và mật khẩu vừa tạo.
                 </p>
               </form>
               <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">

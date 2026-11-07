@@ -6,7 +6,7 @@ import { AlertCircle, Check, ChevronLeft, ChevronRight, Clapperboard, Loader2, M
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProjectRole, PublicProject, isAcceptingApplications } from '@/lib/projects/types';
 import { checkLocalApplication, fetchPublicProject, saveLocalApplication } from '@/lib/projects/public-client';
-import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { actorClient, actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import confetti from 'canvas-confetti';
 import {
   CASTING_STEPS,
@@ -71,7 +71,11 @@ interface SubmitResult {
   email: string;
   /** Đã gửi email xác nhận & tạo mật khẩu. */
   emailSent: boolean;
+  /** Đã tạo tài khoản bằng mật khẩu và đăng nhập luôn (không cần mở email). */
+  accountReady?: boolean;
 }
+
+const MIN_PASSWORD = 8;
 
 function readJSON<T>(key: string): T | null {
   try {
@@ -122,6 +126,11 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
   const [draftSaved, setDraftSaved] = useState<'idle' | 'saved' | 'failed'>('idle');
   const [hydrated, setHydrated] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  // Mật khẩu đặt ngay khi nộp hồ sơ — chỉ giữ trong bộ nhớ, không lưu vào bản nháp trên máy
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const passwordRef = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<ApplyTarget | null>(null);
   const [targetNotice, setTargetNotice] = useState('');
   const searchParams = useSearchParams();
@@ -310,6 +319,15 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       scrollToTop();
       return;
     }
+    if (!editing) {
+      const pwProblem =
+        password.length < MIN_PASSWORD ? `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.` : password !== password2 ? 'Hai mật khẩu chưa khớp nhau.' : '';
+      if (pwProblem) {
+        setPasswordError(pwProblem);
+        passwordRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
     if (!draft.consent) {
       setConsentError(true);
       consentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -358,6 +376,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           draft,
+          password,
           website: honeypot,
           application: target
             ? { project_id: target.project.id, role_id: target.role.id, selftape_url: draft.selftape_url.trim() }
@@ -366,6 +385,11 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
+        if (data.passwordError) {
+          setPasswordError(data.error);
+          passwordRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
         if (typeof data.step === 'number') {
           setStep(data.step);
           setShowErrorsFor(prev => Array.from(new Set([...prev, data.step])));
@@ -395,7 +419,17 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       } catch {
         /* bỏ qua */
       }
+      // Tài khoản đã tạo bằng mật khẩu vừa đặt → đăng nhập luôn
+      let accountReady = false;
+      if (data.accountCreated) {
+        const c = actorClient();
+        const { error: signInError } = c ? await c.auth.signInWithPassword({ email: draft.email.trim().toLowerCase(), password }) : { error: true };
+        accountReady = !signInError;
+      }
+      setPassword('');
+      setPassword2('');
       setResult({
+        accountReady,
         id: data.id,
         name: draft.full_name.trim(),
         email: draft.email.trim().toLowerCase(),
@@ -732,6 +766,42 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                     </div>
                   </div>
 
+                  {!editing && (
+                    <div ref={passwordRef} className="mt-5 space-y-3 border-t border-[#f0f0f2] pt-5">
+                      <div>
+                        <p className="text-[15px] font-semibold">Tạo mật khẩu đăng nhập</p>
+                        <p className="mt-0.5 text-[12px] leading-[1.4] text-[var(--dv-text-secondary)]">
+                          Dùng cùng email ở bước 1 để đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển dự án. Không cần mở email xác nhận.
+                        </p>
+                      </div>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={`Mật khẩu (ít nhất ${MIN_PASSWORD} ký tự)`}
+                        aria-label="Mật khẩu"
+                        className="dv-input"
+                        value={password}
+                        onChange={e => {
+                          setPassword(e.target.value);
+                          setPasswordError('');
+                        }}
+                      />
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Nhập lại mật khẩu"
+                        aria-label="Nhập lại mật khẩu"
+                        className="dv-input"
+                        value={password2}
+                        onChange={e => {
+                          setPassword2(e.target.value);
+                          setPasswordError('');
+                        }}
+                      />
+                      {passwordError && <p className="dv-field-error">{passwordError}</p>}
+                    </div>
+                  )}
+
                   <div ref={consentRef} className={`mt-5 border-t border-[#f0f0f2] pt-5 ${editing ? 'hidden' : ''}`}>
                     <button
                       type="button"
@@ -877,7 +947,12 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
         <div className="mx-auto mt-4 flex max-w-[420px] items-start gap-3 rounded-[16px] border border-[#d2d2d7] p-5 text-left">
           <Mail className="mt-0.5 h-5 w-5 shrink-0" />
           <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-            {result.emailSent ? (
+            {result.accountReady ? (
+              <>
+                <span className="font-semibold text-[var(--dv-text)]">Tài khoản đã sẵn sàng.</span> Bạn đã đăng nhập bằng email{' '}
+                <span className="break-all">{result.email}</span> và mật khẩu vừa tạo — vào tài khoản để xem dự án đang casting và tự ứng tuyển.
+              </>
+            ) : result.emailSent ? (
               <>
                 <span className="font-semibold text-[var(--dv-text)]">Kiểm tra hộp thư của bạn.</span> Mở email xác nhận để tạo mật khẩu — sau
                 đó bạn có thể đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển các dự án đang casting. Nếu không thấy, hãy xem mục Spam.
@@ -892,9 +967,15 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
         </div>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-          <Link href={homeHref} className="dv-btn dv-btn-primary w-full sm:w-auto">
-            Về trang chủ
-          </Link>
+          {result.accountReady ? (
+            <Link href={homeHref.replace(/\/$/, '') + '/tai-khoan'} className="dv-btn dv-btn-primary w-full sm:w-auto">
+              Vào tài khoản của tôi
+            </Link>
+          ) : (
+            <Link href={homeHref} className="dv-btn dv-btn-primary w-full sm:w-auto">
+              Về trang chủ
+            </Link>
+          )}
           <button type="button" onClick={onAnother} className="dv-btn dv-btn-secondary w-full sm:w-auto">
             Nộp hồ sơ khác
           </button>

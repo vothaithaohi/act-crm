@@ -85,12 +85,39 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             {project.production_company && (
               <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">{project.production_company}</p>
             )}
-            {!open && (
-              <p className="mt-4 inline-flex rounded-full bg-[#e8e8ed] px-3 py-1 text-[14px] text-[var(--dv-text-secondary)]">
-                Dự án đã ngừng nhận hồ sơ
-              </p>
-            )}
           </header>
+
+          {/* Hết hạn / đã đóng: không để người xem kẹt lại, dẫn tới dự án khác và đăng nhập / nộp hồ sơ */}
+          {!open && (
+            <section className="mt-6 rounded-[18px] bg-[#1d1d1f] p-6 text-white md:p-8">
+              <p className="dv-display text-[24px] font-semibold leading-[1.17] md:text-[28px]">Dự án đã hết hạn casting.</p>
+              <p className="mt-2 text-[15px] leading-[1.47] text-white/70">
+                Dự án này không còn nhận hồ sơ. Xem các dự án đang casting khác và ứng tuyển vai phù hợp với bạn.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Link href={`${href('/')}#du-an`} className="dv-btn dv-btn-light">
+                  Xem các dự án casting khác
+                </Link>
+                {session.status === 'signed-in' ? (
+                  <Link href={href('/tai-khoan')} className="dv-btn border border-white/40 text-white hover:bg-white/10">
+                    Tài khoản của tôi
+                  </Link>
+                ) : (
+                  <>
+                    <Link href={href('/nop-ho-so')} className="dv-btn border border-white/40 text-white hover:bg-white/10">
+                      Nộp hồ sơ diễn viên
+                    </Link>
+                    <Link
+                      href={href(`/dang-nhap?next=${encodeURIComponent(href('/tai-khoan'))}`)}
+                      className="inline-flex h-11 items-center justify-center px-3 text-[17px] font-medium text-white underline-offset-4 hover:underline"
+                    >
+                      Đăng nhập
+                    </Link>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
 
           {(facts.length > 0 || project.description) && (
             <section className="dv-card mt-8 p-6 md:p-8">

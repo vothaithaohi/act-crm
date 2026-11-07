@@ -9,6 +9,57 @@ export const SET_PASSWORD_PATH = '/tao-mat-khau';
 export type ActorContext = { user: User; talent: TalentProfile | null };
 
 /**
+ * Tài khoản tự đặt mật khẩu khi nộp hồ sơ / đăng ký đối tác: email CHƯA được chứng minh là của người đó.
+ * Không bao giờ gắn hồ sơ / quyền đối tác có sẵn vào tài khoản này chỉ vì trùng email.
+ */
+export const isSelfSignup = (u: Pick<User, 'app_metadata'> | null | undefined) => !!u?.app_metadata?.self_signup;
+
+/** Tạo tài khoản đăng nhập ngay bằng mật khẩu người dùng đặt (không cần mở email). */
+export async function createPasswordAccount(
+  db: SupabaseClient,
+  input: { email: string; password: string; kind: 'dienvienvn_actor' | 'dienvienvn_partner'; full_name: string }
+): Promise<{ user: User } | { exists: true } | { error: string }> {
+  const { data, error } = await db.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    email_confirm: true,
+    user_metadata: { kind: input.kind, full_name: input.full_name },
+    app_metadata: { self_signup: true }
+  });
+  if (error) {
+    if (/already|registered|exists/i.test(error.message)) return { exists: true };
+    console.error('[dienvienvn] Không tạo được tài khoản:', error.message);
+    return { error: error.message };
+  }
+  return { user: data.user };
+}
+
+/**
+ * Lấy lại một tài khoản tự tạo (chưa chứng minh email) trước khi gắn thêm hồ sơ / quyền đối tác vào email đó:
+ * xoá tài khoản (mọi phiên đăng nhập cũ bị huỷ), mời lại qua email — chỉ chủ hộp thư mới vào được —
+ * rồi chuyển hồ sơ / đối tác đang gắn với tài khoản cũ sang tài khoản mới.
+ */
+export async function reclaimSelfSignup(db: SupabaseClient, user: User, redirectTo: string): Promise<string | null> {
+  const email = (user.email || '').trim().toLowerCase();
+  const { error: delError } = await db.auth.admin.deleteUser(user.id);
+  if (delError) {
+    console.error('[dienvienvn] Không xoá được tài khoản tự tạo:', delError.message);
+    return null;
+  }
+  const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
+    redirectTo,
+    data: { kind: user.user_metadata?.kind || 'dienvienvn_actor', full_name: user.user_metadata?.full_name || '' }
+  });
+  if (error || !data?.user) {
+    console.error('[dienvienvn] Không mời lại được tài khoản:', error?.message);
+    return null;
+  }
+  await db.from('talent_profiles').update({ auth_user_id: data.user.id }).eq('auth_user_id', user.id);
+  await db.from('partner_accounts').update({ auth_user_id: data.user.id }).eq('auth_user_id', user.id);
+  return data.user.id;
+}
+
+/**
  * Xác minh diễn viên qua header "Authorization: Bearer <access token>" và tìm hồ sơ gắn với tài khoản.
  * Trả NextResponse lỗi nếu chưa đăng nhập / phiên hết hạn.
  */
@@ -79,6 +130,13 @@ export async function sendAccountEmail(db: SupabaseClient, talent: TalentProfile
       // vào hồ sơ): gắn hồ sơ vào tài khoản đó và gửi email đặt mật khẩu. Chỉ chủ hộp thư mới mở được link.
       const existing = await findAuthUserByEmail(db, email);
       if (!existing) return 'exists';
+      if (isSelfSignup(existing)) {
+        // Tài khoản tự tạo bằng email này (chưa chứng minh là chủ email): lấy lại rồi mới gắn hồ sơ
+        const newId = await reclaimSelfSignup(db, existing, redirectTo);
+        if (!newId) return 'failed';
+        await db.from('talent_profiles').update({ auth_user_id: newId }).eq('id', talent.id);
+        return 'invited';
+      }
       if (existing.id !== talent.auth_user_id) {
         const { error: linkError } = await db.from('talent_profiles').update({ auth_user_id: existing.id }).eq('id', talent.id);
         if (linkError) {

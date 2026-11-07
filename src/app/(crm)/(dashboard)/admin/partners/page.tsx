@@ -65,7 +65,7 @@ export default function AdminPartnersPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) return toast.error(body.error || 'Không thực hiện được.');
       setPartners(list => (list || []).map(x => (x.id === p.id ? body.partner : x)));
-      if (body.message) (body.email === 'invited' || body.email === 'reset' ? toast.success : toast.warning)(body.message);
+      if (body.message) (['invited', 'reset', 'ready'].includes(body.email) ? toast.success : toast.warning)(body.message);
       else if (success) toast.success(success);
     } finally {
       setBusyId(null);
@@ -310,7 +310,7 @@ function CreatePartnerModal({ projects, onClose, onCreated }: { projects: Castin
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) return setError(body.error || 'Không tạo được tài khoản.');
-      (body.email === 'invited' || body.email === 'reset' ? toast.success : toast.warning)(body.message || 'Đã tạo tài khoản đối tác.');
+      (['invited', 'reset', 'ready'].includes(body.email) ? toast.success : toast.warning)(body.message || 'Đã tạo tài khoản đối tác.');
       onCreated(body.partner);
     } catch {
       setError('Mất kết nối mạng. Vui lòng thử lại.');
