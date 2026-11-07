@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Check, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LogOut, Pencil, UserRound } from 'lucide-react';
-import { actorClient, actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { actorClient, actorFetch, isNetworkError, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { PublicProject, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
@@ -212,7 +212,9 @@ export function ActorLogin() {
     setBusy(false);
     if (err) {
       setError(
-        /confirm/i.test(err.message)
+        isNetworkError(err)
+          ? 'Không kết nối được tới máy chủ. Kiểm tra mạng hoặc tắt trình chặn quảng cáo rồi thử lại.'
+          : /confirm/i.test(err.message)
           ? 'Tài khoản chưa được kích hoạt. Hãy mở email xác nhận, hoặc bấm “Quên mật khẩu / chưa nhận được email” bên dưới.'
           : 'Email hoặc mật khẩu không đúng.'
       );
@@ -303,6 +305,7 @@ export function SetPassword() {
       if (access && refresh) {
         const { error: err } = await c.auth.setSession({ access_token: access, refresh_token: refresh });
         clearUrl();
+        if (err) setReason(err.message);
         return setPhase(err ? 'invalid' : 'form');
       }
       if (hash.get('error') || hash.get('error_code') || query.get('error')) {
@@ -332,6 +335,10 @@ export function SetPassword() {
       const { error: verifyErr } = await c.auth.verifyOtp({ token_hash: tokenHash, type: type as 'invite' });
       if (verifyErr) {
         setBusy(false);
+        // Mất kết nối: link vẫn còn hiệu lực, giữ nguyên để bấm lại (không báo "hết hạn")
+        if (isNetworkError(verifyErr)) {
+          return setError('Không kết nối được tới máy chủ. Link vẫn còn hiệu lực — kiểm tra mạng rồi bấm lưu lại. Nếu đang mở trong Zalo / Gmail, hãy mở link bằng Chrome hoặc Safari.');
+        }
         setReason(verifyErr.message);
         return setPhase('invalid');
       }
@@ -339,6 +346,7 @@ export function SetPassword() {
     }
     const { error: err } = await c.auth.updateUser({ password });
     setBusy(false);
+    if (err && isNetworkError(err)) return setError('Không kết nối được tới máy chủ. Kiểm tra mạng rồi bấm lưu lại.');
     if (err) {
       setError(/different|same/i.test(err.message) ? 'Mật khẩu mới phải khác mật khẩu cũ.' : 'Không lưu được mật khẩu. Link có thể đã hết hạn — vui lòng yêu cầu email mới.');
       return;
@@ -356,10 +364,22 @@ export function SetPassword() {
 
         {phase === 'invalid' && (
           <>
-            <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">Link đã hết hạn.</h1>
-            <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Link trong email chỉ dùng được một lần, trong vòng 1 giờ, và chỉ <strong>email mới nhất</strong> còn hiệu lực. Nhập email để nhận link mới, rồi mở link trong email mới nhất.
-            </p>
+            {isNetworkError({ message: reason }) ? (
+              <>
+                <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">Không kết nối được.</h1>
+                <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
+                  Trình duyệt chưa kết nối được tới máy chủ xác thực. Hãy kiểm tra mạng, tắt trình chặn quảng cáo, hoặc mở link bằng Chrome / Safari
+                  (không mở trong Zalo, Gmail) rồi bấm lại link trong email. Nếu vẫn không được, nhập email để nhận link mới.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">Link đã hết hạn.</h1>
+                <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
+                  Link trong email chỉ dùng được một lần, trong vòng 1 giờ, và chỉ <strong>email mới nhất</strong> còn hiệu lực. Nhập email để nhận link mới, rồi mở link trong email mới nhất.
+                </p>
+              </>
+            )}
             {reason && <p className="mt-2 text-[12px] text-[var(--dv-text-tertiary)]">Mã lỗi: {reason}</p>}
             <div className="mt-6">
               <ResendForm />

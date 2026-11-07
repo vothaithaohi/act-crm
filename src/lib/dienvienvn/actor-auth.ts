@@ -8,6 +8,30 @@ import { createClient, Session, SupabaseClient } from '@supabase/supabase-js';
 let client: SupabaseClient | null | undefined;
 
 /** null khi chưa cấu hình Supabase (chế độ demo). */
+/**
+ * Gọi Supabase trực tiếp; nếu trình duyệt không kết nối được (lỗi "Failed to fetch": chặn quảng cáo,
+ * trình duyệt trong Zalo / Gmail, nhà mạng chặn *.supabase.co…) thì thử lại qua chính tên miền
+ * dienvienvn.com (/api/sb → Supabase, khai báo trong next.config.mjs).
+ */
+function fetchWithFallback(base: string): typeof fetch {
+  return async (input, init) => {
+    try {
+      return await fetch(input, init);
+    } catch (e) {
+      const u = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      // Chỉ phần xác thực (đăng nhập, xác nhận email, đặt mật khẩu) đi đường dự phòng
+      if (!u.startsWith(`${base}/auth/v1/`) || typeof window === 'undefined') throw e;
+      return fetch(`${window.location.origin}/api/sb${u.slice(base.length)}`, init);
+    }
+  };
+}
+
+/** Lỗi do mất kết nối (không phải link hết hạn): giữ nguyên link để người dùng thử lại. */
+export function isNetworkError(err: { message?: string; name?: string; status?: number } | null | undefined): boolean {
+  if (!err) return false;
+  return err.name === 'AuthRetryableFetchError' || /failed to fetch|network|load failed|fetch failed/i.test(err.message || '');
+}
+
 export function actorClient(): SupabaseClient | null {
   if (client !== undefined) return client;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,6 +39,7 @@ export function actorClient(): SupabaseClient | null {
   client =
     url && anon && typeof window !== 'undefined'
       ? createClient(url, anon, {
+          global: { fetch: fetchWithFallback(url.replace(/\/$/, '')) },
           auth: {
             storageKey: 'dvvn-actor-auth',
             flowType: 'implicit',
