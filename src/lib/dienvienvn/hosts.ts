@@ -47,7 +47,7 @@ export const USERNAME_PATTERN = /^[a-z0-9][a-z0-9_-]{2,39}$/;
 export const RESERVED_USERNAMES = new Set([
   'admin', 'api', 'dienvienvn', 'dien-vien', 'dienvien', 'nop-ho-so', 'du-an', 'nsx', 'dang-nhap', 'tai-khoan', 'tao-mat-khau',
   'doi-tac', 'doitac', 'login', 'leads', 'talents', 'projects', 'casting', 'settings', 'robots', 'sitemap', 'llms', 'favicon', 'www', 'mail', 'support',
-  'help', 'about', 'privacy', 'terms', 'static', 'assets', 'images', 'img', 'r', 'send', 'guests', 'khach-moi', 'tuyen-dung', 'crew-jobs'
+  'help', 'about', 'privacy', 'terms', 'static', 'assets', 'images', 'img', 'r', 'send', 'guests', 'khach-moi', 'tuyen-dung', 'crew-jobs', 'kho', 'talent-links'
 ]);
 
 /** Tên miền riêng của CRM; dienvienvn.com/admin chuyển hướng tới đây. */

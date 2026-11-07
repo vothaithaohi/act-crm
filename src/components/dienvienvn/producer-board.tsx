@@ -348,7 +348,7 @@ function SelftapeButton({ url, compact }: { url: string; compact?: boolean }) {
 }
 
 /* ---------- Dạng lưới: ảnh → chỉ số → kinh nghiệm & kỹ năng → hành động; thông tin phụ trong "Chi tiết" ---------- */
-function ApplicantCard({
+export function ApplicantCard({
   applicant,
   profileHref,
   limited = false,
@@ -537,7 +537,7 @@ function ApplicantCard({
 }
 
 /* ---------- Dạng danh sách: mỗi ứng viên 1 dòng để so sánh nhanh ---------- */
-function ApplicantRow({
+export function ApplicantRow({
   applicant,
   profileHref,
   limited = false,
