@@ -1,10 +1,10 @@
 // Dữ liệu cho link shortlist gửi đối tác (link NSX) và cổng đối tác: chỉ hồ sơ ĐÃ DUYỆT, chỉ ứng viên ACT đã chọn
 // (Shortlist / Đã gửi NSX). Mọi phần bị ẩn đều được loại bỏ ngay trên máy chủ.
-//  - 'partner' (đối tác đã đăng nhập): ảnh, tên ẩn một phần ("Nguyễn T. A."), self-tape, tuổi, chiều cao, cân nặng,
-//    kinh nghiệm, kỹ năng & ngôn ngữ, định hướng & sẵn sàng. KHÔNG có tên đầy đủ, SĐT, email, mạng xã hội, ngày sinh,
-//    nơi ở, số đo 3 vòng — chỉ cấp khi đối tác liên hệ trực tiếp DienVienVN.
-//  - 'public' (chưa đăng nhập): bản rút gọn ẩn danh "Ứng viên 1, 2…": giới tính, kinh nghiệm, kỹ năng, định hướng.
-//    Không ảnh, không tên, không self-tape, không chỉ số.
+//  - 'public' (chưa đăng nhập): ảnh, tên ẩn một phần ("Nguyễn T. A."), self-tape, chiều cao, cân nặng, kinh nghiệm,
+//    kỹ năng & ngôn ngữ, định hướng & sẵn sàng. KHÔNG có năm sinh / tuổi, số đo 3 vòng, liên hệ — bấm "Liên hệ" để
+//    đăng ký tài khoản đối tác.
+//  - 'partner' (đối tác đã đăng nhập): như trên + tuổi, số đo 3 vòng, size giày.
+//    Tên đầy đủ, SĐT, email, mạng xã hội, ngày sinh, nơi ở vẫn KHÔNG có — chỉ cấp khi đối tác liên hệ DienVienVN.
 //  - 'full': chỉ dùng cho chế độ demo trên máy (không có máy chủ).
 import { TalentProfile, getReviewStatus } from '@/lib/types/crm';
 import { CastingProject, ProjectApplication } from './types';
@@ -77,28 +77,28 @@ export interface ProducerView {
   limited?: boolean;
 }
 
-/** Bỏ mọi thông tin nhận diện / liên hệ; 'public' bỏ thêm ảnh và chỉ số. */
-function restrictTalent(t: ProducerTalent, level: 'public' | 'partner', alias: string): ProducerTalent {
+/** Bỏ mọi thông tin nhận diện / liên hệ; 'public' bỏ thêm tuổi và số đo 3 vòng. */
+function restrictTalent(t: ProducerTalent, level: 'public' | 'partner'): ProducerTalent {
+  const pub = level === 'public';
   const base = {
     ...t,
-    full_name: level === 'public' ? alias : maskName(t.full_name),
-    age: level === 'public' ? null : ageOf(t.dob),
+    full_name: maskName(t.full_name),
+    age: pub ? null : ageOf(t.dob),
     dob: null,
     city: null,
-    shoe_size: null,
-    chest_cm: null,
-    waist_cm: null,
-    hip_cm: null,
+    shoe_size: pub ? null : t.shoe_size,
+    chest_cm: pub ? null : t.chest_cm,
+    waist_cm: pub ? null : t.waist_cm,
+    hip_cm: pub ? null : t.hip_cm,
     social_links: {},
     tattoos_piercings: [],
     phone: null,
     email: null
   };
-  if (level === 'public') Object.assign(base, { height_cm: null, weight_kg: null, headshot_url: null, fullbody_url: null, compcard_url: null });
   return base as unknown as ProducerTalent;
 }
 
-export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level: ProducerLevel = 'full', alias = 'Ứng viên'): ProducerTalent {
+export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level: ProducerLevel = 'full'): ProducerTalent {
   const full: ProducerTalent = {
     id: t.id,
     full_name: t.full_name,
@@ -129,7 +129,7 @@ export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level:
     phone: hideContacts ? null : t.phone,
     email: hideContacts ? null : t.email || null
   };
-  return level === 'full' ? { ...full, age: ageOf(t.dob) } : restrictTalent(full, level, alias);
+  return level === 'full' ? { ...full, age: ageOf(t.dob) } : restrictTalent(full, level);
 }
 
 export function buildProducerView(
@@ -143,16 +143,16 @@ export function buildProducerView(
     .filter(a => a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status))
     .map(a => ({ a, t: byId.get(a.talent_id) }))
     .filter((x): x is { a: ProjectApplication; t: TalentProfile } => !!x.t && getReviewStatus(x.t) === 'approved')
-    .map(({ a, t }, i) => ({
+    .map(({ a, t }) => ({
       application: {
         id: a.id,
         role_id: a.role_id,
-        selftape_url: level === 'public' ? null : a.selftape_url,
+        selftape_url: a.selftape_url,
         // Lời nhắn của diễn viên có thể chứa SĐT / tên → chỉ bản demo mới có
         note: level === 'full' ? a.note : null,
         created_at: a.created_at
       },
-      talent: toProducerTalent(t, project.hide_contacts, level, `Ứng viên ${i + 1}`)
+      talent: toProducerTalent(t, project.hide_contacts, level)
     }));
   return {
     project: {

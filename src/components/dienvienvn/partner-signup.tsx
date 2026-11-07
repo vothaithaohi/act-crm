@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { PARTNER_TYPE_LABELS, PartnerType } from '@/lib/dienvienvn/partners';
 import { useDvvnHref } from './base-path';
@@ -16,6 +16,13 @@ export function PartnerSignup() {
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const set = (patch: Partial<typeof form>) => setForm(f => ({ ...f, ...patch }));
+  // Đến từ nút "Liên hệ" trên link shortlist: sau khi đăng nhập quay lại đúng link đó
+  const [next, setNext] = useState(href('/doi-tac'));
+  useEffect(() => {
+    const n = new URLSearchParams(window.location.search).get('next');
+    if (n && n.startsWith('/') && !n.startsWith('//')) setNext(n);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,15 +67,15 @@ export function PartnerSignup() {
               <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
                 {done} Hãy kiểm tra hộp thư (cả mục Spam) tại <span className="font-semibold text-[var(--dv-text)]">{form.email.trim()}</span>.
               </p>
-              <Link href={href('/')} className="dv-btn dv-btn-secondary mt-8">
-                Về trang chủ
+              <Link href={next.includes('/nsx/') ? next : href('/')} className="dv-btn dv-btn-secondary mt-8">
+                {next.includes('/nsx/') ? 'Quay lại danh sách diễn viên' : 'Về trang chủ'}
               </Link>
             </div>
           ) : (
             <>
               <h1 className="dv-display dv-headline mt-4">Đăng ký tài khoản đối tác.</h1>
               <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-                Dành cho đạo diễn, nhà sản xuất, casting director và agency. Đăng casting call và xem shortlist diễn viên do DienVienVN chọn.
+                Dành cho đạo diễn, nhà sản xuất, casting director và agency. Đăng casting call, xem đầy đủ shortlist diễn viên và liên hệ diễn viên qua DienVienVN.
               </p>
               <form onSubmit={submit} className="dv-card mt-8 space-y-5 p-6 md:p-8" noValidate>
                 <Field label="Họ và tên" required htmlFor="ps-name">
@@ -116,7 +123,7 @@ export function PartnerSignup() {
               </form>
               <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
                 Đã có tài khoản?{' '}
-                <Link href={href(`/dang-nhap?next=${encodeURIComponent(href('/doi-tac'))}`)} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
+                <Link href={href(`/dang-nhap?next=${encodeURIComponent(next)}`)} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
                   Đăng nhập
                 </Link>
               </p>

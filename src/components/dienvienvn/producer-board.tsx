@@ -35,6 +35,8 @@ function formatPhone(p: string) {
 
 export function ProducerBoard({ token }: { token: string }) {
   const href = useDvvnHref();
+  // "Liên hệ" khi chưa đăng nhập → đăng ký đối tác, xong quay lại đúng link này
+  const signupHref = href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/nsx/${token}`))}`);
   const [view, setView] = useState<ProducerView | null | undefined>(undefined);
   const [error, setError] = useState('');
 
@@ -82,16 +84,21 @@ export function ProducerBoard({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Đang xem bản rút gọn.</span> Ảnh, self-tape, chiều cao, cân nặng của ứng viên chỉ
-                  hiện khi bạn đăng nhập tài khoản đối tác DienVienVN.
+                  <span className="font-semibold text-[var(--dv-text)]">Năm sinh, số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối tác
+                  DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác.
                 </p>
               </div>
-              <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/nsx/${token}`))}`)} className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]">
-                Đăng nhập đối tác
-              </Link>
+              <div className="flex shrink-0 gap-2">
+                <Link href={signupHref} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+                  Đăng ký đối tác
+                </Link>
+                <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/nsx/${token}`))}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
+                  Đăng nhập
+                </Link>
+              </div>
             </div>
           )}
-          <ProducerApplicants view={view} />
+          <ProducerApplicants view={view} contactHref={view.limited ? signupHref : undefined} />
           <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
             Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.
           </p>
@@ -151,7 +158,16 @@ function derive(applicant: ProducerApplicant) {
   return { t, application, photos, age, measurements, skills, credits, training, willingness, workCities, socials, gender, note: application.note?.trim() || '' };
 }
 
-export function ProducerApplicants({ view, profileHref }: { view: ProducerView; profileHref?: (talentId: string) => string | null }) {
+export function ProducerApplicants({
+  view,
+  profileHref,
+  contactHref
+}: {
+  view: ProducerView;
+  profileHref?: (talentId: string) => string | null;
+  /** Có: nút "Liên hệ" dẫn tới trang này (đăng ký đối tác). Không: nút hiện hướng dẫn gửi mã hồ sơ. */
+  contactHref?: string;
+}) {
   const [role, setRole] = useState('all');
   const [gender, setGender] = useState<'all' | 'male' | 'female'>('all');
   const [mode, setMode] = useState<ViewMode>('grid');
@@ -258,13 +274,13 @@ export function ProducerApplicants({ view, profileHref }: { view: ProducerView; 
               {mode === 'grid' ? (
                 <ul className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 print:grid-cols-3 print:gap-3">
                   {g.items.map(a => (
-                    <ApplicantCard key={a.application.id} applicant={a} limited={!!view.limited} profileHref={profileHref?.(a.talent.id) || null} />
+                    <ApplicantCard key={a.application.id} applicant={a} limited={!!view.limited} contactHref={contactHref} profileHref={profileHref?.(a.talent.id) || null} />
                   ))}
                 </ul>
               ) : (
                 <ul className="space-y-2">
                   {g.items.map(a => (
-                    <ApplicantRow key={a.application.id} applicant={a} limited={!!view.limited} profileHref={profileHref?.(a.talent.id) || null} />
+                    <ApplicantRow key={a.application.id} applicant={a} limited={!!view.limited} contactHref={contactHref} profileHref={profileHref?.(a.talent.id) || null} />
                   ))}
                 </ul>
               )}
@@ -336,24 +352,34 @@ function SelftapeButton({ url, compact }: { url: string; compact?: boolean }) {
 }
 
 /* ---------- Dạng lưới: ảnh → chỉ số → kinh nghiệm & kỹ năng → hành động; thông tin phụ trong "Chi tiết" ---------- */
-function ApplicantCard({ applicant, profileHref, limited = false }: { applicant: ProducerApplicant; profileHref?: string | null; limited?: boolean }) {
+function ApplicantCard({
+  applicant,
+  profileHref,
+  limited = false,
+  contactHref
+}: {
+  applicant: ProducerApplicant;
+  profileHref?: string | null;
+  limited?: boolean;
+  contactHref?: string;
+}) {
   const d = derive(applicant);
   const { t } = d;
   const [photo, setPhoto] = useState(d.photos[0]?.url || '');
   const [open, setOpen] = useState(false);
   const stats: [string, string | null][] = [
-    ['Tuổi', d.age !== null ? String(d.age) : null],
+    ...(limited ? [] : ([['Tuổi', d.age !== null ? String(d.age) : null]] as [string, string | null][])),
     ['Cao (cm)', t.height_cm ? `${t.height_cm}` : null],
     ['Nặng (kg)', t.weight_kg ? `${t.weight_kg}` : null],
     ...(d.measurements ? ([['Số đo', d.measurements]] as [string, string][]) : [])
   ];
   // Bản công khai: định hướng & mức độ sẵn sàng hiện luôn trên thẻ thay cho chỉ số ngoại hình
-  const showWillingInline = limited && (d.willingness.length > 0 || d.workCities.length > 0);
+  const showWillingInline = false;
   const hasDetails = d.training.length || (!showWillingInline && (d.willingness.length || d.workCities.length)) || d.note || d.socials.length || t.email || t.shoe_size || d.credits.length > 2;
 
   return (
     <li className="flex flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] break-inside-avoid print:border print:border-[#e8e8ed] print:shadow-none">
-      {!limited && (
+      {(
       <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden bg-[#e8e8ed]">
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -386,7 +412,7 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <Name name={t.full_name} href={limited ? null : profileHref} className="text-[18px] font-semibold leading-[1.22]" />
-          {!limited && (
+          {(
             <span className="shrink-0 rounded-full bg-[var(--dv-bg-alt)] px-2 py-0.5 text-[11px] font-semibold tracking-[0.03em] text-[var(--dv-text-secondary)]">
               {profileCode(t.id)}
             </span>
@@ -394,9 +420,9 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
         </div>
         <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
 
-        {/* Chỉ số ngoại hình: đọc lướt theo cột (ẩn ở bản công khai) */}
-        {!limited && (
-        <dl className={`mt-3 grid ${stats.length > 3 ? 'grid-cols-[0.8fr_0.9fr_0.9fr_1.7fr]' : 'grid-cols-3'} gap-1 rounded-[12px] bg-[var(--dv-bg-alt)] px-2 py-2 text-center`}>
+        {/* Chỉ số ngoại hình: đọc lướt theo cột (bản công khai không có tuổi, số đo 3 vòng) */}
+        {(
+        <dl className={`mt-3 grid ${stats.length > 3 ? 'grid-cols-[0.8fr_0.9fr_0.9fr_1.7fr]' : stats.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-1 rounded-[12px] bg-[var(--dv-bg-alt)] px-2 py-2 text-center`}>
           {stats.map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="text-[10px] uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{k}</dt>
@@ -484,8 +510,9 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
         )}
 
         <div className="pt-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {d.application.selftape_url && <SelftapeButton url={d.application.selftape_url} />}
+            <ContactButton code={profileCode(t.id)} href={contactHref} />
             {hasDetails && (
               <button
                 type="button"
@@ -509,14 +536,23 @@ function ApplicantCard({ applicant, profileHref, limited = false }: { applicant:
 }
 
 /* ---------- Dạng danh sách: mỗi ứng viên 1 dòng để so sánh nhanh ---------- */
-function ApplicantRow({ applicant, profileHref, limited = false }: { applicant: ProducerApplicant; profileHref?: string | null; limited?: boolean }) {
+function ApplicantRow({
+  applicant,
+  profileHref,
+  limited = false,
+  contactHref
+}: {
+  applicant: ProducerApplicant;
+  profileHref?: string | null;
+  limited?: boolean;
+  contactHref?: string;
+}) {
   const d = derive(applicant);
   const { t } = d;
   const thumb = d.photos[0]?.url;
   return (
     <li className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-[14px] bg-white p-3 md:grid-cols-[64px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.4fr)_264px] break-inside-avoid">
       <div className="relative row-span-2 aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#e8e8ed] md:row-span-1">
-        {limited && <span className="absolute inset-0 flex items-center justify-center text-[18px] font-semibold text-[var(--dv-text-tertiary)]">{t.full_name.replace(/\D/g, '') || '?'}</span>}
         {thumb && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={thumb} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
@@ -527,10 +563,7 @@ function ApplicantRow({ applicant, profileHref, limited = false }: { applicant: 
         <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
       </div>
       <p className="col-start-2 flex flex-wrap gap-x-2 text-[13px] md:col-start-auto md:text-[14px]">
-        {(limited
-          ? d.willingness.slice(0, 3)
-          : [d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
-        )
+        {[limited ? null : d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
           .filter(Boolean)
           .map(x => (
             <span key={x as string} className="whitespace-nowrap">
@@ -544,6 +577,7 @@ function ApplicantRow({ applicant, profileHref, limited = false }: { applicant: 
       </div>
       <div className="col-span-2 flex items-center gap-2 md:col-span-1 md:justify-end">
         {d.application.selftape_url && <SelftapeButton url={d.application.selftape_url} compact />}
+        <ContactButton code={profileCode(t.id)} href={contactHref} compact />
         {t.phone && (
           <a href={`tel:${t.phone}`} className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d2d2d7] px-3 text-[13px] font-semibold">
             <Phone className="h-3.5 w-3.5" /> {formatPhone(t.phone)}
@@ -573,5 +607,35 @@ function WillingBlock({ willingness, cities }: { willingness: string[]; cities: 
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Nút "Liên hệ" trên thẻ diễn viên. Chưa đăng nhập: dẫn tới đăng ký tài khoản đối tác.
+ * Đối tác đã đăng nhập: hướng dẫn gửi mã hồ sơ cho DienVienVN (tên đầy đủ, SĐT do DienVienVN cung cấp).
+ */
+function ContactButton({ code, href, compact = false }: { code: string; href?: string; compact?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const cls = `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#1d1d1f] font-semibold hover:bg-[#1d1d1f] hover:text-white print:hidden ${
+    compact ? 'h-8 px-3 text-[13px]' : 'h-9 px-3.5 text-[14px]'
+  }`;
+  if (href) {
+    return (
+      <Link href={href} className={cls}>
+        <Mail className="h-3.5 w-3.5" /> Liên hệ
+      </Link>
+    );
+  }
+  return (
+    <span className="relative">
+      <button type="button" onClick={() => setOpen(v => !v)} className={cls} aria-expanded={open}>
+        <Mail className="h-3.5 w-3.5" /> Liên hệ
+      </button>
+      {open && (
+        <span role="status" className="absolute bottom-full left-0 z-10 mb-2 w-[240px] rounded-[12px] bg-[#1d1d1f] p-3 text-[13px] leading-[1.4] text-white shadow-lg">
+          Gửi mã hồ sơ <span className="font-semibold">{code}</span> cho đội ngũ DienVienVN để nhận tên đầy đủ và liên hệ của diễn viên.
+        </span>
+      )}
+    </span>
   );
 }
