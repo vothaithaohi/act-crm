@@ -18,6 +18,7 @@ import {
 } from '@/lib/types/crm';
 import { useCRM } from '@/lib/store/crm-context';
 import { calculateAge } from '@/lib/utils';
+import { PIERCING_OPTIONS } from '@/lib/dienvienvn/casting-form';
 import { 
   User, 
   Ruler, 
@@ -554,6 +555,7 @@ export function TalentMultiStepForm({ initialData, isEdit }: TalentMultiStepForm
                   { id: 'stomach', label: 'Bụng / Lưng' },
                   { id: 'unseen', label: 'Vị trí kín (không lộ)' },
                   { id: 'face_neck', label: 'Cổ / Mặt' },
+                  ...PIERCING_OPTIONS
                 ].map(item => {
                   const active = (formData.tattoos_piercings || []).includes(item.id);
                   return (

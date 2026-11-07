@@ -12,6 +12,8 @@ export interface HomeStats {
   faces: { username: string; name: string; photo: string }[];
 }
 
+const isActStudent = (t: { trainings: string[] }) => t.trainings.some(x => /ACT Academy/i.test(x));
+
 export const EMPTY_HOME_STATS: HomeStats = { roles: 0, projects: 0, talents: 0, companies: [], faces: [] };
 
 export async function getHomeStats(): Promise<HomeStats> {
@@ -35,8 +37,10 @@ export async function getHomeStats(): Promise<HomeStats> {
       projects: open.length,
       talents: talentsRes.count || 0,
       companies,
+      // Ưu tiên gương mặt học viên ACT Academy
       faces: faces
         .filter(t => t.photos[0]?.url)
+        .sort((a, b) => Number(isActStudent(b)) - Number(isActStudent(a)))
         .slice(0, 12)
         .map(t => ({ username: t.username, name: t.name, photo: t.photos[0].url }))
     };

@@ -23,6 +23,8 @@ import {
   normalizeSkills,
   StepErrors,
   TATTOO_OPTIONS,
+  PIERCING_OPTIONS,
+  isPiercing,
   TrainingEntry,
   ageFromDob,
   newId
@@ -259,13 +261,21 @@ export function StepBody({ draft, update, errors }: StepProps) {
       </div>
       <Divider />
       <div>
-        <p className="dv-field-label">Hình xăm & xỏ khuyên</p>
+        <p className="dv-field-label">Hình xăm</p>
         <ChipGroup
-          label="Vị trí hình xăm và xỏ khuyên"
+          label="Vị trí hình xăm"
           options={TATTOO_OPTIONS}
           exclusive="none"
-          value={draft.tattoos_piercings}
-          onChange={v => update({ tattoos_piercings: v })}
+          value={draft.tattoos_piercings.filter(v => !isPiercing(v))}
+          onChange={v => update({ tattoos_piercings: [...v, ...draft.tattoos_piercings.filter(isPiercing)] })}
+        />
+        <p className="dv-field-label mt-5">Xỏ khuyên</p>
+        <ChipGroup
+          label="Vị trí xỏ khuyên"
+          options={PIERCING_OPTIONS}
+          exclusive="pierce_none"
+          value={draft.tattoos_piercings.filter(isPiercing)}
+          onChange={v => update({ tattoos_piercings: [...draft.tattoos_piercings.filter(x => !isPiercing(x)), ...v] })}
         />
       </div>
     </div>

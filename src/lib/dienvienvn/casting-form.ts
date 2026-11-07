@@ -37,6 +37,25 @@ export const TATTOO_OPTIONS = [
   { id: 'face_neck', label: 'Cổ / Mặt' }
 ];
 
+/** Xỏ khuyên: lưu chung trường tattoos_piercings, mã bắt đầu bằng "pierce_". */
+export const PIERCING_OPTIONS = [
+  { id: 'pierce_none', label: 'Không xỏ khuyên' },
+  { id: 'pierce_earlobe', label: 'Dái tai' },
+  { id: 'pierce_ear_cartilage', label: 'Vành / sụn tai' },
+  { id: 'pierce_nose', label: 'Mũi' },
+  { id: 'pierce_lip_tongue', label: 'Môi / Lưỡi' },
+  { id: 'pierce_eyebrow', label: 'Lông mày' },
+  { id: 'pierce_navel', label: 'Rốn' },
+  { id: 'pierce_unseen', label: 'Vị trí kín (không lộ)' }
+];
+
+export const isPiercing = (id: string) => id.startsWith('pierce_');
+
+/** Tên tiếng Việt của 1 mã hình xăm / xỏ khuyên. */
+export function bodyMarkLabel(id: string): string {
+  return [...TATTOO_OPTIONS, ...PIERCING_OPTIONS].find(o => o.id === id)?.label || id;
+}
+
 export const ACCENT_OPTIONS = ['Nam', 'Bắc', 'Trung', 'Huế'];
 export const LANGUAGE_OPTIONS = ['Tiếng Anh', 'Tiếng Hàn', 'Tiếng Trung', 'Tiếng Nhật', 'Tiếng Pháp', 'Tiếng Thái', 'Tiếng Đức', 'Tiếng Tây Ban Nha', 'Tiếng Nga', 'Tiếng Ý'];
 export const MARTIAL_ARTS_OPTIONS = [

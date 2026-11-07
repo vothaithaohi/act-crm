@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2, LogOut, Mail, Phone, Plus, Printer, Search, Trash2, UserRound } from 'lucide-react';
 import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
-import { ageFromDob, ROLE_WILLINGNESS_OPTIONS, TATTOO_OPTIONS } from '@/lib/dienvienvn/casting-form';
+import { ageFromDob, bodyMarkLabel, ROLE_WILLINGNESS_OPTIONS } from '@/lib/dienvienvn/casting-form';
 import { PARTNER_TYPE_LABELS, PartnerProjectSummary, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
 import type { ProducerView } from '@/lib/projects/producer';
 import { PROJECT_TYPES, ProjectRole, RoleGender, projectTypeLabel } from '@/lib/projects/types';
@@ -382,7 +382,7 @@ export function PartnerTalentProfile({ username }: { username: string }) {
   const skills = skillGroups(t);
   const trainings = trainingList(t.academic_profile);
   const willingness = Array.from(new Set((t.role_willingness || []).map(w => WILLINGNESS_LABEL[w] || w)));
-  const tattoos = (t.tattoos_piercings || []).map(id => TATTOO_OPTIONS.find(o => o.id === id)?.label || id);
+  const tattoos = (t.tattoos_piercings || []).map(bodyMarkLabel);
   const measurements = [t.chest_cm, t.waist_cm, t.hip_cm].some(Boolean) ? `${t.chest_cm || '—'} - ${t.waist_cm || '—'} - ${t.hip_cm || '—'}` : null;
   const socials = [
     { label: 'Showreel', url: t.social_links?.showreel_url },

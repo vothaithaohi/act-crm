@@ -641,3 +641,25 @@ input[type='date'].dv-input {
     margin: 10mm;
   }
 }
+
+/* ---------- Cột ảnh tự chạy lên (trang chủ) ---------- */
+.dv-marquee-up {
+  animation: dv-marquee-up var(--dv-marquee-dur, 40s) linear infinite;
+  will-change: transform;
+}
+.dv-marquee:hover .dv-marquee-up {
+  animation-play-state: paused;
+}
+@keyframes dv-marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dv-marquee-up {
+    animation: none;
+  }
+}

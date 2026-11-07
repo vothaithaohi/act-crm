@@ -17,6 +17,7 @@ import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
 import { TalentPhotoCarousel } from '@/components/talents/talent-photo-carousel';
+import { bodyMarkLabel } from '@/lib/dienvienvn/casting-form';
 import { 
   User, 
   Ruler, 
@@ -707,7 +708,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                 <div>
                   <span className="text-muted-foreground block">Hình xăm / Khuyên:</span>
                   <span className="font-semibold text-foreground">
-                    {(talent.tattoos_piercings || ['none']).join(', ')}
+                    {(talent.tattoos_piercings || ['none']).map(bodyMarkLabel).join(', ')}
                   </span>
                 </div>
                 <div>
