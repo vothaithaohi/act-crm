@@ -88,6 +88,8 @@ export async function PUT(req: NextRequest) {
   }
 
   const record: Record<string, unknown> = { ...draftToTalentProfile(draft), updated_at: new Date().toISOString() };
+  // Ẩn / hiện công khai chỉ đổi bằng nút trong tài khoản, chỉnh sửa hồ sơ không đụng tới
+  delete record.public_profile;
   ['email', 'user_id', 'lead_id', 'submission_source', 'review_status'].forEach(k => delete record[k]);
 
   const { error } = await writeTalent(row => db.from('talent_profiles').update(row).eq('id', talent.id), record);
@@ -110,6 +112,14 @@ export async function PATCH(req: NextRequest) {
   if (!talent) return NextResponse.json({ error: NO_PROFILE }, { status: 404 });
 
   const body = await req.json().catch(() => null);
+
+  // Diễn viên tự ẩn / hiện lại hồ sơ trên trang công khai (hồ sơ vẫn dùng cho casting)
+  if (typeof body?.public_profile === 'boolean' && body.username === undefined) {
+    const { error } = await db.from('talent_profiles').update({ public_profile: body.public_profile, updated_at: new Date().toISOString() }).eq('id', talent.id);
+    if (error) return NextResponse.json({ error: 'Không lưu được. Vui lòng thử lại.' }, { status: 500 });
+    return NextResponse.json({ ok: true, public_profile: body.public_profile });
+  }
+
   const username = String(body?.username || '').trim().toLowerCase();
   if (!USERNAME_PATTERN.test(username)) {
     return NextResponse.json(

@@ -73,6 +73,8 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
   const record = {
     ...draftToTalentProfile(draft),
+    // Hồ sơ mới luôn công khai sau khi được duyệt (bản nháp cũ trên máy có thể còn giá trị false)
+    public_profile: true,
     id: crypto.randomUUID(),
     submission_source: 'dienvienvn' as const,
     review_status: 'pending' as const,

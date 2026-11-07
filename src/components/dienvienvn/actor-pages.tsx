@@ -557,6 +557,7 @@ export function ActorAccount() {
         isPublic={profile.public_profile}
         approved={profile.review_status === 'approved'}
         onSaved={username => setData(d => (d ? { ...d, profile: { ...d.profile, username } } : d))}
+        onPublicChange={v => setData(d => (d ? { ...d, profile: { ...d.profile, public_profile: v } } : d))}
       />
 
       <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">Dự án đang casting</h2>
@@ -611,12 +612,14 @@ function PublicProfileCard({
   username,
   isPublic,
   approved,
-  onSaved
+  onSaved,
+  onPublicChange
 }: {
   username: string | null;
   isPublic: boolean;
   approved: boolean;
   onSaved: (username: string) => void;
+  onPublicChange: (v: boolean) => void;
 }) {
   const href = useDvvnHref();
   const [editing, setEditing] = useState(false);
@@ -626,6 +629,20 @@ function PublicProfileCard({
   if (!username) return null;
 
   const live = isPublic && approved;
+  // Ẩn / hiện lại hồ sơ trên trang công khai (hồ sơ vẫn được dùng cho casting)
+  const togglePublic = async () => {
+    if (isPublic && !window.confirm('Ẩn hồ sơ khỏi trang công khai dienvienvn.com? Hồ sơ vẫn được dùng để casting, bạn có thể hiện lại bất kỳ lúc nào.')) return;
+    setError('');
+    setBusy(true);
+    const res = await actorFetch('/api/dienvienvn/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_profile: !isPublic })
+    }).catch(() => null);
+    setBusy(false);
+    if (!res || !res.ok) return setError('Không lưu được. Vui lòng thử lại.');
+    onPublicChange(!isPublic);
+  };
   const save = async () => {
     setError('');
     const next = value.trim().toLowerCase();
@@ -664,8 +681,8 @@ function PublicProfileCard({
             {live
               ? 'Đang hiển thị công khai: ảnh, nghệ danh, kỹ năng, kinh nghiệm, đào tạo.'
               : !isPublic
-                ? 'Đang ẩn. Bật “Hiển thị hồ sơ công khai” trong Chỉnh sửa hồ sơ để mọi người xem được.'
-                : 'Sẽ hiển thị sau khi hồ sơ được đội ngũ DienVienVN duyệt.'}
+                ? 'Đang ẩn khỏi trang công khai. Hồ sơ vẫn được dùng để casting.'
+                : 'Sẽ hiển thị công khai sau khi hồ sơ được đội ngũ DienVienVN duyệt.'}
           </p>
           {error && <p className="dv-field-error">{error}</p>}
         </div>
@@ -688,6 +705,10 @@ function PublicProfileCard({
               )}
               <button type="button" onClick={() => setEditing(true)} className="dv-btn dv-btn-secondary">
                 Đổi username
+              </button>
+              <button type="button" onClick={togglePublic} disabled={busy} className="dv-btn dv-btn-ghost">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isPublic ? 'Ẩn khỏi trang công khai' : 'Hiện lại công khai'}
               </button>
             </>
           )}

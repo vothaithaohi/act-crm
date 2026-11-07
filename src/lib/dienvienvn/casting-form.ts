@@ -228,7 +228,8 @@ export function createEmptyDraft(): CastingDraft {
     trainings: [],
     selftape_url: '',
     consent: false,
-    public_profile: false
+    // Hồ sơ được duyệt sẽ hiển thị công khai (diễn viên có thể tự ẩn trong tài khoản)
+    public_profile: true
   };
 }
 

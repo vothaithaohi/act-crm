@@ -826,33 +826,11 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                       </span>
                       <span className="text-[13px] leading-[1.42] text-[var(--dv-text-secondary)]">
                         Tôi xác nhận thông tin là chính xác và đồng ý để DienVienVN lưu trữ, gửi hồ sơ này tới đạo diễn và nhà sản xuất
-                        cho mục đích casting.
+                        cho mục đích casting, và hiển thị công khai trên dienvienvn.com sau khi được duyệt (ảnh, tên, kỹ năng, kinh nghiệm,
+                        đào tạo; SĐT, email, địa chỉ, tuổi và số đo luôn được ẩn). Tôi có thể ẩn hồ sơ công khai bất kỳ lúc nào trong tài khoản.
                       </span>
                     </button>
                     {consentError && <p className="dv-field-error">Vui lòng đánh dấu đồng ý để nộp hồ sơ.</p>}
-                  </div>
-
-                  {/* Không bắt buộc: cho phép hiện hồ sơ trên trang công khai dienvienvn.com/<username> */}
-                  <div className={`${editing ? 'mt-5 border-t border-[#f0f0f2] pt-5' : 'mt-3'}`}>
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={draft.public_profile}
-                      onClick={() => update({ public_profile: !draft.public_profile })}
-                      className="flex w-full items-start gap-2.5 text-left"
-                    >
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
-                          draft.public_profile ? 'border-[var(--dv-accent)] bg-[var(--dv-accent)] text-white' : 'border-[#c7c7cc] bg-white'
-                        }`}
-                      >
-                        {draft.public_profile && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                      </span>
-                      <span className="text-[13px] leading-[1.42] text-[var(--dv-text-secondary)]">
-                        Hiển thị hồ sơ công khai trên DienVienVN sau khi được duyệt (ảnh, nghệ danh, kỹ năng, kinh nghiệm, đào tạo). Số điện
-                        thoại, email, địa chỉ, tuổi và số đo luôn được ẩn. <span className="text-[var(--dv-text-tertiary)]">Không bắt buộc.</span>
-                      </span>
-                    </button>
                   </div>
 
                   <div className="mt-5">{submitButton('w-full')}</div>
