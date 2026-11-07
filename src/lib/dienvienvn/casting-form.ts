@@ -28,6 +28,14 @@ export const CASTING_STEPS = [
   { id: 7, title: 'Đào tạo diễn xuất', desc: 'ACT Academy hoặc trường khác' }
 ] as const;
 
+export interface GalleryPhoto {
+  url: string;
+  caption: string;
+}
+
+/** Số ảnh cá nhân thêm tối đa (ngoài 3 ảnh chân dung / toàn thân / góc nghiêng). */
+export const MAX_GALLERY = 6;
+
 export const TATTOO_OPTIONS = [
   { id: 'none', label: 'Không có hình xăm' },
   { id: 'arms_shoulder', label: 'Cánh tay / Vai' },
@@ -182,6 +190,8 @@ export interface CastingDraft {
   headshot_url: string;
   fullbody_url: string;
   compcard_url: string;
+  /** Ảnh cá nhân thêm (tối đa 6), mỗi ảnh có chú thích — VD: ảnh từ dự án đã tham gia */
+  gallery: GalleryPhoto[];
   social_links: Required<SocialLinks>;
 
   trainings: TrainingEntry[];
@@ -224,6 +234,7 @@ export function createEmptyDraft(): CastingDraft {
     headshot_url: '',
     fullbody_url: '',
     compcard_url: '',
+    gallery: [],
     social_links: { facebook: '', instagram: '', tiktok: '', showreel_url: '' },
     trainings: [],
     selftape_url: '',
@@ -488,6 +499,7 @@ export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'>
     headshot_url: d.headshot_url || null,
     fullbody_url: d.fullbody_url || null,
     compcard_url: d.compcard_url || null,
+    gallery: (d.gallery || []).filter(g => g.url).slice(0, MAX_GALLERY).map(g => ({ url: g.url, caption: (g.caption || '').trim() })),
     academic_profile: buildAcademicProfile(d.trainings),
     public_profile: !!d.public_profile,
     submission_source: 'dienvienvn',
@@ -583,6 +595,7 @@ export function talentToDraft(t: TalentProfile): CastingDraft {
     headshot_url: str(t.headshot_url),
     fullbody_url: str(t.fullbody_url),
     compcard_url: str(t.compcard_url),
+    gallery: Array.isArray(t.gallery) ? t.gallery.filter(g => g?.url).map(g => ({ url: g.url, caption: g.caption || '' })) : [],
     social_links: {
       facebook: str(t.social_links?.facebook),
       instagram: str(t.social_links?.instagram),

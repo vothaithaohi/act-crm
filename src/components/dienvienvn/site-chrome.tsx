@@ -49,6 +49,8 @@ export function SiteFooter() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <Link href={href('/nop-ho-so')} className="hover:underline">Nộp hồ sơ diễn viên</Link>
             <span className="text-[#d2d2d7]">|</span>
+            <Link href={href('/tuyen-dung')} className="hover:underline">Tuyển dụng ekip</Link>
+            <span className="text-[#d2d2d7]">|</span>
             <Link href={`${href('/')}#ra-mat`} className="hover:underline">Ra mắt 11.11.2026</Link>
             <span className="text-[#d2d2d7]">|</span>
             <span>Việt Nam</span>

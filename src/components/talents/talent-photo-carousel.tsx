@@ -11,7 +11,8 @@ export function TalentPhotoCarousel({ talent }: { talent: TalentProfile }) {
   const photos = [
     { label: 'Chân dung', url: talent.headshot_url },
     { label: 'Toàn thân', url: talent.fullbody_url },
-    { label: 'Góc nghiêng', url: talent.compcard_url }
+    { label: 'Góc nghiêng', url: talent.compcard_url },
+    ...(talent.gallery || []).map((g, k) => ({ label: g.caption || `Ảnh ${k + 1}`, url: g.url }))
   ].filter((p): p is { label: string; url: string } => !!p.url);
 
   const [index, setIndex] = useState(0);

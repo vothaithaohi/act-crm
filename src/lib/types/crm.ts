@@ -291,6 +291,8 @@ export interface TalentProfile {
   headshot_url?: string | null;
   fullbody_url?: string | null;
   compcard_url?: string | null;
+  /** Ảnh cá nhân thêm có chú thích (tối đa 6) */
+  gallery?: { url: string; caption: string }[] | null;
   
   academic_profile?: AcademicProfile;
 

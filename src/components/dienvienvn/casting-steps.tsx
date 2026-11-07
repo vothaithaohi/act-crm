@@ -23,6 +23,7 @@ import {
   normalizeSkills,
   StepErrors,
   TATTOO_OPTIONS,
+  MAX_GALLERY,
   PIERCING_OPTIONS,
   isPiercing,
   TrainingEntry,
@@ -573,6 +574,7 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
       <p className="text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
         Ảnh JPG, PNG hoặc ảnh chụp từ điện thoại. Ảnh sẽ được tự động tối ưu dung lượng trước khi tải lên.
       </p>
+      <GalleryEditor draft={draft} update={update} />
       {application && (
         <>
           <Divider />
@@ -817,6 +819,51 @@ export function StepTraining({ draft, update, errors }: StepProps) {
         >
           <Plus className="h-4 w-4" /> Đã học tại trường khác
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Ảnh cá nhân thêm (tối đa 6), mỗi ảnh có chú thích — VD: ảnh từ dự án đã tham gia. */
+function GalleryEditor({ draft, update }: Pick<StepProps, 'draft' | 'update'>) {
+  const gallery = draft.gallery || [];
+  const setAt = (i: number, patch: Partial<{ url: string; caption: string }>) =>
+    update({ gallery: gallery.map((g, k) => (k === i ? { ...g, ...patch } : g)) });
+  const removeAt = (i: number) => update({ gallery: gallery.filter((_, k) => k !== i) });
+  return (
+    <div>
+      <Divider />
+      <SectionTitle
+        title="Ảnh cá nhân khác"
+        desc={`Không bắt buộc · tối đa ${MAX_GALLERY} ảnh. Thêm ảnh từ dự án đã tham gia, ảnh hậu trường… kèm chú thích ngắn.`}
+      />
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5">
+        {gallery.map((g, i) => (
+          <div key={i} className="space-y-2">
+            <PhotoUpload
+              kind="gallery"
+              label={`Ảnh ${i + 1}`}
+              hint="Ảnh từ dự án, hậu trường…"
+              value={g.url}
+              onChange={url => (url ? setAt(i, { url }) : removeAt(i))}
+            />
+            <TextInput
+              value={g.caption}
+              onChange={e => setAt(i, { caption: e.target.value.slice(0, 200) })}
+              placeholder="Chú thích, VD: Phim Mai (2024) — vai Linh"
+              aria-label={`Chú thích ảnh ${i + 1}`}
+            />
+          </div>
+        ))}
+        {gallery.length < MAX_GALLERY && (
+          <button
+            type="button"
+            onClick={() => update({ gallery: [...gallery, { url: '', caption: '' }] })}
+            className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-[#c7c7cc] bg-[#fbfbfd] text-[15px] font-medium hover:border-[#86868b] sm:mt-[26px]"
+          >
+            <span className="text-[28px] leading-none">+</span> Thêm ảnh
+          </button>
+        )}
       </div>
     </div>
   );

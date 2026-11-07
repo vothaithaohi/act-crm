@@ -17,7 +17,8 @@ import {
   Globe,
   Film,
   Handshake,
-  Mic
+  Mic,
+  BriefcaseBusiness
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
@@ -66,6 +67,13 @@ export function Sidebar() {
       title: 'Khách mời showcase',
       href: '/guests',
       icon: Mic,
+      badge: null,
+      visible: can('talents:write')
+    },
+    {
+      title: 'Tuyển dụng ekip',
+      href: '/crew-jobs',
+      icon: BriefcaseBusiness,
       badge: null,
       visible: can('talents:write')
     },

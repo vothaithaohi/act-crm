@@ -7,7 +7,7 @@ const ALLOWED_TYPES: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp'
 };
-const ALLOWED_KINDS = ['headshot', 'fullbody', 'compcard'];
+const ALLOWED_KINDS = ['headshot', 'fullbody', 'compcard', 'gallery'];
 
 // Tải ảnh hồ sơ diễn viên công khai lên Supabase Storage (bucket talent-media, thư mục dienvienvn/).
 export async function POST(req: NextRequest) {

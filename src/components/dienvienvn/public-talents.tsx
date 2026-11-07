@@ -210,6 +210,25 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
                 </section>
               )}
 
+              {talent.gallery.length > 0 && (
+                <section className="dv-card mt-4 p-6">
+                  <h2 className="text-[19px] font-semibold">Ảnh hoạt động</h2>
+                  <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {talent.gallery.map((g, k) => (
+                      <li key={g.url + k}>
+                        <figure>
+                          <div className="aspect-[4/5] overflow-hidden rounded-[14px] bg-[#e8e8ed]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={g.url} alt={g.caption || `Ảnh hoạt động ${k + 1}`} loading="lazy" className="h-full w-full object-cover" />
+                          </div>
+                          {g.caption && <figcaption className="mt-1.5 text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{g.caption}</figcaption>}
+                        </figure>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
               {talent.experience.length === 0 && talent.skills.length === 0 && talent.trainings.length === 0 && (
                 <p className="mt-8 text-[15px] text-[var(--dv-text-secondary)]">Diễn viên đang cập nhật thêm thông tin hồ sơ.</p>
               )}

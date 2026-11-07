@@ -117,7 +117,8 @@ function derive(applicant: ProducerApplicant) {
   const photos = [
     { key: 'headshot', label: 'Chân dung', url: t.headshot_url },
     { key: 'fullbody', label: 'Toàn thân', url: t.fullbody_url },
-    { key: 'compcard', label: 'Nghiêng', url: t.compcard_url }
+    { key: 'compcard', label: 'Nghiêng', url: t.compcard_url },
+    ...(t.gallery || []).map((g, k) => ({ key: `gallery-${k}`, label: g.caption || `Ảnh ${k + 1}`, url: g.url }))
   ].filter(p => p.url) as { key: string; label: string; url: string }[];
   const age = t.age ?? (t.dob ? ageFromDob(t.dob) : null);
   const measurements = [t.chest_cm, t.waist_cm, t.hip_cm].some(Boolean) ? `${t.chest_cm || '–'}-${t.waist_cm || '–'}-${t.hip_cm || '–'}` : null;

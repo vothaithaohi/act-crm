@@ -36,6 +36,7 @@ export type ProducerTalent = Pick<
   | 'headshot_url'
   | 'fullbody_url'
   | 'compcard_url'
+  | 'gallery'
   | 'academic_profile'
 > & {
   phone: string | null;
@@ -146,6 +147,7 @@ export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level:
     headshot_url: t.headshot_url,
     fullbody_url: t.fullbody_url,
     compcard_url: t.compcard_url,
+    gallery: Array.isArray(t.gallery) ? t.gallery.filter(g => g?.url).slice(0, 6) : [],
     academic_profile: t.academic_profile,
     // Đối tác đã duyệt luôn thấy liên hệ; "Ẩn liên hệ" của dự án chỉ còn áp dụng cho bản demo
     phone: level === 'full' && hideContacts ? null : t.phone,

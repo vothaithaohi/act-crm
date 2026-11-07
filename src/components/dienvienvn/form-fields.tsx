@@ -182,7 +182,7 @@ export function PhotoUpload({
   onChange,
   error
 }: {
-  kind: 'headshot' | 'fullbody' | 'compcard';
+  kind: 'headshot' | 'fullbody' | 'compcard' | 'gallery';
   label: string;
   hint: string;
   required?: boolean;

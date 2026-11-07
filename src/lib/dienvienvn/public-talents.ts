@@ -15,6 +15,8 @@ export interface PublicTalent {
   experience: { group: string; items: string[] }[];
   skills: { group: string; items: string[] }[];
   trainings: string[];
+  /** Ảnh cá nhân thêm có chú thích (diễn viên tự tải lên) */
+  gallery: { url: string; caption: string }[];
 }
 
 const PUBLIC_COLUMNS =
@@ -31,20 +33,33 @@ export function toPublicTalent(t: TalentProfile): PublicTalent {
     ].filter((p): p is { label: string; url: string } => !!p.url),
     experience: experienceGroups(t.acting_experience),
     skills: skillGroups(t),
-    trainings: trainingList(t.academic_profile)
+    trainings: trainingList(t.academic_profile),
+    gallery: Array.isArray(t.gallery) ? t.gallery.filter(g => g?.url).map(g => ({ url: g.url, caption: g.caption || '' })) : []
   };
 }
 
-function baseQuery() {
+function baseQuery(withGallery = true) {
   const { db } = getServiceDb();
   if (!db) return null;
-  return db.from('talent_profiles').select(PUBLIC_COLUMNS).eq('review_status', 'approved').eq('public_profile', true).not('username', 'is', null);
+  return db
+    .from('talent_profiles')
+    .select(withGallery ? `${PUBLIC_COLUMNS}, gallery` : PUBLIC_COLUMNS)
+    .eq('review_status', 'approved')
+    .eq('public_profile', true)
+    .not('username', 'is', null);
+}
+
+/** Chạy truy vấn; nếu chưa có cột gallery (chưa chạy migration) thì chạy lại không kèm cột này. */
+async function withGalleryFallback<T>(run: (q: NonNullable<ReturnType<typeof baseQuery>>) => PromiseLike<{ data: T | null; error: { message: string } | null }>) {
+  const q = baseQuery();
+  if (!q) return { data: null, error: null };
+  const first = await run(q);
+  if (first.error && /gallery/i.test(first.error.message)) return run(baseQuery(false)!);
+  return first;
 }
 
 export async function listPublicTalents(): Promise<PublicTalent[]> {
-  const q = baseQuery();
-  if (!q) return [];
-  const { data, error } = await q.order('updated_at', { ascending: false }).limit(500);
+  const { data, error } = await withGalleryFallback(q => q.order('updated_at', { ascending: false }).limit(500));
   if (error) {
     console.error('[dienvienvn] Không tải được danh sách diễn viên công khai:', error.message);
     return [];
@@ -55,9 +70,7 @@ export async function listPublicTalents(): Promise<PublicTalent[]> {
 export async function getPublicTalent(username: string): Promise<PublicTalent | null> {
   const clean = username.trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{2,39}$/.test(clean)) return null;
-  const q = baseQuery();
-  if (!q) return null;
-  const { data, error } = await q.eq('username', clean).maybeSingle();
+  const { data, error } = await withGalleryFallback(q => q.eq('username', clean).maybeSingle());
   if (error || !data) return null;
   return toPublicTalent(data as unknown as TalentProfile);
 }

@@ -74,6 +74,11 @@ export const castingDraftSchema = z.object({
   headshot_url: media,
   fullbody_url: media,
   compcard_url: media,
+  gallery: z
+    .array(z.object({ url: media, caption: z.string().trim().max(200).optional().default('') }))
+    .max(6)
+    .optional()
+    .default([]),
   social_links: z.object({
     facebook: url,
     instagram: url,
