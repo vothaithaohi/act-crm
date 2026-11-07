@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Check, ExternalLink, Plus, Trash2, Video } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, Loader2, Plus, Trash2, Video } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCRM } from '@/lib/store/crm-context';
 import { REVIEW_STATUS_DETAILS, getReviewStatus } from '@/lib/types/crm';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
@@ -13,26 +14,34 @@ import {
   ProjectApplication
 } from '@/lib/projects/types';
 import { talentPath } from '@/lib/talent-path';
+import { SHORTLIST_STATUSES } from '@/lib/projects/producer';
 
 interface Props {
   project: CastingProject;
   applications: ProjectApplication[];
   onStatus: (id: string, status: ApplicationStatus) => void;
+  onBulkStatus: (ids: string[], status: ApplicationStatus) => Promise<boolean>;
   onRemove: (id: string) => void;
   onAdd: (a: Pick<ProjectApplication, 'project_id' | 'role_id' | 'talent_id'>) => Promise<boolean>;
 }
 
-export function ProjectApplicants({ project, applications, onStatus, onRemove, onAdd }: Props) {
+export function ProjectApplicants({ project, applications, onStatus, onBulkStatus, onRemove, onAdd }: Props) {
   const { talents, reviewTalent, refreshTalents, can } = useCRM();
   const canEdit = can('talents:write');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<ApplicationStatus>('shortlisted');
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [addRole, setAddRole] = useState(project.roles[0]?.id || '');
   const [addQuery, setAddQuery] = useState('');
   const [addTalent, setAddTalent] = useState('');
 
   const talentById = useMemo(() => new Map(talents.map(t => [t.id, t])), [talents]);
   const rows = applications
-    .filter(a => a.project_id === project.id && (roleFilter === 'all' || a.role_id === roleFilter))
+    .filter(
+      a => a.project_id === project.id && (roleFilter === 'all' || a.role_id === roleFilter) && (statusFilter === 'all' || a.status === statusFilter)
+    )
     .map(a => ({ a, t: talentById.get(a.talent_id) }));
 
   // Hồ sơ vừa nộp/ứng tuyển sau khi mở CRM có thể chưa có trong danh sách đã tải → tải lại một lần
@@ -48,8 +57,40 @@ export function ProjectApplicants({ project, applications, onStatus, onRemove, o
 
   const visibleToProducer = applications.filter(a => {
     const t = talentById.get(a.talent_id);
-    return a.project_id === project.id && a.status !== 'rejected' && t && getReviewStatus(t) === 'approved';
+    return a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status) && t && getReviewStatus(t) === 'approved';
   }).length;
+  const shortlistNotApproved = applications.filter(a => {
+    const t = talentById.get(a.talent_id);
+    return a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status) && t && getReviewStatus(t) !== 'approved';
+  }).length;
+
+  const rowIds = rows.map(r => r.a.id);
+  const selectedInView = rowIds.filter(id => selected.has(id));
+  const allSelected = rowIds.length > 0 && selectedInView.length === rowIds.length;
+  const toggle = (id: string) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (allSelected) rowIds.forEach(id => next.delete(id));
+      else rowIds.forEach(id => next.add(id));
+      return next;
+    });
+  const applyBulk = async () => {
+    if (selectedInView.length === 0) return;
+    setBulkBusy(true);
+    const ok = await onBulkStatus(selectedInView, bulkStatus);
+    setBulkBusy(false);
+    if (ok) {
+      setSelected(new Set());
+      toast.success(`Đã chuyển ${selectedInView.length} ứng viên sang "${APPLICATION_STATUS_DETAILS[bulkStatus].label}"`);
+    }
+  };
   const total = applications.filter(a => a.project_id === project.id).length;
 
   const roleName = (id: string) => project.roles.find(r => r.id === id)?.name || 'Vai đã xoá';
@@ -68,10 +109,19 @@ export function ProjectApplicants({ project, applications, onStatus, onRemove, o
         <div>
           <h3 className="font-bold text-sm">Ứng viên ({total})</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Link NSX đang hiển thị <strong className="text-foreground">{visibleToProducer}</strong> người. Chỉ hồ sơ <strong>Đã duyệt</strong> và không bị
-            &ldquo;Loại&rdquo; mới hiện trên link.
+            Link NSX đang hiển thị <strong className="text-foreground">{visibleToProducer}</strong> người: ứng viên <strong>Shortlist</strong> hoặc{' '}
+            <strong>Đã gửi NSX</strong> có hồ sơ <strong>Đã duyệt</strong>.
           </p>
         </div>
+        <div className="flex gap-2">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none">
+          <option value="all">Mọi trạng thái</option>
+          {(Object.keys(APPLICATION_STATUS_DETAILS) as ApplicationStatus[]).map(s => (
+            <option key={s} value={s}>
+              {APPLICATION_STATUS_DETAILS[s].label} ({applications.filter(a => a.project_id === project.id && a.status === s).length})
+            </option>
+          ))}
+        </select>
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none">
           <option value="all">Tất cả vai</option>
           {project.roles.map(r => (
@@ -80,18 +130,71 @@ export function ProjectApplicants({ project, applications, onStatus, onRemove, o
             </option>
           ))}
         </select>
+        </div>
       </div>
 
+      {total > 0 && visibleToProducer === 0 && (
+        <div className="p-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs flex gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            Link NSX chưa hiện ai. Tích chọn ứng viên muốn gửi (hoặc ô &ldquo;Chọn tất cả&rdquo;), chọn <strong>Shortlist</strong> rồi bấm{' '}
+            <strong>Áp dụng</strong>.
+          </span>
+        </div>
+      )}
+      {shortlistNotApproved > 0 && (
+        <p className="text-[11px] text-amber-700">
+          {shortlistNotApproved} ứng viên đã Shortlist nhưng hồ sơ chưa duyệt nên chưa hiện trên link NSX. Bấm &ldquo;Duyệt hồ sơ&rdquo; trên từng người.
+        </p>
+      )}
+
+      {canEdit && rows.length > 0 && (
+        <div className="sticky top-2 z-10 p-2.5 rounded-xl border bg-card/95 backdrop-blur flex flex-wrap items-center gap-2 text-xs">
+          <label className="flex items-center gap-2 font-semibold cursor-pointer px-1">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-slate-900" />
+            Chọn tất cả ({rows.length})
+          </label>
+          <span className="text-muted-foreground">· đã chọn {selectedInView.length}</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-muted-foreground">Chuyển sang</span>
+            <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value as ApplicationStatus)} className="px-2.5 py-1.5 rounded-lg border bg-background text-xs outline-none">
+              {(Object.keys(APPLICATION_STATUS_DETAILS) as ApplicationStatus[]).map(s => (
+                <option key={s} value={s}>
+                  {APPLICATION_STATUS_DETAILS[s].label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={selectedInView.length === 0 || bulkBusy}
+              onClick={applyBulk}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1d1d1f] hover:bg-black text-white font-semibold disabled:opacity-40"
+            >
+              {bulkBusy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Áp dụng
+            </button>
+          </div>
+        </div>
+      )}
+
       {rows.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-6 text-center">Chưa có ứng viên nào.</p>
+        <p className="text-xs text-muted-foreground py-6 text-center">{total ? 'Không có ứng viên khớp bộ lọc.' : 'Chưa có ứng viên nào.'}</p>
       ) : (
         <div className="space-y-2">
           {rows.map(({ a, t }) => {
             const review = t ? getReviewStatus(t) : null;
             const age = t ? calculateAge(t.dob) : null;
             return (
-              <div key={a.id} className="p-3 rounded-xl border flex flex-col md:flex-row md:items-center gap-3">
+              <div key={a.id} className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center gap-3 ${selected.has(a.id) ? 'border-slate-900 bg-muted/40' : ''}`}>
                 <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {canEdit && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(a.id)}
+                      onChange={() => toggle(a.id)}
+                      aria-label={`Chọn ${t?.full_name || 'ứng viên'}`}
+                      className="w-4 h-4 shrink-0 accent-slate-900"
+                    />
+                  )}
                   <div className="w-11 h-14 rounded-lg overflow-hidden bg-muted shrink-0 border">
                     {t?.headshot_url && (
                       // eslint-disable-next-line @next/next/no-img-element

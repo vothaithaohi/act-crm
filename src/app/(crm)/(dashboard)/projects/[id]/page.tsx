@@ -11,7 +11,7 @@ import { PROJECT_STATUS_DETAILS } from '@/lib/projects/types';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { projects, applications, loading, refresh, updateApplicationStatus, removeApplication, addApplication } = useProjects();
+  const { projects, applications, loading, refresh, updateApplicationStatus, updateApplicationsStatus, removeApplication, addApplication } = useProjects();
   const project = projects.find(p => p.id === id);
 
   return (
@@ -37,10 +37,11 @@ export default function ProjectDetailPage() {
               project={project}
               applications={applications}
               onStatus={updateApplicationStatus}
+              onBulkStatus={updateApplicationsStatus}
               onRemove={removeApplication}
               onAdd={addApplication}
             />
-            <ProjectEditor key={project.updated_at || project.id} initial={project} onSaved={refresh} />
+            <ProjectEditor key={project.id} initial={project} onSaved={refresh} />
           </>
         )}
       </div>

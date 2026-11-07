@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Copy, ExternalLink, EyeOff, RefreshCw, Save, Trash2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,8 +10,6 @@ import {
   PROJECT_TYPES,
   ProjectStatus,
   newShareToken,
-  isShareExpired,
-  shareExpiryFromNow,
   nextProjectCode,
   publicProjectName,
   SHARE_TOKEN_LENGTH,
@@ -90,6 +88,75 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
   );
   const [saving, setSaving] = useState(false);
 
+  // Bản nháp: tự lưu vào trình duyệt mỗi khi gõ, để tải lại trang / mất mạng / lỗi không làm mất nội dung đang nhập.
+  const draftKey = `act-project-draft:${initial?.id || 'new'}`;
+  const baseline = useRef(JSON.stringify(p));
+  const dirty = JSON.stringify(p) !== baseline.current;
+  const [restored, setRestored] = useState(false);
+  const [remoteChanged, setRemoteChanged] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as { at: number; base?: string; data: CastingProject };
+      if (!draft?.data || JSON.stringify(draft.data) === baseline.current) return localStorage.removeItem(draftKey);
+      setP(draft.data);
+      setRestored(true);
+    } catch {
+      /* bỏ qua nháp hỏng */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    const t = setTimeout(() => {
+      try {
+        if (dirty) localStorage.setItem(draftKey, JSON.stringify({ at: Date.now(), data: p }));
+        else localStorage.removeItem(draftKey);
+      } catch {
+        /* trình duyệt chặn lưu */
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [p, dirty, draftKey, canEdit]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  // Người khác vừa lưu dự án: chưa sửa gì thì cập nhật luôn; đang sửa thì giữ nguyên nội dung và báo.
+  const lastRemote = useRef(initial?.updated_at);
+  useEffect(() => {
+    if (!initial || initial.updated_at === lastRemote.current) return;
+    lastRemote.current = initial.updated_at;
+    if (saving) return;
+    if (dirty) setRemoteChanged(true);
+    else {
+      baseline.current = JSON.stringify(initial);
+      setP(initial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.updated_at]);
+
+  const discardDraft = () => {
+    if (!initial || !confirm('Bỏ các thay đổi chưa lưu và tải lại bản đang lưu?')) return;
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {}
+    baseline.current = JSON.stringify(initial);
+    setP(initial);
+    setRestored(false);
+    setRemoteChanged(false);
+  };
+
   const suggestedCode = useMemo(
     () => nextProjectCode(projects.filter(x => x.id !== p.id).map(x => x.code)),
     [projects, p.id]
@@ -129,6 +196,12 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
     });
     setSaving(false);
     if (ok) {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {}
+      baseline.current = JSON.stringify(p);
+      setRestored(false);
+      setRemoteChanged(false);
       toast.success(isNew ? 'Đã tạo dự án' : 'Đã lưu dự án');
       onSaved?.();
       if (isNew) router.push(`/projects/${p.id}`);
@@ -149,6 +222,20 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
 
   return (
     <div className="space-y-5">
+      {(restored || remoteChanged) && canEdit && (
+        <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span>
+            {remoteChanged
+              ? 'Dự án vừa được người khác lưu. Nội dung bạn đang nhập vẫn được giữ; bấm Lưu sẽ ghi đè bản của họ.'
+              : 'Đã khôi phục nội dung bạn nhập nhưng chưa lưu lần trước. Kiểm tra lại rồi bấm "Lưu thay đổi".'}
+          </span>
+          {!isNew && (
+            <button type="button" onClick={discardDraft} className="shrink-0 px-3 py-1.5 rounded-lg border border-amber-400 bg-white font-semibold hover:bg-amber-100">
+              {remoteChanged ? 'Tải bản mới (bỏ nội dung đang nhập)' : 'Bỏ nháp'}
+            </button>
+          )}
+        </div>
+      )}
       {/* Thông tin dự án */}
       <section className="bg-card rounded-2xl border p-5 sm:p-6 space-y-4">
         <h3 className="font-bold text-sm border-b pb-3">Thông tin dự án</h3>
@@ -297,7 +384,7 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
         <div className="p-3.5 rounded-xl border bg-muted/30 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold">Link shortlist gửi NSX</span>
-            <span className="text-[10px] text-muted-foreground">Chỉ hiện ứng viên Shortlist / Đã gửi NSX · {isNew ? 'dùng được sau khi lưu' : 'tự cập nhật'}</span>
+            <span className="text-[10px] text-muted-foreground">Chỉ hiện ứng viên Shortlist / Đã gửi NSX · không có hạn · {isNew ? 'dùng được sau khi lưu' : 'tự cập nhật'}</span>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <input readOnly value={nsxLink} className={`${inputCls} font-mono text-[11px]`} onFocus={e => e.target.select()} />
@@ -310,7 +397,7 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
                   type="button"
                   onClick={() => {
                     if (confirm('Tạo link mới? Link cũ sẽ ngừng hoạt động sau khi bạn bấm Lưu.'))
-                      set({ share_token: newShareToken(), share_expires_at: shareExpiryFromNow() });
+                      set({ share_token: newShareToken(), share_expires_at: null });
                   }}
                   title="Thu hồi link cũ"
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted"
@@ -320,25 +407,6 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
               )}
             </div>
           </div>
-          {!isNew && (
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-              <span className={isShareExpired(p) ? 'font-semibold text-destructive' : 'text-muted-foreground'}>
-                {p.share_expires_at
-                  ? `${isShareExpired(p) ? 'Đã hết hạn' : 'Hiệu lực đến'} ${new Date(p.share_expires_at).toLocaleDateString('vi-VN')}`
-                  : 'Link không giới hạn thời gian'}
-              </span>
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => set({ share_expires_at: shareExpiryFromNow() })}
-                  className="px-2.5 py-1 rounded-lg border font-semibold hover:bg-muted"
-                  title="Link dùng được thêm 30 ngày kể từ hôm nay (bấm Lưu để áp dụng)"
-                >
-                  Gia hạn 30 ngày
-                </button>
-              )}
-            </div>
-          )}
           {p.share_token.length > SHARE_TOKEN_LENGTH && (
             <p className="text-[10px] text-muted-foreground">Bấm &ldquo;Link mới&rdquo; rồi Lưu để có link ngắn hơn (mã 6 ký tự). Link cũ sẽ ngừng hoạt động.</p>
           )}
@@ -368,8 +436,13 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
 
       {/* Hành động */}
       {canEdit && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 ${
+            dirty ? 'sticky bottom-3 z-20 p-3 rounded-2xl border bg-card/95 backdrop-blur shadow-lg' : ''
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {dirty && <span className="text-[11px] font-semibold text-amber-700">Có thay đổi chưa lưu · đã tự lưu nháp trên máy này</span>}
             {!isNew && (
               <button
                 type="button"

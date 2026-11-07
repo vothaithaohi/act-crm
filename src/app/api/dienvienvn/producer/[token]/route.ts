@@ -5,7 +5,6 @@ import { CastingProject, ProjectApplication, producerTokenFromParam } from '@/li
 import { TalentProfile } from '@/lib/types/crm';
 import { clientIp, isBlocked, recordHit } from '@/lib/dienvienvn/rate-limit';
 import { getPartner, logPartnerView } from '@/lib/dienvienvn/partner-server';
-import { isShareExpired } from '@/lib/projects/types';
 
 // Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 6 ký tự; link cũ 12 / 48 ký tự vẫn dùng được) mới xem được.
 // IP thử link sai quá nhiều lần bị chặn tạm thời, để không ai dò được mã.
@@ -35,10 +34,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   if (!project) {
     recordHit(failKey);
     return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
-  }
-  // Link shortlist hết hạn sau 30 ngày (ACT gia hạn hoặc tạo link mới trong CRM)
-  if (isShareExpired(project as CastingProject)) {
-    return NextResponse.json({ error: 'Link đã hết hạn. Vui lòng liên hệ DienVienVN để nhận link mới.' }, { status: 410 });
   }
 
   const { data: applications, error: appErr } = await db

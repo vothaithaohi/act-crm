@@ -73,8 +73,9 @@ export function useProjects() {
         description: (p.error || a.error)?.message || 'Hãy chạy migration 20261013_casting_projects_and_security.sql.'
       });
     }
-    setProjects((p.data || []) as CastingProject[]);
-    setApplications((a.data || []) as ProjectApplication[]);
+    // Lỗi mạng tạm thời: giữ dữ liệu đang có, không làm trang dự án (và nội dung đang nhập) biến mất
+    if (!p.error) setProjects((p.data || []) as CastingProject[]);
+    if (!a.error) setApplications((a.data || []) as ProjectApplication[]);
     setLoading(false);
   }, []);
 
@@ -149,6 +150,30 @@ export function useProjects() {
     await refresh();
   };
 
+  /** Đổi trạng thái nhiều ứng viên một lần. */
+  const updateApplicationsStatus = async (ids: string[], status: ApplicationStatus): Promise<boolean> => {
+    if (ids.length === 0) return true;
+    const supabase = createClient();
+    if (supabase) {
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error } = await supabase.from('project_applications').update({ status }).in('id', ids.slice(i, i + 200));
+        if (error) {
+          toast.error('Không cập nhật được trạng thái', { description: error.message });
+          await refresh();
+          return false;
+        }
+      }
+    } else {
+      const set = new Set(ids);
+      writeLocal(
+        LOCAL_APPLICATIONS_KEY,
+        readLocal<ProjectApplication>(LOCAL_APPLICATIONS_KEY).map(a => (set.has(a.id) ? { ...a, status, updated_at: new Date().toISOString() } : a))
+      );
+    }
+    await refresh();
+    return true;
+  };
+
   const addApplication = async (a: Pick<ProjectApplication, 'project_id' | 'role_id' | 'talent_id'>): Promise<boolean> => {
     const now = new Date().toISOString();
     const record: ProjectApplication = { ...a, id: crypto.randomUUID(), status: 'shortlisted', created_at: now, updated_at: now };
@@ -185,5 +210,5 @@ export function useProjects() {
     await refresh();
   };
 
-  return { projects, applications, loading, live, refresh, saveProject, deleteProject, updateApplicationStatus, addApplication, removeApplication };
+  return { projects, applications, loading, live, refresh, saveProject, deleteProject, updateApplicationStatus, updateApplicationsStatus, addApplication, removeApplication };
 }

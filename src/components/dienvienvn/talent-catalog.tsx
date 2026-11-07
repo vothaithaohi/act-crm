@@ -8,10 +8,9 @@ import type { ProducerApplicant, ProducerTalent } from '@/lib/projects/producer'
 import { experienceGroups, foldVi, skillGroups } from '@/lib/dienvienvn/talent-sections';
 import { useDvvnHref } from './base-path';
 import { ApplicantCard, ApplicantRow } from './producer-board';
-import { formatVnDate } from './projects-section';
 import { GlobalNav } from './site-chrome';
 
-type CatalogData = { limited: boolean; label: string | null; expires_at: string; talents: ProducerTalent[] };
+type CatalogData = { limited: boolean; label: string | null; talents: ProducerTalent[] };
 
 const PAGE = 48;
 
@@ -144,7 +143,7 @@ export function TalentCatalog({ token }: { token: string }) {
           <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Kho diễn viên DienVienVN</p>
           <h1 className="dv-display dv-headline mt-1">{data.label || 'Diễn viên đã được duyệt.'}</h1>
           <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">
-            {data.talents.length} hồ sơ · link dùng đến {formatVnDate(data.expires_at.slice(0, 10))}
+            {data.talents.length} hồ sơ đã được DienVienVN duyệt
           </p>
 
           <div className="sticky top-11 z-20 -mx-4 mt-6 bg-[var(--dv-bg-alt)]/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">

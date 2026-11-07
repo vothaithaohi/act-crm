@@ -145,9 +145,7 @@ export function nextProjectCode(existing: string[]): string {
 export const SHARE_TOKEN_LENGTH = 6;
 
 /** Link shortlist hiệu lực 30 ngày kể từ khi tạo / gia hạn. */
-export const SHARE_LINK_DAYS = 30;
-export const shareExpiryFromNow = () => new Date(Date.now() + SHARE_LINK_DAYS * 86400000).toISOString();
-export const isShareExpired = (p: { share_expires_at?: string | null }) => !!p.share_expires_at && Date.parse(p.share_expires_at) < Date.now();
+// Link shortlist không có hạn: chỉ ngừng khi ACT bấm "Link mới" (thu hồi link cũ).
 
 export function newShareToken(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';

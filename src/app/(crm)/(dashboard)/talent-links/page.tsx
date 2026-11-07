@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Copy, Library, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Library, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
@@ -12,14 +12,12 @@ interface CatalogLink {
   id: string;
   token: string;
   label: string | null;
-  expires_at: string;
   revoked: boolean;
   created_by: string | null;
   created_at: string;
 }
 
 const MIGRATION_HINT = 'Hãy chạy migration 20261109_talent_catalog_links.sql trong Supabase.';
-const DAYS = 30;
 
 /** Mã 16 ký tự chữ thường + số (~82 bit ngẫu nhiên). */
 function newToken(): string {
@@ -31,8 +29,6 @@ function newToken(): string {
   return out.length === 16 ? out : newToken();
 }
 
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString();
-const isExpired = (l: CatalogLink) => Date.parse(l.expires_at) < Date.now();
 
 /** Link kho diễn viên gửi NSX: toàn bộ hồ sơ đã duyệt, hiện theo cấp công khai; đối tác đã duyệt đăng nhập xem đầy đủ. */
 export default function TalentLinksPage() {
@@ -71,7 +67,7 @@ export default function TalentLinksPage() {
     setBusy(true);
     const { error } = await db
       .from('talent_catalog_links')
-      .insert({ token: newToken(), label: label.trim() || null, expires_at: inDays(DAYS), created_by: currentUser?.email || null });
+      .insert({ token: newToken(), label: label.trim() || null, created_by: currentUser?.email || null });
     setBusy(false);
     if (error) return toast.error('Không tạo được link', { description: `${error.message}. ${MIGRATION_HINT}` });
     setLabel('');
@@ -107,7 +103,7 @@ export default function TalentLinksPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Link gửi đạo diễn / nhà sản xuất để xem <b className="text-foreground">toàn bộ hồ sơ đã duyệt</b>, có bộ lọc giới tính, tuổi, chiều cao. Người mở link thấy ảnh,
-            tên, khoảng tuổi, chiều cao, cân nặng, kinh nghiệm, kỹ năng; đối tác đã duyệt đăng nhập thấy thêm SĐT, email, số đo. Link không công khai, hết hạn sau {DAYS} ngày.
+            tên, khoảng tuổi, chiều cao, cân nặng, kinh nghiệm, kỹ năng; đối tác đã duyệt đăng nhập thấy thêm SĐT, email, số đo. Link không có hạn dùng; bấm "Thu hồi" khi muốn ngừng.
           </p>
         </div>
 
@@ -134,17 +130,17 @@ export default function TalentLinksPage() {
         ) : (
           <div className="rounded-2xl border bg-card divide-y">
             {links.map(l => {
-              const dead = l.revoked || isExpired(l);
+              const dead = l.revoked;
               return (
                 <div key={l.id} className="p-4 flex flex-col lg:flex-row lg:items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                          l.revoked ? 'bg-muted text-muted-foreground' : isExpired(l) ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          l.revoked ? 'bg-muted text-muted-foreground' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         }`}
                       >
-                        {l.revoked ? 'Đã thu hồi' : isExpired(l) ? 'Hết hạn' : `Dùng đến ${new Date(l.expires_at).toLocaleDateString('vi-VN')}`}
+                        {l.revoked ? 'Đã thu hồi' : 'Đang dùng'}
                       </span>
                       <span className="font-semibold text-sm">{l.label || 'Link kho diễn viên'}</span>
                     </div>
@@ -159,9 +155,6 @@ export default function TalentLinksPage() {
                       <>
                         <button onClick={() => copy(l)} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
                           <Copy className="w-3.5 h-3.5" /> Sao chép
-                        </button>
-                        <button onClick={() => update(l, { expires_at: inDays(DAYS) }, `Đã gia hạn ${DAYS} ngày.`)} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
-                          <RefreshCw className="w-3.5 h-3.5" /> Gia hạn {DAYS} ngày
                         </button>
                         <button onClick={() => update(l, { revoked: true }, 'Đã thu hồi link.')} className="h-8 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
                           Thu hồi

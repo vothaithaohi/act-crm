@@ -32,9 +32,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     recordHit(failKey);
     return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
   }
-  if (Date.parse(link.expires_at) < Date.now()) {
-    return NextResponse.json({ error: 'Link đã hết hạn. Vui lòng liên hệ DienVienVN để nhận link mới.' }, { status: 410 });
-  }
 
   let full = false;
   if (req.headers.get('authorization')) {
@@ -59,7 +56,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       mode: 'live',
       limited: !full,
       label: link.label || null,
-      expires_at: link.expires_at,
       talents: talents.filter(t => t.headshot_url || t.fullbody_url).map(t => toProducerTalent(t, false, full ? 'partner' : 'public'))
     },
     { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } }
