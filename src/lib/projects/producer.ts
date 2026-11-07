@@ -3,8 +3,8 @@
 //  - 'public' (chưa đăng nhập): ảnh, tên ẩn một phần ("Nguyễn T. A."), self-tape, chiều cao, cân nặng, kinh nghiệm,
 //    kỹ năng & ngôn ngữ, định hướng & sẵn sàng. KHÔNG có năm sinh / tuổi, số đo 3 vòng, liên hệ — bấm "Liên hệ" để
 //    đăng ký tài khoản đối tác.
-//  - 'partner' (đối tác đã đăng nhập): như trên + tuổi, số đo 3 vòng, size giày.
-//    Tên đầy đủ, SĐT, email, mạng xã hội, ngày sinh, nơi ở vẫn KHÔNG có — chỉ cấp khi đối tác liên hệ DienVienVN.
+//  - 'partner' (đối tác đã được DienVienVN duyệt, đang đăng nhập): như trên + tên đầy đủ, SĐT, email, tuổi,
+//    số đo 3 vòng, size giày. Vẫn không có ngày sinh đầy đủ, nơi ở, mạng xã hội, lời nhắn.
 //  - 'full': chỉ dùng cho chế độ demo trên máy (không có máy chủ).
 import { TalentProfile, getReviewStatus } from '@/lib/types/crm';
 import { CastingProject, ProjectApplication } from './types';
@@ -82,7 +82,7 @@ function restrictTalent(t: ProducerTalent, level: 'public' | 'partner'): Produce
   const pub = level === 'public';
   const base = {
     ...t,
-    full_name: maskName(t.full_name),
+    full_name: pub ? maskName(t.full_name) : t.full_name,
     age: pub ? null : ageOf(t.dob),
     dob: null,
     city: null,
@@ -92,8 +92,8 @@ function restrictTalent(t: ProducerTalent, level: 'public' | 'partner'): Produce
     hip_cm: pub ? null : t.hip_cm,
     social_links: {},
     tattoos_piercings: [],
-    phone: null,
-    email: null
+    phone: pub ? null : t.phone,
+    email: pub ? null : t.email
   };
   return base as unknown as ProducerTalent;
 }
@@ -126,8 +126,9 @@ export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level:
     fullbody_url: t.fullbody_url,
     compcard_url: t.compcard_url,
     academic_profile: t.academic_profile,
-    phone: hideContacts ? null : t.phone,
-    email: hideContacts ? null : t.email || null
+    // Đối tác đã duyệt luôn thấy liên hệ; "Ẩn liên hệ" của dự án chỉ còn áp dụng cho bản demo
+    phone: level === 'full' && hideContacts ? null : t.phone,
+    email: level === 'full' && hideContacts ? null : t.email || null
   };
   return level === 'full' ? { ...full, age: ageOf(t.dob) } : restrictTalent(full, level);
 }

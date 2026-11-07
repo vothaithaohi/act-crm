@@ -33,7 +33,7 @@ export interface PartnerAccount {
   last_seen_at: string | null;
 }
 
-/** Hồ sơ cho đối tác: như link shortlist khi đăng nhập (tên ẩn một phần, không SĐT / email / username) + ca hát. */
+/** Hồ sơ cho đối tác đã duyệt: như link shortlist khi đăng nhập (tên đầy đủ, SĐT, email; không username / ngày sinh) + ca hát. */
 export type PartnerTalent = ProducerTalent & {
   username: string | null;
   singing: TalentProfile['singing'] | null;

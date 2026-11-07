@@ -103,8 +103,8 @@ export function approvedTalents(db: SupabaseClient) {
 
 export function toPartnerTalent(t: TalentProfile): PartnerTalent {
   return {
-    // Đối tác không thấy tên đầy đủ / SĐT / email / username (username thường là tên thật)
-    ...toProducerTalent(t, true, 'partner'),
+    // Đối tác đã duyệt: tên đầy đủ, SĐT, email (không có username / ngày sinh / nơi ở)
+    ...toProducerTalent(t, false, 'partner'),
     username: null,
     singing: t.singing || null,
     preferred_project_types: t.preferred_project_types || [],
@@ -159,7 +159,7 @@ async function partnerProjectRows(db: SupabaseClient, partner: PartnerAccount): 
 }
 
 /**
- * Chi tiết 1 dự án cho đối tác: như link shortlist khi đối tác đăng nhập (ảnh, tên ẩn một phần, chỉ số; không SĐT).
+ * Chi tiết 1 dự án cho đối tác: như link shortlist khi đối tác đã duyệt đăng nhập (tên đầy đủ, SĐT, chỉ số).
  * Tìm theo UUID hoặc đường dẫn tên phim (mot-phim-linh-dinh), chỉ trong các dự án được gắn cho đối tác.
  */
 export async function partnerProjectView(db: SupabaseClient, partner: PartnerAccount, param: string) {

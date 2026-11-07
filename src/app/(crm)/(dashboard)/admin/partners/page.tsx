@@ -98,7 +98,7 @@ export default function AdminPartnersPage() {
               <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground underline underline-offset-2 whitespace-nowrap">
                 dienvienvn.com/doi-tac
               </a>{' '}
-              để xem shortlist ứng viên (ảnh, tên ẩn một phần, self-tape, chỉ số — không có SĐT). Đối tác cũng có thể tự đăng ký tại
+              để xem đầy đủ shortlist ứng viên (tên đầy đủ, SĐT, email, số đo). Đối tác cũng có thể tự đăng ký tại
               dienvienvn.com/doi-tac/dang-ky; đăng ký mới hiện ở đầu danh sách với nhãn &ldquo;Chờ duyệt&rdquo;.
             </p>
             {!!partners?.some(x => x.status === 'pending') && (

@@ -287,12 +287,10 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
             onChange={e => set({ selftape_brief: e.target.value })}
           />
         </div>
-        <Toggle
-          checked={p.hide_contacts}
-          onChange={v => canEdit && set({ hide_contacts: v })}
-          label="Ẩn SĐT / Email trên link NSX"
-          desc="Link shortlist và cổng đối tác không bao giờ hiện tên đầy đủ, SĐT, email của diễn viên — đối tác phải liên hệ DienVienVN để xin."
-        />
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Link shortlist gửi cho ai cũng được: người chưa đăng nhập thấy ảnh, tên ẩn một phần, self-tape, chiều cao, cân nặng (không năm sinh, số
+          đo, liên hệ); đối tác đã được duyệt đăng nhập thấy tên đầy đủ, SĐT, email.
+        </p>
 
         <div className="p-3.5 rounded-xl border bg-muted/30 space-y-2">
           <div className="flex items-center justify-between gap-2">

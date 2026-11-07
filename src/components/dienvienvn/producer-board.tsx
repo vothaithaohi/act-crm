@@ -85,7 +85,7 @@ export function ProducerBoard({ token }: { token: string }) {
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
                   <span className="font-semibold text-[var(--dv-text)]">Năm sinh, số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối tác
-                  DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác.
+                  DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác — sau khi được duyệt, bạn xem được tên đầy đủ và số điện thoại.
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
@@ -205,11 +205,6 @@ export function ProducerApplicants({
             .filter(Boolean)
             .join(' · ')}
         </p>
-        {!view.limited && (
-          <p className="mt-3 text-[14px] leading-[1.45] text-[var(--dv-text-secondary)] print:hidden">
-            Tên đầy đủ và liên hệ của diễn viên chỉ được DienVienVN cung cấp khi bạn liên hệ trực tiếp — gửi kèm mã hồ sơ (VD: DV-1A2B3C) của ứng viên bạn quan tâm.
-          </p>
-        )}
       </header>
 
       {/* Bộ lọc */}
@@ -512,7 +507,7 @@ function ApplicantCard({
         <div className="pt-4">
           <div className="flex flex-wrap items-center gap-2">
             {d.application.selftape_url && <SelftapeButton url={d.application.selftape_url} />}
-            <ContactButton code={profileCode(t.id)} href={contactHref} />
+            {(contactHref || !t.phone) && <ContactButton code={profileCode(t.id)} href={contactHref} />}
             {hasDetails && (
               <button
                 type="button"
@@ -577,7 +572,7 @@ function ApplicantRow({
       </div>
       <div className="col-span-2 flex items-center gap-2 md:col-span-1 md:justify-end">
         {d.application.selftape_url && <SelftapeButton url={d.application.selftape_url} compact />}
-        <ContactButton code={profileCode(t.id)} href={contactHref} compact />
+        {(contactHref || !t.phone) && <ContactButton code={profileCode(t.id)} href={contactHref} compact />}
         {t.phone && (
           <a href={`tel:${t.phone}`} className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d2d2d7] px-3 text-[13px] font-semibold">
             <Phone className="h-3.5 w-3.5" /> {formatPhone(t.phone)}
@@ -611,8 +606,8 @@ function WillingBlock({ willingness, cities }: { willingness: string[]; cities: 
 }
 
 /**
- * Nút "Liên hệ" trên thẻ diễn viên. Chưa đăng nhập: dẫn tới đăng ký tài khoản đối tác.
- * Đối tác đã đăng nhập: hướng dẫn gửi mã hồ sơ cho DienVienVN (tên đầy đủ, SĐT do DienVienVN cung cấp).
+ * Nút "Liên hệ" trên thẻ diễn viên. Chưa đăng nhập: dẫn tới đăng ký tài khoản đối tác (xem đầy đủ sau khi được duyệt).
+ * Đối tác đã duyệt: thẻ hiện thẳng SĐT; nút này chỉ hiện khi hồ sơ không có SĐT → liên hệ qua DienVienVN.
  */
 function ContactButton({ code, href, compact = false }: { code: string; href?: string; compact?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -633,7 +628,7 @@ function ContactButton({ code, href, compact = false }: { code: string; href?: s
       </button>
       {open && (
         <span role="status" className="absolute bottom-full left-0 z-10 mb-2 w-[240px] rounded-[12px] bg-[#1d1d1f] p-3 text-[13px] leading-[1.4] text-white shadow-lg">
-          Gửi mã hồ sơ <span className="font-semibold">{code}</span> cho đội ngũ DienVienVN để nhận tên đầy đủ và liên hệ của diễn viên.
+          Hồ sơ chưa có số điện thoại. Gửi mã hồ sơ <span className="font-semibold">{code}</span> cho đội ngũ DienVienVN để được kết nối với diễn viên.
         </span>
       )}
     </span>

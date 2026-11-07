@@ -458,13 +458,15 @@ export function PartnerTalentProfile({ username }: { username: string }) {
           <h1 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">{t.full_name}</h1>
           <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">{summaryLine(t)}</p>
 
+          {!t.phone && !t.email && (
           <section className="dv-card mt-6 p-6 print:hidden">
             <h2 className="text-[19px] font-semibold">Muốn liên hệ diễn viên này?</h2>
             <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Tên đầy đủ và thông tin liên hệ chỉ được DienVienVN cung cấp khi bạn liên hệ trực tiếp. Vui lòng gửi mã hồ sơ{' '}
-              <span className="font-semibold text-[var(--dv-text)]">{profileCode(t.id)}</span> cho đội ngũ DienVienVN.
+              Hồ sơ chưa có thông tin liên hệ. Vui lòng gửi mã hồ sơ{' '}
+              <span className="font-semibold text-[var(--dv-text)]">{profileCode(t.id)}</span> cho đội ngũ DienVienVN để được kết nối.
             </p>
           </section>
+          )}
 
           {(t.phone || t.email || socials.length > 0) && (
             <section className="dv-card mt-6 p-6">
