@@ -1,8 +1,8 @@
 // Dữ liệu cho link shortlist gửi đối tác (link NSX) và cổng đối tác: chỉ hồ sơ ĐÃ DUYỆT, chỉ ứng viên ACT đã chọn
 // (Shortlist / Đã gửi NSX). Mọi phần bị ẩn đều được loại bỏ ngay trên máy chủ.
-//  - 'public' (chưa đăng nhập): ảnh, tên ẩn một phần ("Nguyễn T. A."), self-tape, chiều cao, cân nặng, kinh nghiệm,
-//    kỹ năng & ngôn ngữ, định hướng & sẵn sàng. KHÔNG có năm sinh / tuổi, số đo 3 vòng, liên hệ — bấm "Liên hệ" để
-//    đăng ký tài khoản đối tác.
+//  - 'public' (chưa đăng nhập): ảnh, tên đầy đủ, khoảng tuổi (VD 25–29), self-tape, chiều cao, cân nặng, nhãn ACT,
+//    kinh nghiệm, kỹ năng & ngôn ngữ, định hướng & sẵn sàng. KHÔNG có năm sinh / tuổi thật, số đo 3 vòng, liên hệ —
+//    bấm "Liên hệ" để đăng ký tài khoản đối tác.
 //  - 'partner' (đối tác đã được DienVienVN duyệt, đang đăng nhập): như trên + tên đầy đủ, SĐT, email, tuổi,
 //    số đo 3 vòng, size giày. Vẫn không có ngày sinh đầy đủ, nơi ở, mạng xã hội, lời nhắn.
 //  - 'full': chỉ dùng cho chế độ demo trên máy (không có máy chủ).
@@ -37,7 +37,23 @@ export type ProducerTalent = Pick<
   | 'fullbody_url'
   | 'compcard_url'
   | 'academic_profile'
-> & { phone: string | null; email: string | null; age?: number | null };
+> & {
+  phone: string | null;
+  email: string | null;
+  age?: number | null;
+  /** Bản công khai: khoảng tuổi (VD "25–29") thay cho tuổi thật */
+  age_range?: string | null;
+  /** Học viên ACT Academy */
+  act?: boolean;
+};
+
+/** Khoảng tuổi 5 năm, không lộ năm sinh: 26 → "25–29", dưới 18 → "Dưới 18". */
+export function ageRange(age: number | null): string | null {
+  if (age === null) return null;
+  if (age < 18) return 'Dưới 18';
+  const lo = age - (age % 5);
+  return `${lo}–${lo + 4}`;
+}
 
 export type ProducerLevel = 'public' | 'partner' | 'full';
 
@@ -46,10 +62,14 @@ export const SHORTLIST_STATUSES: ProjectApplication['status'][] = ['shortlisted'
 
 /** "Nguyễn Thị Anh" → "Nguyễn T. A."; tên một chữ "Linh" → "L." */
 export function maskName(full: string): string {
-  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  // Bỏ tên phụ / nghệ danh sau "/" hoặc trong ngoặc: "Ngô Thị Ngân / Vy" → "Ngô T. N."
+  const main = (full || '').split(/[/(|]/)[0];
+  const parts = main.replace(/[^\p{L}\s'-]/gu, ' ').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return 'Ứng viên';
   if (parts.length === 1) return `${Array.from(parts[0])[0].toUpperCase()}.`;
-  return [parts[0], ...parts.slice(1).map(p => `${Array.from(p)[0].toUpperCase()}.`)].join(' ');
+  // Họ viết hoa toàn bộ ("PHAM") → "Pham" cho đồng đều
+  const family = parts[0] === parts[0].toUpperCase() ? parts[0].charAt(0) + parts[0].slice(1).toLowerCase() : parts[0];
+  return [family, ...parts.slice(1).map(p => `${Array.from(p)[0].toUpperCase()}.`)].join(' ');
 }
 
 function ageOf(dob?: string | null): number | null {
@@ -77,13 +97,14 @@ export interface ProducerView {
   limited?: boolean;
 }
 
-/** Bỏ mọi thông tin nhận diện / liên hệ; 'public' bỏ thêm tuổi và số đo 3 vòng. */
+/** 'public': tên đầy đủ, khoảng tuổi; bỏ tuổi thật, số đo 3 vòng, liên hệ. 'partner': thêm tuổi thật, số đo, liên hệ. */
 function restrictTalent(t: ProducerTalent, level: 'public' | 'partner'): ProducerTalent {
   const pub = level === 'public';
+  const age = ageOf(t.dob);
   const base = {
     ...t,
-    full_name: pub ? maskName(t.full_name) : t.full_name,
-    age: pub ? null : ageOf(t.dob),
+    age: pub ? null : age,
+    age_range: pub ? ageRange(age) : null,
     dob: null,
     city: null,
     shoe_size: pub ? null : t.shoe_size,
@@ -130,7 +151,8 @@ export function toProducerTalent(t: TalentProfile, hideContacts: boolean, level:
     phone: level === 'full' && hideContacts ? null : t.phone,
     email: level === 'full' && hideContacts ? null : t.email || null
   };
-  return level === 'full' ? { ...full, age: ageOf(t.dob) } : restrictTalent(full, level);
+  const withAct = { ...full, act: !!t.academic_profile?.enrollments?.length };
+  return level === 'full' ? { ...withAct, age: ageOf(t.dob) } : restrictTalent(withAct, level);
 }
 
 export function buildProducerView(

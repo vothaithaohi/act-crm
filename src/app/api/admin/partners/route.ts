@@ -25,7 +25,12 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-  return NextResponse.json({ mode: 'live', partners: data as PartnerAccount[] }, { headers: { 'Cache-Control': 'no-store' } });
+  // Lượt xem dự án / hồ sơ của từng đối tác trong 30 ngày (bảng partner_views chưa có thì bỏ qua)
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data: views } = await g.db.from('partner_views').select('partner_id').gte('viewed_at', since).limit(10000);
+  const viewCounts: Record<string, number> = {};
+  (views || []).forEach((v: { partner_id: string }) => (viewCounts[v.partner_id] = (viewCounts[v.partner_id] || 0) + 1));
+  return NextResponse.json({ mode: 'live', partners: data as PartnerAccount[], viewCounts }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: NextRequest) {

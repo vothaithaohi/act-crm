@@ -28,6 +28,7 @@ export default function AdminPartnersPage() {
   const [problem, setProblem] = useState('');
   const [demo, setDemo] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectsFor, setProjectsFor] = useState<PartnerAccount | null>(null);
   const { projects } = useProjects();
@@ -42,6 +43,7 @@ export default function AdminPartnersPage() {
       setProblem('');
       // Đăng ký chờ duyệt lên đầu danh sách
       const list = (body.partners || []) as PartnerAccount[];
+      setViewCounts(body.viewCounts || {});
       setPartners([...list.filter(x => x.status === 'pending'), ...list.filter(x => x.status !== 'pending')]);
     } catch {
       setProblem('Mất kết nối mạng. Vui lòng tải lại trang.');
@@ -184,7 +186,10 @@ export default function AdminPartnersPage() {
                     <td className="px-4 py-3">
                       <StatusBadge p={p} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(p.last_seen_at)}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                      <div>{formatDateTime(p.last_seen_at)}</div>
+                      {!!viewCounts[p.id] && <div className="mt-0.5">{viewCounts[p.id]} lượt xem / 30 ngày</div>}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}

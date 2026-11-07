@@ -10,6 +10,8 @@ import {
   PROJECT_TYPES,
   ProjectStatus,
   newShareToken,
+  isShareExpired,
+  shareExpiryFromNow,
   nextProjectCode,
   publicProjectName,
   SHARE_TOKEN_LENGTH,
@@ -307,7 +309,8 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm('Tạo link mới? Link cũ sẽ ngừng hoạt động sau khi bạn bấm Lưu.')) set({ share_token: newShareToken() });
+                    if (confirm('Tạo link mới? Link cũ sẽ ngừng hoạt động sau khi bạn bấm Lưu.'))
+                      set({ share_token: newShareToken(), share_expires_at: shareExpiryFromNow() });
                   }}
                   title="Thu hồi link cũ"
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted"
@@ -317,6 +320,25 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
               )}
             </div>
           </div>
+          {!isNew && (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <span className={isShareExpired(p) ? 'font-semibold text-destructive' : 'text-muted-foreground'}>
+                {p.share_expires_at
+                  ? `${isShareExpired(p) ? 'Đã hết hạn' : 'Hiệu lực đến'} ${new Date(p.share_expires_at).toLocaleDateString('vi-VN')}`
+                  : 'Link không giới hạn thời gian'}
+              </span>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => set({ share_expires_at: shareExpiryFromNow() })}
+                  className="px-2.5 py-1 rounded-lg border font-semibold hover:bg-muted"
+                  title="Link dùng được thêm 30 ngày kể từ hôm nay (bấm Lưu để áp dụng)"
+                >
+                  Gia hạn 30 ngày
+                </button>
+              )}
+            </div>
+          )}
           {p.share_token.length > SHARE_TOKEN_LENGTH && (
             <p className="text-[10px] text-muted-foreground">Bấm &ldquo;Link mới&rdquo; rồi Lưu để có link ngắn hơn (mã 6 ký tự). Link cũ sẽ ngừng hoạt động.</p>
           )}

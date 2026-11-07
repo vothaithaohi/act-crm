@@ -96,6 +96,21 @@ export async function sendPartnerEmail(db: SupabaseClient, partner: PartnerAccou
   return 'invited';
 }
 
+/** Ghi nhật ký đối tác đã xem dự án / hồ sơ nào. Không bao giờ làm hỏng trang (bảng chưa có thì bỏ qua). */
+export function logPartnerView(
+  db: SupabaseClient,
+  partnerId: string,
+  entry: { project_id?: string | null; talent_id?: string | null; source: 'shortlist' | 'portal_project' | 'portal_profile' }
+) {
+  void db
+    .from('partner_views')
+    .insert({ partner_id: partnerId, project_id: entry.project_id || null, talent_id: entry.talent_id || null, source: entry.source })
+    .then(
+      () => undefined,
+      () => undefined
+    );
+}
+
 /** Hồ sơ diễn viên đã duyệt (hồ sơ cũ tạo trong CRM chưa có trạng thái được coi là đã duyệt). */
 export function approvedTalents(db: SupabaseClient) {
   return db.from('talent_profiles').select('*').or('review_status.is.null,review_status.eq.approved');

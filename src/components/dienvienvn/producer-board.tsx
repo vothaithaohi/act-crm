@@ -84,8 +84,8 @@ export function ProducerBoard({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Năm sinh, số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối tác
-                  DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác — sau khi được duyệt, bạn xem được tên đầy đủ và số điện thoại.
+                  <span className="font-semibold text-[var(--dv-text)]">Tuổi chính xác, số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối
+                  tác DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác — sau khi được duyệt, bạn xem được số điện thoại và email.
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
@@ -363,7 +363,7 @@ function ApplicantCard({
   const [photo, setPhoto] = useState(d.photos[0]?.url || '');
   const [open, setOpen] = useState(false);
   const stats: [string, string | null][] = [
-    ...(limited ? [] : ([['Tuổi', d.age !== null ? String(d.age) : null]] as [string, string | null][])),
+    [limited ? 'Độ tuổi' : 'Tuổi', limited ? t.age_range || null : d.age !== null ? String(d.age) : null],
     ['Cao (cm)', t.height_cm ? `${t.height_cm}` : null],
     ['Nặng (kg)', t.weight_kg ? `${t.weight_kg}` : null],
     ...(d.measurements ? ([['Số đo', d.measurements]] as [string, string][]) : [])
@@ -395,6 +395,11 @@ function ApplicantCard({
               </button>
             ))}
           </div>
+        )}
+        {t.act && (
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center rounded-full bg-[#1d1d1f]/85 px-2.5 py-1 text-[11px] font-semibold tracking-[0.02em] text-white backdrop-blur">
+            ACT Academy
+          </span>
         )}
         {d.application.selftape_url && (
           <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold shadow-sm">
@@ -555,10 +560,10 @@ function ApplicantRow({
       </div>
       <div className="min-w-0">
         <Name name={t.full_name} href={profileHref} className="block truncate text-[16px] font-semibold" />
-        <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
+        <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.act ? 'ACT Academy' : null, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
       </div>
       <p className="col-start-2 flex flex-wrap gap-x-2 text-[13px] md:col-start-auto md:text-[14px]">
-        {[limited ? null : d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
+        {[limited ? (t.age_range ? `${t.age_range} tuổi` : null) : d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
           .filter(Boolean)
           .map(x => (
             <span key={x as string} className="whitespace-nowrap">

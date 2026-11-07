@@ -297,7 +297,7 @@ function ApplySheet({
               label="Link self-tape"
               required={project.selftape_required}
               htmlFor="qa-tape"
-              hint="YouTube (không công khai), Google Drive…"
+              hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
             >
               <TextInput id="qa-tape" type="url" inputMode="url" placeholder="https://" value={selftape} onChange={e => setSelftape(e.target.value)} />
             </Field>

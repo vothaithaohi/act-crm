@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { getPartner, partnerProjectView, updatePartnerProject } from '@/lib/dienvienvn/partner-server';
+import { getPartner, logPartnerView, partnerProjectView, updatePartnerProject } from '@/lib/dienvienvn/partner-server';
 import { firstIssue, partnerProjectSchema } from '@/lib/dienvienvn/partner-project-input';
 
 // Ứng viên của 1 dự án được gắn cho đối tác (chỉ hồ sơ đã duyệt, không bị Loại).
@@ -14,6 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const view = /^[0-9a-z-]{1,100}$/i.test(id) ? await partnerProjectView(db, partner, id) : null;
+  if (view) logPartnerView(db, partner.id, { project_id: view.id, source: 'portal_project' });
   if (!view) return NextResponse.json({ error: 'Không tìm thấy dự án hoặc bạn chưa được gắn vào dự án này.' }, { status: 404 });
 
   return NextResponse.json({ mode: 'live', ...view }, { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });

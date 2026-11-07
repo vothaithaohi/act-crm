@@ -31,6 +31,8 @@ export interface CastingProject {
   selftape_brief?: string | null;
   status: ProjectStatus;
   share_token: string;
+  /** Hạn dùng link shortlist (null: không hết hạn — dữ liệu cũ) */
+  share_expires_at?: string | null;
   hide_contacts: boolean;
   /** Đối tác đã đăng dự án này trong cổng đối tác (null = ACT tạo trong CRM) */
   partner_id?: string | null;
@@ -141,6 +143,11 @@ export function nextProjectCode(existing: string[]): string {
  * nên không thể dò ra mã. Link cũ 12 / 48 ký tự vẫn dùng được.
  */
 export const SHARE_TOKEN_LENGTH = 6;
+
+/** Link shortlist hiệu lực 30 ngày kể từ khi tạo / gia hạn. */
+export const SHARE_LINK_DAYS = 30;
+export const shareExpiryFromNow = () => new Date(Date.now() + SHARE_LINK_DAYS * 86400000).toISOString();
+export const isShareExpired = (p: { share_expires_at?: string | null }) => !!p.share_expires_at && Date.parse(p.share_expires_at) < Date.now();
 
 export function newShareToken(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';

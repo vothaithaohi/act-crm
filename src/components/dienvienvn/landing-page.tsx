@@ -241,16 +241,30 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
             Xem tất cả <ChevronRight className="h-4 w-4" />
           </Link>
         </Reveal>
-        <ul className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {/* Điện thoại: cuộn ngang; máy tính: 6 thẻ một hàng. Ảnh cùng tỉ lệ, cùng tông, tên đặt trên ảnh */}
+        <ul className="dv-scroll-x -mx-4 mt-10 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:px-0 lg:pb-0">
           {faces.slice(0, 6).map((f, i) => (
-            <li key={f.username}>
+            <li key={f.username} className="w-[46%] shrink-0 snap-start sm:w-[31%] lg:w-auto">
               <Reveal delay={i * 50}>
-                <Link href={href(`/${f.username}`)} className="group block overflow-hidden rounded-[18px] bg-white">
-                  <div className="aspect-[3/4] overflow-hidden bg-[#e8e8ed]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={f.photo} alt={f.name} loading="lazy" className="h-full w-full object-cover object-[50%_20%] transition-transform duration-500 group-hover:scale-[1.03]" />
-                  </div>
-                  <p className="truncate px-3 py-2.5 text-[15px] font-semibold">{f.name}</p>
+                <Link
+                  href={href(`/${f.username}`)}
+                  className="group relative block aspect-[4/5] overflow-hidden rounded-[20px] bg-[#1d1d1f] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={f.photo}
+                    alt={f.name}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover object-[50%_18%] [filter:saturate(0.9)_contrast(1.03)] transition duration-500 group-hover:scale-[1.04] group-hover:[filter:none]"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3.5 pb-3.5 pt-14">
+                    {f.act && (
+                      <span className="mb-1.5 inline-flex rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1d1d1f]">
+                        ACT Academy
+                      </span>
+                    )}
+                    <span className="line-clamp-2 block text-[15px] font-semibold leading-[1.25] text-white">{f.name}</span>
+                  </span>
                 </Link>
               </Reveal>
             </li>

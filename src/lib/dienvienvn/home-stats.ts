@@ -9,10 +9,20 @@ export interface HomeStats {
   projects: number;
   talents: number;
   companies: string[];
-  faces: { username: string; name: string; photo: string }[];
+  /** act: học viên ACT Academy */
+  faces: { username: string; name: string; photo: string; act: boolean }[];
 }
 
 const isActStudent = (t: { trainings: string[] }) => t.trainings.some(x => /ACT Academy/i.test(x));
+
+/** "NGUYỄN văn AN" → "Nguyễn Văn An": tên trên trang chủ viết hoa đồng đều. */
+function displayName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(w => (w ? w[0].toLocaleUpperCase('vi') + w.slice(1).toLocaleLowerCase('vi') : w))
+    .join(' ');
+}
 
 export const EMPTY_HOME_STATS: HomeStats = { roles: 0, projects: 0, talents: 0, companies: [], faces: [] };
 
@@ -42,7 +52,7 @@ export async function getHomeStats(): Promise<HomeStats> {
         .filter(t => t.photos[0]?.url)
         .sort((a, b) => Number(isActStudent(b)) - Number(isActStudent(a)))
         .slice(0, 12)
-        .map(t => ({ username: t.username, name: t.name, photo: t.photos[0].url }))
+        .map(t => ({ username: t.username, name: displayName(t.name), photo: t.photos[0].url, act: isActStudent(t) }))
     };
   } catch (e) {
     console.error('[dienvienvn] Không tải được số liệu trang chủ:', e);

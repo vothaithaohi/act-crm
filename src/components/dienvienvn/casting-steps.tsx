@@ -580,7 +580,7 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
             title={`Self-tape · ${application.roleName}`}
             desc={
               application.selftapeBrief ||
-              `Video thử vai cho ${application.projectName}. Tải lên YouTube (không công khai) hoặc Google Drive rồi dán link.`
+              `Video thử vai cho ${application.projectName}. Tải lên YouTube (không công khai) hoặc Google Drive rồi dán link. Tên kênh / tài khoản không nên chứa SĐT, email.`
             }
           />
           <Field
