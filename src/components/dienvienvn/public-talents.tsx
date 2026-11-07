@@ -152,6 +152,9 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
             <div>
               <h1 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">{talent.name}</h1>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px] text-[var(--dv-text-secondary)]">
+                {talent.trainings.some(t => /ACT Academy/i.test(t)) && (
+                  <span className="rounded-full bg-[#1d1d1f] px-2.5 py-1 text-[12px] font-semibold text-white">ACT Academy</span>
+                )}
                 <span>Diễn viên · DienVienVN</span>
                 <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-[#d2d2d7] bg-white px-3 py-1 text-[13px] text-[var(--dv-text)] hover:border-[#1d1d1f]">
                   <Link2 className="h-3.5 w-3.5" /> {copied ? 'Đã sao chép link' : `dienvienvn.com/${talent.username}`}
@@ -211,12 +214,23 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
                 <p className="mt-8 text-[15px] text-[var(--dv-text-secondary)]">Diễn viên đang cập nhật thêm thông tin hồ sơ.</p>
               )}
 
-              <p className="mt-6 text-[14px] text-[var(--dv-text-secondary)]">
-                Đối tác của DienVienVN?{' '}
-                <Link href={href(`/doi-tac/${talent.username}`)} className="dv-link font-semibold">
-                  Xem hồ sơ đầy đủ <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </p>
+              {/* Liên hệ / hồ sơ đầy đủ (số đo, liên hệ) chỉ dành cho đối tác đã được DienVienVN duyệt */}
+              <section className="dv-card mt-4 flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[17px] font-semibold">Muốn mời diễn viên này casting?</p>
+                  <p className="mt-0.5 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
+                    Tuổi, số đo và thông tin liên hệ dành cho đạo diễn, nhà sản xuất là đối tác DienVienVN.
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Link href={href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/doi-tac/${talent.username}`))}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+                    Liên hệ
+                  </Link>
+                  <Link href={href(`/doi-tac/${talent.username}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
+                    Đối tác đăng nhập
+                  </Link>
+                </div>
+              </section>
             </div>
           </div>
         </div>
