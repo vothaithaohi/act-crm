@@ -12,6 +12,8 @@ import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav } from './site-chrome';
+import { SelftapeLibrary } from './selftape-library';
+import type { SelfTape } from '@/lib/dienvienvn/selftapes';
 
 const MIN_PASSWORD = 8;
 
@@ -435,6 +437,7 @@ interface AccountData {
     review_status: 'pending' | 'approved' | 'rejected';
     username: string | null;
     public_profile: boolean;
+    selftapes?: SelfTape[];
   };
   applications: { id: string; project_id: string; project_name: string; role_name: string; created_at?: string }[];
 }
@@ -559,6 +562,8 @@ export function ActorAccount() {
         onSaved={username => setData(d => (d ? { ...d, profile: { ...d.profile, username } } : d))}
         onPublicChange={v => setData(d => (d ? { ...d, profile: { ...d.profile, public_profile: v } } : d))}
       />
+
+      <SelftapeLibrary initial={profile.selftapes || []} onChange={list => setData(d => (d ? { ...d, profile: { ...d.profile, selftapes: list } } : d))} />
 
       <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">Dự án đang casting</h2>
       {projects === null ? (

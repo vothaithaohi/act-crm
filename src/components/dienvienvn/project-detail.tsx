@@ -12,7 +12,8 @@ import {
   roleSummary
 } from '@/lib/projects/types';
 import { applyToRole, fetchPublicProject } from '@/lib/projects/public-client';
-import { useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import type { SelfTape } from '@/lib/dienvienvn/selftapes';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
@@ -95,7 +96,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                 Dự án này không còn nhận hồ sơ. Xem các dự án đang casting khác và ứng tuyển vai phù hợp với bạn.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Link href={`${href('/')}#du-an`} className="dv-btn dv-btn-light">
+                <Link href={href('/du-an')} className="dv-btn dv-btn-light">
                   Xem các dự án casting khác
                 </Link>
                 {session.status === 'signed-in' ? (
@@ -211,6 +212,21 @@ function ApplySheet({
 }) {
   const href = useDvvnHref();
   const [selftape, setSelftape] = useState('');
+  // Self-tape có sẵn trong hồ sơ: diễn viên tick các video phù hợp với dự án
+  const [library, setLibrary] = useState<SelfTape[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    actorFetch('/api/dienvienvn/me')
+      .then(r => r.json())
+      .then(b => !cancelled && Array.isArray(b?.profile?.selftapes) && setLibrary(b.profile.selftapes))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn]);
+  const togglePick = (url: string) => setPicked(p => (p.includes(url) ? p.filter(x => x !== url) : [...p, url]));
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -233,10 +249,10 @@ function ApplySheet({
   const submit = async () => {
     setError('');
     setAuthRequired(false);
-    if (project.selftape_required && !selftape.trim()) return setError('Dự án này bắt buộc gửi link self-tape.');
+    if (project.selftape_required && !selftape.trim() && picked.length === 0) return setError('Dự án này bắt buộc gửi self-tape: tick self-tape có sẵn hoặc dán link mới.');
     setSubmitting(true);
     try {
-      const r = await applyToRole({ project_id: project.id, role_id: role.id, selftape_url: selftape.trim(), note: note.trim() });
+      const r = await applyToRole({ project_id: project.id, role_id: role.id, selftape_url: selftape.trim(), selftape_urls: picked, note: note.trim() });
       if (r.ok) setDoneName(r.full_name);
       else {
         setError(r.error);
@@ -320,9 +336,29 @@ function ApplySheet({
               </Link>{' '}
               trước khi ứng tuyển nếu cần.
             </p>
+            {library.length > 0 && (
+              <fieldset>
+                <legend className="mb-2 text-[14px] font-semibold">
+                  Chọn self-tape phù hợp với dự án{project.selftape_required && <span className="text-[#b00020]"> *</span>}
+                </legend>
+                <ul className="divide-y divide-[#f0f0f2] rounded-[14px] border border-[#e8e8ed]">
+                  {library.map((t, k) => (
+                    <li key={t.url}>
+                      <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
+                        <input type="checkbox" checked={picked.includes(t.url)} onChange={() => togglePick(t.url)} className="h-[18px] w-[18px] shrink-0 accent-[#1d1d1f]" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold">{t.title || `Self-tape ${k + 1}`}</span>
+                          <span className="block truncate text-[12px] text-[var(--dv-text-tertiary)]">{t.url}</span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            )}
             <Field
-              label="Link self-tape"
-              required={project.selftape_required}
+              label={library.length > 0 ? 'Hoặc dán link self-tape mới' : 'Link self-tape'}
+              required={project.selftape_required && library.length === 0}
               htmlFor="qa-tape"
               hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
             >

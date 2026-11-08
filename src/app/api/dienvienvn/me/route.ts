@@ -7,6 +7,7 @@ import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, ProjectApplication, toPublicProject } from '@/lib/projects/types';
 import { getReviewStatus } from '@/lib/types/crm';
 import { RESERVED_USERNAMES, USERNAME_PATTERN } from '@/lib/dienvienvn/hosts';
+import { cleanSelfTapes, selfTapesSchema } from '@/lib/dienvienvn/selftapes';
 
 const NO_PROFILE = 'Tài khoản này chưa gắn với hồ sơ diễn viên nào. Vui lòng liên hệ đội ngũ DienVienVN.';
 
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
       review_status: getReviewStatus(talent),
       username: talent.username || null,
       public_profile: !!talent.public_profile,
+      selftapes: cleanSelfTapes(talent.selftapes),
       updated_at: talent.updated_at || null
     },
     draft: talentToDraft(talent),
@@ -112,6 +114,19 @@ export async function PATCH(req: NextRequest) {
   if (!talent) return NextResponse.json({ error: NO_PROFILE }, { status: 404 });
 
   const body = await req.json().catch(() => null);
+
+  // Thư viện self-tape (tối đa 3 video nổi bật hiện trên trang công khai)
+  if (body && Array.isArray(body.selftapes)) {
+    const parsed = selfTapesSchema.safeParse(body.selftapes);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Self-tape chưa hợp lệ.' }, { status: 400 });
+    const { error } = await db.from('talent_profiles').update({ selftapes: parsed.data, updated_at: new Date().toISOString() }).eq('id', talent.id);
+    if (error) {
+      console.error('[dienvienvn] Không lưu được self-tape:', error);
+      const noColumn = /selftapes/i.test(error.message);
+      return NextResponse.json({ error: noColumn ? 'Tính năng đang được cập nhật, vui lòng thử lại sau.' : 'Không lưu được. Vui lòng thử lại.' }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, selftapes: parsed.data });
+  }
 
   // Diễn viên tự ẩn / hiện lại hồ sơ trên trang công khai (hồ sơ vẫn dùng cho casting)
   if (typeof body?.public_profile === 'boolean' && body.username === undefined) {

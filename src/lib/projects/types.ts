@@ -2,6 +2,12 @@
 
 export type ProjectStatus = 'draft' | 'open' | 'closed';
 export type ApplicationStatus = 'applied' | 'shortlisted' | 'sent' | 'rejected';
+
+/**
+ * Tính năng tạm thời: diễn viên ứng tuyển tự vào danh sách Shortlist (hiện ngay trên link NSX).
+ * Tắt: đổi thành 'applied'.
+ */
+export const NEW_APPLICATION_STATUS: ApplicationStatus = 'shortlisted';
 export type RoleGender = 'any' | 'male' | 'female';
 
 export interface ProjectRole {
@@ -46,6 +52,8 @@ export interface ProjectApplication {
   role_id: string;
   talent_id: string;
   selftape_url?: string | null;
+  /** Các self-tape diễn viên tick khi ứng tuyển (selftape_url = video đầu tiên) */
+  selftape_urls?: string[] | null;
   note?: string | null;
   status: ApplicationStatus;
   created_at?: string;

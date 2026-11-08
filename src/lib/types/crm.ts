@@ -293,6 +293,8 @@ export interface TalentProfile {
   compcard_url?: string | null;
   /** Ảnh cá nhân thêm có chú thích (tối đa 6) */
   gallery?: { url: string; caption: string }[] | null;
+  /** Thư viện self-tape (tối đa 3 video nổi bật hiện công khai) */
+  selftapes?: { url: string; title: string; highlight: boolean }[] | null;
   
   academic_profile?: AcademicProfile;
 

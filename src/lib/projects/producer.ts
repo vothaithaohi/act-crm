@@ -84,7 +84,7 @@ export function ageOf(dob?: string | null): number | null {
 }
 
 export interface ProducerApplicant {
-  application: Pick<ProjectApplication, 'id' | 'role_id' | 'selftape_url' | 'note' | 'created_at'>;
+  application: Pick<ProjectApplication, 'id' | 'role_id' | 'selftape_url' | 'selftape_urls' | 'note' | 'created_at'>;
   talent: ProducerTalent;
 }
 
@@ -175,6 +175,7 @@ export function buildProducerView(
         id: a.id,
         role_id: a.role_id,
         selftape_url: a.selftape_url,
+        selftape_urls: a.selftape_urls || null,
         // Lời nhắn của diễn viên có thể chứa SĐT / tên → chỉ bản demo mới có
         note: level === 'full' ? a.note : null,
         created_at: a.created_at

@@ -10,6 +10,7 @@ import {
   LOCAL_APPLICATIONS_KEY,
   LOCAL_PROJECTS_KEY,
   LOCAL_TALENTS_KEYS,
+  NEW_APPLICATION_STATUS,
   ProjectApplication,
   PublicProject,
   checkApplication,
@@ -60,6 +61,7 @@ export interface ApplyInput {
   project_id: string;
   role_id: string;
   selftape_url: string;
+  selftape_urls?: string[];
   note: string;
 }
 
@@ -82,7 +84,7 @@ export async function applyToRole(input: ApplyInput): Promise<ApplyResult> {
 export function saveLocalApplication(a: Pick<ProjectApplication, 'project_id' | 'role_id' | 'talent_id' | 'selftape_url' | 'note'>) {
   const now = new Date().toISOString();
   const apps = readLocal<ProjectApplication>(LOCAL_APPLICATIONS_KEY);
-  writeLocal(LOCAL_APPLICATIONS_KEY, [{ ...a, id: newId(), status: 'applied', created_at: now, updated_at: now }, ...apps]);
+  writeLocal(LOCAL_APPLICATIONS_KEY, [{ ...a, id: newId(), status: NEW_APPLICATION_STATUS, created_at: now, updated_at: now }, ...apps]);
 }
 
 /** Kiểm tra đơn ứng tuyển kèm hồ sơ mới ở chế độ demo (server không đọc được localStorage). */

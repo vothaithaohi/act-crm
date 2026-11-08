@@ -334,7 +334,22 @@ function Name({ name, href, className }: { name: string; href?: string | null; c
   );
 }
 
-function SelftapeButton({ url, compact }: { url: string; compact?: boolean }) {
+/** Các self-tape diễn viên gửi kèm đơn (tick từ thư viện + link dán thêm), bỏ trùng. */
+function tapesOf(a: ProducerApplicant['application']): string[] {
+  return Array.from(new Set([...(a.selftape_urls || []), a.selftape_url || ''].filter(Boolean)));
+}
+
+function SelftapeButtons({ urls, compact }: { urls: string[]; compact?: boolean }) {
+  return (
+    <>
+      {urls.map((u, i) => (
+        <SelftapeButton key={u} url={u} compact={compact} label={urls.length > 1 ? `Self-tape ${i + 1}` : 'Self-tape'} />
+      ))}
+    </>
+  );
+}
+
+function SelftapeButton({ url, compact, label = 'Self-tape' }: { url: string; compact?: boolean; label?: string }) {
   return (
     <a
       href={url}
@@ -342,7 +357,7 @@ function SelftapeButton({ url, compact }: { url: string; compact?: boolean }) {
       rel="noopener noreferrer"
       className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--dv-accent)] font-medium text-white hover:bg-[var(--dv-accent-hover)] ${compact ? 'h-8 px-3 text-[13px]' : 'h-9 px-4 text-[14px]'}`}
     >
-      <Video className="h-4 w-4" /> Self-tape
+      <Video className="h-4 w-4" /> {label}
     </a>
   );
 }
@@ -402,9 +417,9 @@ export function ApplicantCard({
             ACT Academy
           </span>
         )}
-        {d.application.selftape_url && (
+        {tapesOf(d.application).length > 0 && (
           <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold shadow-sm">
-            <Video className="h-3.5 w-3.5" /> Có self-tape
+            <Video className="h-3.5 w-3.5" /> {tapesOf(d.application).length > 1 ? `${tapesOf(d.application).length} self-tape` : 'Có self-tape'}
           </span>
         )}
       </div>
@@ -512,7 +527,7 @@ export function ApplicantCard({
 
         <div className="pt-4">
           <div className="flex flex-wrap items-center gap-2">
-            {d.application.selftape_url && <SelftapeButton url={d.application.selftape_url} />}
+            <SelftapeButtons urls={tapesOf(d.application)} />
             {(contactHref || !t.phone) && <ContactButton code={profileCode(t.id)} href={contactHref} />}
             {hasDetails && (
               <button
@@ -577,7 +592,7 @@ export function ApplicantRow({
         {d.skills.length > 0 && <p className="truncate text-[12px] text-[var(--dv-text-secondary)]">{d.skills.slice(0, 5).join(' · ')}</p>}
       </div>
       <div className="col-span-2 flex items-center gap-2 md:col-span-1 md:justify-end">
-        {d.application.selftape_url && <SelftapeButton url={d.application.selftape_url} compact />}
+        <SelftapeButtons urls={tapesOf(d.application)} compact />
         {(contactHref || !t.phone) && <ContactButton code={profileCode(t.id)} href={contactHref} compact />}
         {t.phone && (
           <a href={`tel:${t.phone}`} className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d2d2d7] px-3 text-[13px] font-semibold">

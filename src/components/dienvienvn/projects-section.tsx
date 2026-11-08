@@ -16,7 +16,7 @@ export function formatVnDate(iso?: string | null): string {
 }
 
 /** "Dự án đang casting" trên trang chủ — ẩn hẳn khi chưa có dự án nào mở. */
-export function ProjectsSection() {
+export function ProjectsSection({ page = false }: { page?: boolean } = {}) {
   const href = useDvvnHref();
   const [projects, setProjects] = useState<PublicProject[] | null>(null);
 
@@ -26,12 +26,22 @@ export function ProjectsSection() {
       .catch(() => setProjects([]));
   }, []);
 
-  if (!projects || projects.length === 0) return null;
+  if (!projects) return null;
+  if (projects.length === 0) {
+    if (!page) return null;
+    return (
+      <section className="dv-tile dv-tile-light px-4 py-16 md:py-24">
+        <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
+        <p className="dv-subhead mx-auto mt-3 max-w-[640px] text-[var(--dv-text-secondary)]">Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.</p>
+      </section>
+    );
+  }
+  const Title = page ? 'h1' : 'h2';
 
   return (
     <section id="du-an" className="dv-tile dv-tile-light scroll-mt-11 px-4 py-16 md:py-24">
       <Reveal>
-        <h2 className="dv-display dv-headline">Dự án đang casting.</h2>
+        <Title className="dv-display dv-headline">Dự án đang casting.</Title>
         <p className="dv-subhead mx-auto mt-3 max-w-[640px] text-[var(--dv-text-secondary)]">
           Chọn vai phù hợp và ứng tuyển ngay hôm nay.
         </p>

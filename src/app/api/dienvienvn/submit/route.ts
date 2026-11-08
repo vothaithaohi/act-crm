@@ -6,7 +6,7 @@ import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { createPasswordAccount, findTalentByEmail, isStaffEmail, sendAccountEmail, writeTalent } from '@/lib/dienvienvn/actor-server';
 import { TalentProfile } from '@/lib/types/crm';
-import { CastingProject, checkApplication } from '@/lib/projects/types';
+import { CastingProject, NEW_APPLICATION_STATUS, checkApplication } from '@/lib/projects/types';
 
 /** Đơn ứng tuyển dự án đi kèm hồ sơ (khi diễn viên vào form từ trang dự án). */
 const applicationSchema = z
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       role_id: application.role_id,
       talent_id: record.id,
       selftape_url: application.selftape_url || null,
-      status: 'applied'
+      status: NEW_APPLICATION_STATUS
     });
     if (appError) {
       // Hồ sơ đã lưu; đơn ứng tuyển lỗi thì CRM vẫn thêm tay được từ kho diễn viên.

@@ -2,6 +2,7 @@ import 'server-only';
 import { getServiceDb } from '@/lib/projects/server';
 import { TalentProfile } from '@/lib/types/crm';
 import { ageOf } from '@/lib/projects/producer';
+import { MAX_HIGHLIGHTS, cleanSelfTapes } from './selftapes';
 import { experienceGroups, skillGroups, trainingList } from './talent-sections';
 
 /**
@@ -14,22 +15,28 @@ export interface PublicTalent {
   name: string;
   /** Tuổi thật (tính trên máy chủ; ngày sinh không gửi ra trình duyệt) */
   age: number | null;
+  gender: 'male' | 'female' | 'other' | null;
+  height_cm: number | null;
   photos: { label: string; url: string }[];
   experience: { group: string; items: string[] }[];
   skills: { group: string; items: string[] }[];
   trainings: string[];
   /** Ảnh cá nhân thêm có chú thích (diễn viên tự tải lên) */
   gallery: { url: string; caption: string }[];
+  /** Tối đa 3 self-tape diễn viên chọn nổi bật */
+  selftapes: { url: string; title: string }[];
 }
 
 const PUBLIC_COLUMNS =
-  'username, full_name, dob, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
+  'username, full_name, dob, gender, height_cm, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
 
 export function toPublicTalent(t: TalentProfile): PublicTalent {
   return {
     username: t.username || '',
     name: t.full_name,
     age: ageOf(t.dob),
+    gender: (t.gender as PublicTalent['gender']) || null,
+    height_cm: t.height_cm || null,
     photos: [
       { label: 'Chân dung', url: t.headshot_url },
       { label: 'Toàn thân', url: t.fullbody_url },
@@ -38,16 +45,20 @@ export function toPublicTalent(t: TalentProfile): PublicTalent {
     experience: experienceGroups(t.acting_experience),
     skills: skillGroups(t),
     trainings: trainingList(t.academic_profile),
-    gallery: Array.isArray(t.gallery) ? t.gallery.filter(g => g?.url).map(g => ({ url: g.url, caption: g.caption || '' })) : []
+    gallery: Array.isArray(t.gallery) ? t.gallery.filter(g => g?.url).map(g => ({ url: g.url, caption: g.caption || '' })) : [],
+    selftapes: cleanSelfTapes(t.selftapes)
+      .filter(x => x.highlight)
+      .slice(0, MAX_HIGHLIGHTS)
+      .map(x => ({ url: x.url, title: x.title }))
   };
 }
 
-function baseQuery(withGallery = true) {
+function baseQuery(extra: string[] = ['gallery', 'selftapes']) {
   const { db } = getServiceDb();
   if (!db) return null;
   return db
     .from('talent_profiles')
-    .select(withGallery ? `${PUBLIC_COLUMNS}, gallery` : PUBLIC_COLUMNS)
+    .select([PUBLIC_COLUMNS, ...extra].join(', '))
     .eq('review_status', 'approved')
     .eq('public_profile', true)
     .not('username', 'is', null);
@@ -58,8 +69,11 @@ async function withGalleryFallback<T>(run: (q: NonNullable<ReturnType<typeof bas
   const q = baseQuery();
   if (!q) return { data: null, error: null };
   const first = await run(q);
-  if (first.error && /gallery/i.test(first.error.message)) return run(baseQuery(false)!);
-  return first;
+  if (!first.error || !/gallery|selftapes/i.test(first.error.message)) return first;
+  // Cột mới chưa có (chưa chạy migration): bỏ cột lỗi rồi chạy lại
+  const second = await run(baseQuery(/selftapes/i.test(first.error.message) ? ['gallery'] : ['selftapes'])!);
+  if (!second.error) return second;
+  return run(baseQuery([])!);
 }
 
 export async function listPublicTalents(): Promise<PublicTalent[]> {

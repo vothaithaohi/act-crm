@@ -45,6 +45,9 @@ function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: 
           <Link href={href('/dien-vien')} className={linkCls}>
             Diễn viên
           </Link>
+          <Link href={href('/du-an')} className={linkCls}>
+            Dự án đang casting
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} className="hidden px-2 text-[14px] text-black/75 hover:text-black sm:inline">
@@ -80,6 +83,9 @@ function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: 
           </button>
           <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>
             Diễn viên
+          </Link>
+          <Link href={href('/du-an')} onClick={() => setOpen(false)} className={mobileCls}>
+            Dự án đang casting
           </Link>
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} onClick={() => setOpen(false)} className={`${mobileCls} border-0`}>
             {signedIn ? 'Tài khoản' : 'Đăng nhập'}
@@ -205,7 +211,7 @@ function Hero({ stats, audience, onAudience }: { stats: HomeStats; audience: Aud
                 <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-light">
                   Nộp hồ sơ miễn phí
                 </Link>
-                <Link href={`${href('/')}#du-an`} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
+                <Link href={href('/du-an')} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
                   Xem dự án đang casting <ChevronRight className="h-4 w-4" />
                 </Link>
               </>

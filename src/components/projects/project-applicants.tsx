@@ -227,11 +227,14 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  {a.selftape_url && (
-                    <a href={a.selftape_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold hover:bg-muted">
-                      <Video className="w-3.5 h-3.5 text-brand-600" /> Self-tape
-                    </a>
-                  )}
+                  {(() => {
+                    const tapes = Array.from(new Set([...(a.selftape_urls || []), a.selftape_url || ''].filter(Boolean)));
+                    return tapes.map((u, i) => (
+                      <a key={u} href={u} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold hover:bg-muted">
+                        <Video className="w-3.5 h-3.5 text-brand-600" /> {tapes.length > 1 ? `Self-tape ${i + 1}` : 'Self-tape'}
+                      </a>
+                    ));
+                  })()}
                   {canEdit && t && review !== 'approved' && (
                     <button
                       type="button"
