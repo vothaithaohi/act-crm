@@ -155,7 +155,7 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
                 {talent.trainings.some(t => /ACT Academy/i.test(t)) && (
                   <span className="rounded-full bg-[#1d1d1f] px-2.5 py-1 text-[12px] font-semibold text-white">ACT Academy</span>
                 )}
-                <span>Diễn viên · DienVienVN</span>
+                <span>{talent.age != null ? `${talent.age} tuổi · ` : ''}Diễn viên · DienVienVN</span>
                 <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-[#d2d2d7] bg-white px-3 py-1 text-[13px] text-[var(--dv-text)] hover:border-[#1d1d1f]">
                   <Link2 className="h-3.5 w-3.5" /> {copied ? 'Đã sao chép link' : `dienvienvn.com/${talent.username}`}
                 </button>

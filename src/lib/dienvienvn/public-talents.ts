@@ -1,6 +1,7 @@
 import 'server-only';
 import { getServiceDb } from '@/lib/projects/server';
 import { TalentProfile } from '@/lib/types/crm';
+import { ageOf } from '@/lib/projects/producer';
 import { experienceGroups, skillGroups, trainingList } from './talent-sections';
 
 /**
@@ -11,6 +12,8 @@ import { experienceGroups, skillGroups, trainingList } from './talent-sections';
 export interface PublicTalent {
   username: string;
   name: string;
+  /** Tuổi thật (tính trên máy chủ; ngày sinh không gửi ra trình duyệt) */
+  age: number | null;
   photos: { label: string; url: string }[];
   experience: { group: string; items: string[] }[];
   skills: { group: string; items: string[] }[];
@@ -20,12 +23,13 @@ export interface PublicTalent {
 }
 
 const PUBLIC_COLUMNS =
-  'username, full_name, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
+  'username, full_name, dob, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
 
 export function toPublicTalent(t: TalentProfile): PublicTalent {
   return {
     username: t.username || '',
     name: t.full_name,
+    age: ageOf(t.dob),
     photos: [
       { label: 'Chân dung', url: t.headshot_url },
       { label: 'Toàn thân', url: t.fullbody_url },
