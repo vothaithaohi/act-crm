@@ -3,6 +3,7 @@ import { getServiceDb } from '@/lib/projects/server';
 import { TalentProfile } from '@/lib/types/crm';
 import { ageOf } from '@/lib/projects/producer';
 import { MAX_HIGHLIGHTS, cleanSelfTapes } from './selftapes';
+import { provinceLabel } from './provinces';
 import { experienceGroups, skillGroups, trainingList } from './talent-sections';
 
 /**
@@ -17,6 +18,13 @@ export interface PublicTalent {
   age: number | null;
   gender: 'male' | 'female' | 'other' | null;
   height_cm: number | null;
+  weight_kg: number | null;
+  /** Lớp ACT đã học (ACT1…ACT4) — dùng cho bộ lọc */
+  act_levels: string[];
+  /** Mức độ sẵn sàng cho vai diễn (mã: kissing_scene, cut_hair…) */
+  willingness: string[];
+  /** Tỉnh thành sẵn sàng quay */
+  work_cities: string[];
   photos: { label: string; url: string }[];
   experience: { group: string; items: string[] }[];
   skills: { group: string; items: string[] }[];
@@ -28,7 +36,7 @@ export interface PublicTalent {
 }
 
 const PUBLIC_COLUMNS =
-  'username, full_name, dob, gender, height_cm, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
+  'username, full_name, dob, gender, height_cm, weight_kg, role_willingness, willing_work_cities, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
 
 export function toPublicTalent(t: TalentProfile): PublicTalent {
   return {
@@ -37,6 +45,10 @@ export function toPublicTalent(t: TalentProfile): PublicTalent {
     age: ageOf(t.dob),
     gender: (t.gender as PublicTalent['gender']) || null,
     height_cm: t.height_cm || null,
+    weight_kg: t.weight_kg || null,
+    act_levels: Array.from(new Set([t.academic_profile?.highest_act_level, ...(t.academic_profile?.enrollments || []).map(e => e.level)].filter(Boolean) as string[])),
+    willingness: Array.isArray(t.role_willingness) ? t.role_willingness : [],
+    work_cities: Array.from(new Set((Array.isArray(t.willing_work_cities) ? t.willing_work_cities : []).map(c => provinceLabel(c) || c).filter(Boolean))),
     photos: [
       { label: 'Chân dung', url: t.headshot_url },
       { label: 'Toàn thân', url: t.fullbody_url },

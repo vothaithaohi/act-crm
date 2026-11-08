@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Link2, Search, UserRound, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, Search, SlidersHorizontal, UserRound, Video } from 'lucide-react';
+import { EMPTY_FILTER, TalentFilter, TalentFilterPanel, activeCount, applyFilter } from './talent-filter';
 import { youtubeId } from '@/lib/dienvienvn/selftapes';
 import type { PublicTalent } from '@/lib/dienvienvn/public-talents';
 import { useDvvnHref } from './base-path';
@@ -17,12 +18,8 @@ const genderLabel = (g: PublicTalent['gender']) => (g === 'female' ? 'Nữ' : g 
 export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
   const href = useDvvnHref();
   const [q, setQ] = useState('');
-  const [gender, setGender] = useState<'all' | 'male' | 'female'>('all');
-  const [ageMin, setAgeMin] = useState('');
-  const [ageMax, setAgeMax] = useState('');
-  const [hMin, setHMin] = useState('');
-  const [hMax, setHMax] = useState('');
-  const [actOnly, setActOnly] = useState(false);
+  const [filter, setFilter] = useState<TalentFilter>(EMPTY_FILTER);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [mode, setMode] = useState<'grid' | 'list'>('grid');
 
   const indexed = useMemo(
@@ -31,24 +28,12 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
   );
   const list = useMemo(() => {
     const words = fold(q.trim()).split(/\s+/).filter(Boolean);
-    const num = (v: string) => (v ? Number(v) : null);
-    const [a1, a2, h1, h2] = [num(ageMin), num(ageMax), num(hMin), num(hMax)];
-    return indexed
-      .filter(({ t, text }) => {
-        if (words.some(w => !text.includes(w))) return false;
-        if (gender !== 'all' && t.gender !== gender) return false;
-        if (a1 !== null && !(t.age !== null && t.age >= a1)) return false;
-        if (a2 !== null && !(t.age !== null && t.age <= a2)) return false;
-        if (h1 !== null && !(t.height_cm && t.height_cm >= h1)) return false;
-        if (h2 !== null && !(t.height_cm && t.height_cm <= h2)) return false;
-        if (actOnly && !isAct(t)) return false;
-        return true;
-      })
-      .map(x => x.t);
-  }, [indexed, q, gender, ageMin, ageMax, hMin, hMax, actOnly]);
+    const matched = indexed.filter(({ text }) => words.every(w => text.includes(w))).map(x => x.t);
+    return applyFilter(matched, filter);
+  }, [indexed, q, filter]);
+  const nActive = activeCount(filter);
 
   const inputCls = 'dv-input !h-11 !py-0 text-[15px]';
-  const digits = (v: string, n: number) => v.replace(/\D/g, '').slice(0, n);
   const subtitle = (t: PublicTalent) =>
     [genderLabel(t.gender), t.height_cm ? `${t.height_cm} cm` : null, projectCount(t) ? `${projectCount(t)} dự án` : null, isAct(t) ? 'ACT Academy' : null]
       .filter(Boolean)
@@ -77,22 +62,19 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                   <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dv-text-tertiary)]" />
                   <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tên, kỹ năng, phim đã đóng…" className={`${inputCls} !pl-11`} aria-label="Tìm diễn viên" />
                 </div>
-                <select value={gender} onChange={e => setGender(e.target.value as typeof gender)} className={`${inputCls} !w-[150px]`} aria-label="Giới tính">
-                  <option value="all">Mọi giới tính</option>
-                  <option value="female">Nữ</option>
-                  <option value="male">Nam</option>
-                </select>
-                <div className="flex items-center gap-1.5">
-                  <input inputMode="numeric" value={ageMin} onChange={e => setAgeMin(digits(e.target.value, 2))} placeholder="Tuổi từ" aria-label="Tuổi từ" className={`${inputCls} !w-[84px] !px-3`} />
-                  <input inputMode="numeric" value={ageMax} onChange={e => setAgeMax(digits(e.target.value, 2))} placeholder="đến" aria-label="Tuổi đến" className={`${inputCls} !w-[68px] !px-3`} />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input inputMode="numeric" value={hMin} onChange={e => setHMin(digits(e.target.value, 3))} placeholder="Cao từ" aria-label="Chiều cao từ" className={`${inputCls} !w-[84px] !px-3`} />
-                  <input inputMode="numeric" value={hMax} onChange={e => setHMax(digits(e.target.value, 3))} placeholder="đến" aria-label="Chiều cao đến" className={`${inputCls} !w-[68px] !px-3`} />
-                </div>
-                <button type="button" className="dv-chip shrink-0" aria-pressed={actOnly} onClick={() => setActOnly(v => !v)}>
-                  ACT Academy
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen(true)}
+                  className={`dv-btn !h-11 !py-0 text-[15px] ${nActive ? 'dv-btn-primary' : 'dv-btn-secondary'}`}
+                  aria-haspopup="dialog"
+                >
+                  <SlidersHorizontal className="h-4 w-4" /> Bộ lọc{nActive ? ` (${nActive})` : ''}
                 </button>
+                {nActive > 0 && (
+                  <button type="button" onClick={() => setFilter(EMPTY_FILTER)} className="px-2 text-[14px] text-[var(--dv-text-secondary)] underline underline-offset-2">
+                    Xoá lọc
+                  </button>
+                )}
                 <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1">
                   {(['grid', 'list'] as const).map(m => (
                     <button
@@ -166,6 +148,9 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
           )}
         </div>
       </main>
+      {filterOpen && (
+        <TalentFilterPanel talents={talents} value={filter} onChange={setFilter} resultCount={list.length} onClose={() => setFilterOpen(false)} />
+      )}
     </>
   );
 }
