@@ -84,7 +84,7 @@ export function ProducerBoard({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Tuổi chính xác, số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối
+                  <span className="font-semibold text-[var(--dv-text)]">Số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối
                   tác DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác — sau khi được duyệt, bạn xem được số điện thoại và email.
                 </p>
               </div>
@@ -364,7 +364,7 @@ export function ApplicantCard({
   const [photo, setPhoto] = useState(d.photos[0]?.url || '');
   const [open, setOpen] = useState(false);
   const stats: [string, string | null][] = [
-    [limited ? 'Độ tuổi' : 'Tuổi', limited ? t.age_range || null : d.age !== null ? String(d.age) : null],
+    ['Tuổi', d.age !== null ? String(d.age) : t.age_range || null],
     ['Cao (cm)', t.height_cm ? `${t.height_cm}` : null],
     ['Nặng (kg)', t.weight_kg ? `${t.weight_kg}` : null],
     ...(d.measurements ? ([['Số đo', d.measurements]] as [string, string][]) : [])
@@ -564,7 +564,7 @@ export function ApplicantRow({
         <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.act ? 'ACT Academy' : null, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
       </div>
       <p className="col-start-2 flex flex-wrap gap-x-2 text-[13px] md:col-start-auto md:text-[14px]">
-        {[limited ? (t.age_range ? `${t.age_range} tuổi` : null) : d.age !== null ? `${d.age} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
+        {[d.age !== null ? `${d.age} tuổi` : t.age_range ? `${t.age_range} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
           .filter(Boolean)
           .map(x => (
             <span key={x as string} className="whitespace-nowrap">

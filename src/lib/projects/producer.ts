@@ -73,7 +73,7 @@ export function maskName(full: string): string {
   return [family, ...parts.slice(1).map(p => `${Array.from(p)[0].toUpperCase()}.`)].join(' ');
 }
 
-function ageOf(dob?: string | null): number | null {
+export function ageOf(dob?: string | null): number | null {
   if (!dob) return null;
   const d = new Date(dob);
   if (Number.isNaN(d.getTime())) return null;
@@ -98,14 +98,14 @@ export interface ProducerView {
   limited?: boolean;
 }
 
-/** 'public': tên đầy đủ, khoảng tuổi; bỏ tuổi thật, số đo 3 vòng, liên hệ. 'partner': thêm tuổi thật, số đo, liên hệ. */
+/** 'public': tên đầy đủ, tuổi thật; bỏ số đo 3 vòng, liên hệ. 'partner': thêm số đo, liên hệ. */
 function restrictTalent(t: ProducerTalent, level: 'public' | 'partner'): ProducerTalent {
   const pub = level === 'public';
   const age = ageOf(t.dob);
   const base = {
     ...t,
-    age: pub ? null : age,
-    age_range: pub ? ageRange(age) : null,
+    age,
+    age_range: null,
     dob: null,
     city: null,
     shoe_size: pub ? null : t.shoe_size,
@@ -161,11 +161,13 @@ export function buildProducerView(
   project: CastingProject,
   applications: ProjectApplication[],
   talents: TalentProfile[],
-  level: ProducerLevel = 'partner'
+  level: ProducerLevel = 'partner',
+  /** true: mọi diễn viên đã nộp (trừ "Loại"), dùng cho link riêng của NSX; false: chỉ Shortlist / Đã gửi NSX. */
+  allApplied = false
 ): ProducerView {
   const byId = new Map(talents.map(t => [t.id, t]));
   const applicants: ProducerApplicant[] = applications
-    .filter(a => a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status))
+    .filter(a => a.project_id === project.id && (allApplied ? a.status !== 'rejected' : SHORTLIST_STATUSES.includes(a.status)))
     .map(a => ({ a, t: byId.get(a.talent_id) }))
     .filter((x): x is { a: ProjectApplication; t: TalentProfile } => !!x.t && getReviewStatus(x.t) === 'approved')
     .map(({ a, t }) => ({

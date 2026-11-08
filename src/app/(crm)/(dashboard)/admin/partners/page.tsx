@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, ExternalLink, FolderKanban, Handshake, Loader2, Lock, Mail, Plus, Trash2, Unlock, X } from 'lucide-react';
+import { Check, ExternalLink, FolderKanban, Handshake, Link2, Loader2, Lock, Mail, Plus, Trash2, Unlock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { PARTNER_TYPE_LABELS, PartnerAccount, PartnerType } from '@/lib/dienvienvn/partners';
 import { useProjects } from '@/lib/projects/use-projects';
 import { CastingProject } from '@/lib/projects/types';
+import { partnerLinkUrl } from '@/components/projects/nsx-links';
 
 const PORTAL_URL = 'https://www.dienvienvn.com/doi-tac';
 
@@ -53,6 +54,16 @@ export default function AdminPartnersPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const copyLink = async (token: string) => {
+    const url = partnerLinkUrl(token);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Đã sao chép link NSX', { description: url });
+    } catch {
+      toast.info(url);
+    }
+  };
 
   const patch = async (p: PartnerAccount, payload: Record<string, unknown>, success?: string) => {
     setBusyId(p.id);
@@ -212,6 +223,15 @@ export default function AdminPartnersPage() {
                               Từ chối
                             </button>
                           </>
+                        )}
+                        {p.status === 'active' && p.link_token && (
+                          <button
+                            title="Sao chép link gửi NSX (không cần đăng nhập, không hết hạn)"
+                            onClick={() => copyLink(p.link_token as string)}
+                            className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold"
+                          >
+                            <Link2 className="w-3.5 h-3.5" /> Link NSX
+                          </button>
                         )}
                         <button
                           title="Gắn dự án"

@@ -264,6 +264,7 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
                       </span>
                     )}
                     <span className="line-clamp-2 block text-[15px] font-semibold leading-[1.25] text-white">{f.name}</span>
+                    {f.age != null && <span className="mt-0.5 block text-[13px] text-white/80">{f.age} tuổi</span>}
                   </span>
                 </Link>
               </Reveal>

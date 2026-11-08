@@ -1,6 +1,7 @@
 import 'server-only';
 import { getServiceDb } from '@/lib/projects/server';
 import { CastingProject, isDeadlinePassed } from '@/lib/projects/types';
+import { ageOf } from '@/lib/projects/producer';
 import { listPublicTalents } from './public-talents';
 
 /** Số liệu thật cho trang chủ: chỉ dự án đang mở còn hạn, hồ sơ đã duyệt, gương mặt đã đồng ý công khai. */
@@ -10,7 +11,7 @@ export interface HomeStats {
   talents: number;
   companies: string[];
   /** act: học viên ACT Academy */
-  faces: { username: string; name: string; photo: string; act: boolean }[];
+  faces: { username: string; name: string; photo: string; act: boolean; age: number | null }[];
 }
 
 const isActStudent = (t: { trainings: string[] }) => t.trainings.some(x => /ACT Academy/i.test(x));
@@ -42,17 +43,22 @@ export async function getHomeStats(): Promise<HomeStats> {
     const companies = Array.from(
       new Set(open.filter(p => !p.hide_title && p.production_company?.trim()).map(p => (p.production_company as string).trim()))
     ).slice(0, 8);
+    const picked = faces
+      .filter(t => t.photos[0]?.url)
+      .sort((a, b) => Number(isActStudent(b)) - Number(isActStudent(a)))
+      .slice(0, 12);
+    // Tuổi thật (tính từ ngày sinh; ngày sinh không bao giờ gửi ra trình duyệt)
+    const dobRes = picked.length
+      ? await db.from('talent_profiles').select('username, dob').in('username', picked.map(t => t.username))
+      : { data: [] as { username: string; dob: string | null }[] };
+    const dobBy = new Map(((dobRes.data || []) as { username: string; dob: string | null }[]).map(r => [r.username, r.dob]));
     return {
       roles: open.reduce((n, p) => n + (Array.isArray(p.roles) ? p.roles.length : 0), 0),
       projects: open.length,
       talents: talentsRes.count || 0,
       companies,
       // Ưu tiên gương mặt học viên ACT Academy
-      faces: faces
-        .filter(t => t.photos[0]?.url)
-        .sort((a, b) => Number(isActStudent(b)) - Number(isActStudent(a)))
-        .slice(0, 12)
-        .map(t => ({ username: t.username, name: displayName(t.name), photo: t.photos[0].url, act: isActStudent(t) }))
+      faces: picked.map(t => ({ username: t.username, name: displayName(t.name), photo: t.photos[0].url, act: isActStudent(t), age: ageOf(dobBy.get(t.username)) }))
     };
   } catch (e) {
     console.error('[dienvienvn] Không tải được số liệu trang chủ:', e);
