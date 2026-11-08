@@ -193,7 +193,7 @@ export function ProducerApplicants({
   return (
     <>
       <header>
-        <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Shortlist ứng viên · {project.code}</p>
+        <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Ứng viên · {project.code}</p>
         <h1 className="dv-display dv-headline mt-1">{project.title}</h1>
         <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">
           {[

@@ -8,7 +8,7 @@ import { getPartner, logPartnerView } from '@/lib/dienvienvn/partner-server';
 
 // Link gửi nhà sản xuất: ai có link (mã ngẫu nhiên 6 ký tự; link cũ 12 / 48 ký tự vẫn dùng được) mới xem được.
 // IP thử link sai quá nhiều lần bị chặn tạm thời, để không ai dò được mã.
-// Link shortlist: chỉ ứng viên ACT đã chọn, gửi cho ai cũng được. Chưa đăng nhập: bản rút gọn (tên ẩn một phần,
+// Link gửi NSX của dự án: mọi ứng viên đã nộp (trừ "Loại"), gửi cho ai cũng được. Chưa đăng nhập: bản rút gọn (tên ẩn một phần,
 // không năm sinh, số đo, liên hệ). Đối tác đã được duyệt đăng nhập: thấy tên đầy đủ, SĐT, email, tuổi, số đo.
 // Đường dẫn dạng "ten-du-an-<mã>": phần tên chỉ để dễ đọc, chỉ mã sau dấu "-" cuối cùng được kiểm tra.
 const FAIL_LIMIT = 20;
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     }
   }
 
-  const view = buildProducerView(project as CastingProject, (applications || []) as ProjectApplication[], talents, full ? 'partner' : 'public');
+  const view = buildProducerView(project as CastingProject, (applications || []) as ProjectApplication[], talents, full ? 'partner' : 'public', true);
   return NextResponse.json(
     { mode: 'live', ...view },
     { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } }

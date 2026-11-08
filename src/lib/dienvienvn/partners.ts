@@ -27,8 +27,6 @@ export interface PartnerAccount {
   auth_user_id: string | null;
   /** Dự án casting đối tác được xem danh sách ứng viên */
   project_ids: string[];
-  /** Mã link riêng gửi NSX (dienvienvn.com/doi-tac/link/<mã>), không hết hạn */
-  link_token?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ExternalLink, EyeOff, Save, Trash2, Wand2 } from 'lucide-react';
+import { Copy, ExternalLink, EyeOff, RefreshCw, Save, Trash2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   CastingProject,
@@ -13,9 +13,8 @@ import {
   nextProjectCode,
   publicProjectName,
 } from '@/lib/projects/types';
-import { publicProjectLink, useProjects } from '@/lib/projects/use-projects';
+import { producerLink, publicProjectLink, useProjects } from '@/lib/projects/use-projects';
 import { RolesEditor, emptyRole } from './roles-editor';
-import { NsxLinks } from './nsx-links';
 import { VN_CITIES, VN_PROVINCES, ABROAD } from '@/lib/dienvienvn/provinces';
 import { useCRM } from '@/lib/store/crm-context';
 
@@ -208,6 +207,16 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
 
 
 
+  const copy = async (text: string, msg: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(msg);
+    } catch {
+      toast.info(text);
+    }
+  };
+  const nsxLink = producerLink(p);
+
   return (
     <div className="space-y-5">
       {(restored || remoteChanged) && canEdit && (
@@ -364,7 +373,37 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
             onChange={e => set({ selftape_brief: e.target.value })}
           />
         </div>
-        <NsxLinks projectId={p.id} ownerId={p.partner_id || null} isNew={isNew} />
+        <div className="p-3.5 rounded-xl border bg-muted/30 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold">Link gửi NSX</span>
+            <span className="text-[10px] text-muted-foreground">Không hết hạn · {isNew ? 'dùng được sau khi lưu' : 'tự cập nhật'}</span>
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Hiện các diễn viên đã ứng tuyển dự án (trừ &ldquo;Loại&rdquo;, hồ sơ đã duyệt). Chưa đăng nhập: thông tin công khai (cấp 1). Đối tác đã được
+            duyệt đăng nhập vào link: thông tin cấp đối tác (cấp 2).
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input readOnly value={nsxLink} className={`${inputCls} font-mono text-[11px]`} onFocus={e => e.target.select()} />
+            <div className="flex gap-2 shrink-0">
+              <button type="button" onClick={() => copy(nsxLink, 'Đã sao chép link NSX')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold">
+                <Copy className="w-3.5 h-3.5" /> Sao chép
+              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Tạo link mới? Link cũ sẽ ngừng hoạt động sau khi bạn bấm Lưu.'))
+                      set({ share_token: newShareToken(), share_expires_at: null });
+                  }}
+                  title="Thu hồi link cũ"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Link mới
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Hành động */}

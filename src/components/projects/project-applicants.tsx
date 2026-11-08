@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Check, ExternalLink, Loader2, Plus, Trash2, Video } from 'lucide-react';
+import { Check, ExternalLink, Loader2, Plus, Trash2, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCRM } from '@/lib/store/crm-context';
 import { REVIEW_STATUS_DETAILS, getReviewStatus } from '@/lib/types/crm';
@@ -14,7 +14,6 @@ import {
   ProjectApplication
 } from '@/lib/projects/types';
 import { talentPath } from '@/lib/talent-path';
-import { SHORTLIST_STATUSES } from '@/lib/projects/producer';
 
 interface Props {
   project: CastingProject;
@@ -57,11 +56,11 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
 
   const visibleToProducer = applications.filter(a => {
     const t = talentById.get(a.talent_id);
-    return a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status) && t && getReviewStatus(t) === 'approved';
+    return a.project_id === project.id && a.status !== 'rejected' && t && getReviewStatus(t) === 'approved';
   }).length;
   const shortlistNotApproved = applications.filter(a => {
     const t = talentById.get(a.talent_id);
-    return a.project_id === project.id && SHORTLIST_STATUSES.includes(a.status) && t && getReviewStatus(t) !== 'approved';
+    return a.project_id === project.id && a.status !== 'rejected' && t && getReviewStatus(t) !== 'approved';
   }).length;
 
   const rowIds = rows.map(r => r.a.id);
@@ -109,8 +108,8 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
         <div>
           <h3 className="font-bold text-sm">Ứng viên ({total})</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Link NSX đang hiển thị <strong className="text-foreground">{visibleToProducer}</strong> người: ứng viên <strong>Shortlist</strong> hoặc{' '}
-            <strong>Đã gửi NSX</strong> có hồ sơ <strong>Đã duyệt</strong>.
+            Link NSX đang hiển thị <strong className="text-foreground">{visibleToProducer}</strong> người: ứng viên có hồ sơ <strong>Đã duyệt</strong>{' '}
+            và không bị &ldquo;Loại&rdquo;.
           </p>
         </div>
         <div className="flex gap-2">
@@ -133,18 +132,9 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
         </div>
       </div>
 
-      {total > 0 && visibleToProducer === 0 && (
-        <div className="p-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs flex gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            Link NSX chưa hiện ai. Tích chọn ứng viên muốn gửi (hoặc ô &ldquo;Chọn tất cả&rdquo;), chọn <strong>Shortlist</strong> rồi bấm{' '}
-            <strong>Áp dụng</strong>.
-          </span>
-        </div>
-      )}
       {shortlistNotApproved > 0 && (
         <p className="text-[11px] text-amber-700">
-          {shortlistNotApproved} ứng viên đã Shortlist nhưng hồ sơ chưa duyệt nên chưa hiện trên link NSX. Bấm &ldquo;Duyệt hồ sơ&rdquo; trên từng người.
+          {shortlistNotApproved} ứng viên có hồ sơ chưa duyệt nên chưa hiện trên link NSX. Bấm &ldquo;Duyệt hồ sơ&rdquo; trên từng người.
         </p>
       )}
 

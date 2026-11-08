@@ -210,48 +210,6 @@ export async function partnerProjectView(db: SupabaseClient, partner: PartnerAcc
   };
 }
 
-/**
- * Link riêng của NSX (dienvienvn.com/doi-tac/link/<mã>): không cần đăng nhập, không hết hạn.
- * Hiện các dự án của đối tác và diễn viên đã nộp (trừ "Loại", hồ sơ đã duyệt) theo cấp NSX.
- * Link ngừng khi ACT khoá tài khoản đối tác.
- */
-export async function partnerLinkView(db: SupabaseClient, token: string) {
-  const { data } = await db.from('partner_accounts').select('*').eq('link_token', token).maybeSingle();
-  const partner = data as PartnerAccount | null;
-  if (!partner || partner.status !== 'active') return null;
-  const projects = await partnerProjectRows(db, partner);
-  const ids = projects.map(p => p.id);
-  const applications: ProjectApplication[] = [];
-  for (let i = 0; i < ids.length; i += 100) {
-    for (let from = 0; ; from += 1000) {
-      const { data: rows } = await db
-        .from('project_applications')
-        .select('*')
-        .in('project_id', ids.slice(i, i + 100))
-        .neq('status', 'rejected')
-        .order('created_at', { ascending: true })
-        .range(from, from + 999);
-      applications.push(...((rows || []) as ProjectApplication[]));
-      if (!rows || rows.length < 1000) break;
-    }
-  }
-  const talentIds = Array.from(new Set(applications.map(a => a.talent_id)));
-  const talents: TalentProfile[] = [];
-  for (let i = 0; i < talentIds.length; i += 200) {
-    const { data: rows } = await approvedTalents(db).in('id', talentIds.slice(i, i + 200));
-    talents.push(...((rows || []) as TalentProfile[]));
-  }
-  logPartnerView(db, partner.id, { source: 'shortlist' });
-  return {
-    partner: { name: partner.company || partner.full_name },
-    projects: projects.map(p => ({
-      id: p.id,
-      status: p.status,
-      ...buildProducerView({ ...p, hide_contacts: false }, applications, talents, 'partner', true)
-    }))
-  };
-}
-
 /** Dữ liệu điền sẵn vào form sửa dự án của đối tác. */
 function partnerProjectForm(p: CastingProject) {
   return {
