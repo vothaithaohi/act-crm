@@ -4,7 +4,7 @@ import { getPartner } from '@/lib/dienvienvn/partner-server';
 import { isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { CrewJob, crewJobSchema, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
 
-const MISSING = 'Hệ thống chưa sẵn sàng (cần chạy migration 20261109_crew_jobs.sql).';
+const MISSING = 'Hệ thống chưa sẵn sàng (cần chạy migration 20261109_crew_jobs.sql và 20261113_crew_jobs_form_a.sql).';
 
 // Tin tuyển ekip do đối tác đăng: xem danh sách của mình, đăng tin mới (luôn chờ DienVienVN duyệt).
 export async function GET(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   if (partner instanceof NextResponse) return partner;
   const { data, error } = await db.from('crew_jobs').select('*').eq('partner_id', partner.id).order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: MISSING }, { status: 500 });
-  return NextResponse.json({ mode: 'live', jobs: (data || []) as CrewJob[] }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ mode: 'live', jobs: (data || []) as CrewJob[], company: partner.company || '' }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: NextRequest) {
@@ -34,13 +34,12 @@ export async function POST(req: NextRequest) {
     .from('crew_jobs')
     .insert({
       ...toCrewJobColumns(parsed.data),
-      company: toCrewJobColumns(parsed.data).company || partner.company || null,
       partner_id: partner.id,
       status: 'draft',
       created_by: `Đối tác: ${partner.full_name}`
     })
     .select('id')
     .single();
-  if (error) return NextResponse.json({ error: /crew_jobs/.test(error.message) ? MISSING : 'Không lưu được tin. Vui lòng thử lại.' }, { status: 500 });
+  if (error) return NextResponse.json({ error: /crew_jobs|column/.test(error.message) ? MISSING : 'Không lưu được tin. Vui lòng thử lại.' }, { status: 500 });
   return NextResponse.json({ id: data.id });
 }

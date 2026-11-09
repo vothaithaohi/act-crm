@@ -16,7 +16,8 @@ import { formatVnDate } from './projects-section';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { experienceGroups, foldVi, skillGroups, trainingList } from '@/lib/dienvienvn/talent-sections';
 import { LoginGate } from './actor-pages';
-import { CREW_JOB_STATUS, CREW_POSITION_SUGGESTIONS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { CREW_JOB_STATUS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { CrewFormA, CrewJobFields, crewFormFrom } from './crew-job-fields';
 import { useDvvnHref } from './base-path';
 import { GlobalNav } from './site-chrome';
 
@@ -954,45 +955,21 @@ function PartnerCrewJobsSection() {
   );
 }
 
-type CrewForm = {
-  title: string;
-  company: string;
-  positions: string[];
-  description: string;
-  location: string;
-  work_time: string;
-  compensation: string;
-  contact: string;
-  deadline: string;
-};
-
 /** Đối tác đăng / sửa tin tuyển ekip (sửa được khi còn chờ duyệt). */
 export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
   const href = useDvvnHref();
   const router = useRouter();
   const editing = !!jobId;
-  const api = usePartnerApi<{ job?: CrewJob; editable?: boolean; jobs?: CrewJob[] }>(
+  const api = usePartnerApi<{ job?: CrewJob; editable?: boolean; jobs?: CrewJob[]; company?: string }>(
     editing ? `/api/dienvienvn/partner/crew-jobs/${encodeURIComponent(jobId as string)}` : '/api/dienvienvn/partner/crew-jobs'
   );
-  const [form, setForm] = useState<CrewForm | null>(null);
-  const [custom, setCustom] = useState('');
+  const [form, setForm] = useState<CrewFormA | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!api.data || form) return;
-    const j = api.data.job;
-    setForm({
-      title: j?.title || '',
-      company: j?.company || '',
-      positions: j?.positions || [],
-      description: j?.description || '',
-      location: j?.location || '',
-      work_time: j?.work_time || '',
-      compensation: j?.compensation || '',
-      contact: j?.contact || '',
-      deadline: j?.deadline || ''
-    });
+    setForm(crewFormFrom(api.data.job, api.data.company || ''));
   }, [api.data, form]);
 
   const next = editing ? href(`/doi-tac/tuyen-dung/${jobId}/sua`) : href('/doi-tac/tuyen-dung/moi');
@@ -1012,25 +989,14 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
   }
   if (!form) return <Gate {...api} next={next} />;
 
-  const set = (patch: Partial<CrewForm>) => setForm(f => (f ? { ...f, ...patch } : f));
-  const togglePos = (p: string) => set({ positions: form.positions.includes(p) ? form.positions.filter(x => x !== p) : [...form.positions, p] });
-  const addCustom = () => {
-    const v = custom.trim();
-    if (v && !form.positions.includes(v)) set({ positions: [...form.positions, v] });
-    setCustom('');
-  };
-
   const submit = async () => {
     setError('');
-    if (form.title.trim().length < 3) return setError('Vui lòng nhập tiêu đề tin.');
-    if (!form.positions.length) return setError('Chọn hoặc nhập ít nhất một vị trí cần tuyển.');
-    if (form.contact.trim().length < 5) return setError('Vui lòng nhập cách liên hệ (SĐT, email hoặc link đăng ký).');
     setBusy(true);
     try {
       const res = await actorFetch(editing ? `/api/dienvienvn/partner/crew-jobs/${jobId}` : '/api/dienvienvn/partner/crew-jobs', {
         method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, deadline: form.deadline || null })
+        body: JSON.stringify(form)
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.id) return setError(body.error || 'Không lưu được. Vui lòng thử lại.');
@@ -1042,7 +1008,6 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
     }
   };
 
-  const options = Array.from(new Set([...CREW_POSITION_SUGGESTIONS, ...form.positions]));
   return (
     <PortalShell>
       <div className="mx-auto max-w-[780px]">
@@ -1052,63 +1017,9 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
         <h1 className="dv-display dv-headline mt-4">{editing ? 'Sửa tin tuyển ekip.' : 'Đăng tin tuyển ekip.'}</h1>
         <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">Tin hiện tại dienvienvn.com/tuyen-dung sau khi đội ngũ DienVienVN duyệt.</p>
 
-        <section className="dv-card mt-8 space-y-5 p-6 md:p-8">
-          <Field label="Tiêu đề tin" required htmlFor="cj-title">
-            <TextInput id="cj-title" value={form.title} onChange={e => set({ title: e.target.value })} placeholder="VD: Tuyển ekip audition phim điện ảnh" />
-          </Field>
-          <Field label="Công ty / đơn vị" htmlFor="cj-company" hint="Để trống sẽ dùng tên công ty trong tài khoản đối tác">
-            <TextInput id="cj-company" value={form.company} onChange={e => set({ company: e.target.value })} />
-          </Field>
-          <div>
-            <p className="dv-field-label">
-              Vị trí cần tuyển <span className="text-[var(--dv-red)]">*</span>
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Vị trí cần tuyển">
-              {options.map(p => (
-                <button key={p} type="button" className="dv-chip" aria-pressed={form.positions.includes(p)} onClick={() => togglePos(p)}>
-                  {p}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex gap-2">
-              <TextInput
-                value={custom}
-                onChange={e => setCustom(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addCustom();
-                  }
-                }}
-                placeholder="Vị trí khác…"
-                aria-label="Vị trí khác"
-              />
-              <button type="button" onClick={addCustom} disabled={!custom.trim()} className="dv-btn dv-btn-secondary shrink-0">
-                Thêm
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <Field label="Địa điểm" htmlFor="cj-loc">
-              <TextInput id="cj-loc" value={form.location} onChange={e => set({ location: e.target.value })} placeholder="VD: TP.HCM" />
-            </Field>
-            <Field label="Thời gian làm việc" htmlFor="cj-time">
-              <TextInput id="cj-time" value={form.work_time} onChange={e => set({ work_time: e.target.value })} placeholder="VD: 20–25/11/2026" />
-            </Field>
-            <Field label="Thù lao" htmlFor="cj-pay">
-              <TextInput id="cj-pay" value={form.compensation} onChange={e => set({ compensation: e.target.value })} placeholder="VD: Thoả thuận" />
-            </Field>
-            <Field label="Hạn ứng tuyển" htmlFor="cj-deadline">
-              <TextInput id="cj-deadline" type="date" value={form.deadline} onChange={e => set({ deadline: e.target.value })} />
-            </Field>
-          </div>
-          <Field label="Mô tả công việc" htmlFor="cj-desc" hint="Yêu cầu, kinh nghiệm, quyền lợi…">
-            <textarea id="cj-desc" rows={5} className="dv-input" value={form.description} onChange={e => set({ description: e.target.value })} />
-          </Field>
-          <Field label="Cách liên hệ ứng tuyển" required htmlFor="cj-contact" hint="SĐT, email hoặc link form — hiện công khai trên tin">
-            <TextInput id="cj-contact" value={form.contact} onChange={e => set({ contact: e.target.value })} placeholder="VD: 0901 234 567 (Ms. Lan)" />
-          </Field>
-        </section>
+        <div className="mt-8">
+          <CrewJobFields value={form} onChange={setForm} />
+        </div>
 
         {error && (
           <p role="alert" className="mt-4 rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">

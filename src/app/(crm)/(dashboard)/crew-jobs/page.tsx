@@ -6,24 +6,14 @@ import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
 import { useCRM } from '@/lib/store/crm-context';
-import { CREW_JOB_STATUS, CREW_POSITION_SUGGESTIONS, CrewJob, CrewJobStatus } from '@/lib/dienvienvn/crew-jobs';
+import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, crewJobSchema, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
+import { CrewFormA, CrewJobFields, crewFormFrom } from '@/components/dienvienvn/crew-job-fields';
 
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
-const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql trong Supabase.';
+const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql và 20261113_crew_jobs_form_a.sql trong Supabase.';
 
-type Draft = Omit<CrewJob, 'id' | 'created_at' | 'updated_at' | 'partner_id' | 'created_by'> & { id?: string };
-const emptyDraft = (): Draft => ({
-  title: '',
-  company: 'ACT Academy',
-  positions: [],
-  description: '',
-  location: '',
-  work_time: '',
-  compensation: '',
-  contact: '',
-  deadline: null,
-  status: 'open'
-});
+type Draft = { id?: string; status: CrewJobStatus; form: CrewFormA };
+const emptyDraft = (): Draft => ({ status: 'open', form: crewFormFrom(null, 'ACT Academy') });
 
 /** Tin tuyển ekip: duyệt tin đối tác đăng, ACT tự đăng / sửa / đóng tin. Hiện công khai tại dienvienvn.com/tuyen-dung. */
 export default function CrewJobsPage() {
@@ -75,24 +65,12 @@ export default function CrewJobsPage() {
   const save = async (d: Draft) => {
     const db = createClient();
     if (!db) return false;
-    if (d.title.trim().length < 3 || !d.positions.length || d.contact.trim().length < 5) {
-      toast.error('Cần tiêu đề, ít nhất một vị trí và cách liên hệ.');
+    const parsed = crewJobSchema.safeParse(d.form);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || 'Thông tin chưa hợp lệ.');
       return false;
     }
-    const orNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
-    const record = {
-      title: d.title.trim(),
-      company: orNull(d.company),
-      positions: d.positions,
-      description: orNull(d.description),
-      location: orNull(d.location),
-      work_time: orNull(d.work_time),
-      compensation: orNull(d.compensation),
-      contact: d.contact.trim(),
-      deadline: d.deadline || null,
-      status: d.status,
-      updated_at: new Date().toISOString()
-    };
+    const record = { ...toCrewJobColumns(parsed.data), status: d.status, updated_at: new Date().toISOString() };
     const { error } = d.id
       ? await db.from('crew_jobs').update(record).eq('id', d.id)
       : await db.from('crew_jobs').insert({ ...record, created_by: currentUser?.email || 'ACT' });
@@ -185,7 +163,7 @@ export default function CrewJobsPage() {
                           Mở lại
                         </button>
                       )}
-                      <button title="Sửa" onClick={() => setEditing({ ...j })} className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted">
+                      <button title="Sửa" onClick={() => setEditing({ id: j.id, status: j.status, form: crewFormFrom(j) })} className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted">
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button title="Xoá" onClick={() => remove(j)} className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-destructive/10 hover:text-destructive">
@@ -210,99 +188,29 @@ export default function CrewJobsPage() {
 
 function CrewJobModal({ draft, onClose, onSave }: { draft: Draft; onClose: () => void; onSave: (d: Draft) => Promise<unknown> }) {
   const [d, setD] = useState<Draft>(draft);
-  const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
-  const set = (patch: Partial<Draft>) => setD(x => ({ ...x, ...patch }));
   const cls = 'w-full h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-foreground';
   const label = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
-  const options = Array.from(new Set([...CREW_POSITION_SUGGESTIONS, ...d.positions]));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">{d.id ? 'Sửa tin tuyển ekip' : 'Đăng tin tuyển ekip'}</h2>
+          <h2 className="text-lg font-bold">{d.id ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h2>
           <button onClick={onClose} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-muted" aria-label="Đóng">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div>
-          <label className={label}>Tiêu đề *</label>
-          <input className={cls} value={d.title} onChange={e => set({ title: e.target.value })} placeholder="VD: Tuyển ekip audition phim điện ảnh" />
+          <label className={label}>Trạng thái</label>
+          <select className={cls} value={d.status} onChange={e => setD(x => ({ ...x, status: e.target.value as CrewJobStatus }))}>
+            {(Object.keys(CREW_JOB_STATUS) as CrewJobStatus[]).map(k => (
+              <option key={k} value={k}>
+                {CREW_JOB_STATUS[k].label}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={label}>Công ty / đơn vị</label>
-            <input className={cls} value={d.company || ''} onChange={e => set({ company: e.target.value })} />
-          </div>
-          <div>
-            <label className={label}>Trạng thái</label>
-            <select className={cls} value={d.status} onChange={e => set({ status: e.target.value as CrewJobStatus })}>
-              {(Object.keys(CREW_JOB_STATUS) as CrewJobStatus[]).map(k => (
-                <option key={k} value={k}>
-                  {CREW_JOB_STATUS[k].label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className={label}>Vị trí cần tuyển *</label>
-          <div className="flex flex-wrap gap-1.5">
-            {options.map(p => {
-              const on = d.positions.includes(p);
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => set({ positions: on ? d.positions.filter(x => x !== p) : [...d.positions, p] })}
-                  className={`px-2.5 py-1 rounded-lg border text-xs font-medium ${on ? 'bg-[#1d1d1f] text-white border-[#1d1d1f]' : 'hover:bg-muted text-muted-foreground'}`}
-                >
-                  {p}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex gap-2">
-            <input className={cls} value={custom} onChange={e => setCustom(e.target.value)} placeholder="Vị trí khác…" />
-            <button
-              type="button"
-              onClick={() => {
-                const v = custom.trim();
-                if (v && !d.positions.includes(v)) set({ positions: [...d.positions, v] });
-                setCustom('');
-              }}
-              className="h-10 px-3 rounded-lg border text-xs font-semibold hover:bg-muted"
-            >
-              Thêm
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={label}>Địa điểm</label>
-            <input className={cls} value={d.location || ''} onChange={e => set({ location: e.target.value })} />
-          </div>
-          <div>
-            <label className={label}>Thời gian làm việc</label>
-            <input className={cls} value={d.work_time || ''} onChange={e => set({ work_time: e.target.value })} />
-          </div>
-          <div>
-            <label className={label}>Thù lao</label>
-            <input className={cls} value={d.compensation || ''} onChange={e => set({ compensation: e.target.value })} />
-          </div>
-          <div>
-            <label className={label}>Hạn ứng tuyển</label>
-            <input type="date" className={cls} value={d.deadline || ''} onChange={e => set({ deadline: e.target.value || null })} />
-          </div>
-        </div>
-        <div>
-          <label className={label}>Mô tả công việc</label>
-          <textarea rows={4} className={`${cls} h-auto py-2`} value={d.description || ''} onChange={e => set({ description: e.target.value })} />
-        </div>
-        <div>
-          <label className={label}>Cách liên hệ ứng tuyển * (hiện công khai)</label>
-          <input className={cls} value={d.contact} onChange={e => set({ contact: e.target.value })} placeholder="SĐT, email hoặc link form" />
-        </div>
+        <CrewJobFields variant="crm" value={d.form} onChange={form => setD(x => ({ ...x, form }))} />
         <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="h-10 px-4 rounded-lg border text-xs font-semibold hover:bg-muted">
             Huỷ

@@ -2,7 +2,20 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, MapPin, Phone } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, Mail, MapPin, Phone } from 'lucide-react';
+import {
+  COMPANY_TYPES,
+  CREW_PROJECT_TYPES,
+  EMPLOYMENT_TYPES,
+  PROJECT_PHASES,
+  SALARY_TYPES,
+  SENIORITY_LEVELS,
+  WORK_CITIES,
+  WORK_MODES,
+  departmentOf,
+  labelOf,
+  roleOf
+} from '@/lib/dienvienvn/crew-taxonomy';
 import { PublicCrewJob, contactHref } from '@/lib/dienvienvn/crew-jobs';
 import { useDvvnHref } from './base-path';
 import { formatVnDate } from './projects-section';
@@ -62,22 +75,67 @@ export function CrewJobBoard({ jobs }: { jobs: PublicCrewJob[] }) {
   );
 }
 
+const fmtMoney = (n?: number | null) => (n ? n.toLocaleString('vi-VN') : '');
+
+/** Thù lao theo Form A: "1.500.000 – 2.500.000 VND/ngày" hoặc "Thỏa thuận". */
+function salaryText(job: PublicCrewJob): string {
+  if (!job.salary_type) return job.compensation || '';
+  if (job.salary_type === 'negotiable') return 'Thỏa thuận theo năng lực';
+  const unit = { per_day: 'VND/ngày', per_project: 'VND/dự án', per_month: 'VND/tháng' }[job.salary_type] || 'VND';
+  const [lo, hi] = [fmtMoney(job.salary_min), fmtMoney(job.salary_max)];
+  const range = lo && hi ? `${lo} – ${hi}` : lo ? `Từ ${lo}` : hi ? `Đến ${hi}` : '';
+  return range ? `${range} ${unit}` : labelOf(SALARY_TYPES, job.salary_type);
+}
+
 function CrewJobCard({ job }: { job: PublicCrewJob }) {
   const [open, setOpen] = useState(false);
-  const link = contactHref(job.contact);
-  const facts = [
-    job.location ? { icon: MapPin, text: job.location } : null,
-    job.work_time ? { icon: CalendarDays, text: job.work_time } : null,
-    job.compensation ? { icon: Coins, text: job.compensation } : null
-  ].filter(Boolean) as { icon: typeof MapPin; text: string }[];
+  const formA = !!job.role_title;
+  const role = roleOf(job.department, job.role_title);
+  const legacyLink = formA ? null : contactHref(job.contact);
+  const dates = [job.start_date ? formatVnDate(job.start_date) : '', job.end_date ? formatVnDate(job.end_date) : ''].filter(Boolean).join(' → ');
+  const place = [labelOf(WORK_CITIES, job.city), job.location_detail].filter(Boolean).join(' · ');
+  const facts = (
+    formA
+      ? [
+          place ? { icon: MapPin, text: place } : null,
+          dates || job.shooting_days ? { icon: CalendarDays, text: [dates, job.shooting_days ? `${job.shooting_days} ngày quay` : ''].filter(Boolean).join(' · ') } : null,
+          salaryText(job) ? { icon: Coins, text: salaryText(job) } : null
+        ]
+      : [
+          job.location ? { icon: MapPin, text: job.location } : null,
+          job.work_time ? { icon: CalendarDays, text: job.work_time } : null,
+          job.compensation ? { icon: Coins, text: job.compensation } : null
+        ]
+  ).filter(Boolean) as { icon: typeof MapPin; text: string }[];
+  const tags = formA
+    ? [
+        departmentOf(job.department)?.label,
+        labelOf(SENIORITY_LEVELS, job.seniority_level).split(' (')[0],
+        labelOf(EMPLOYMENT_TYPES, job.employment_type).split(' (')[0],
+        labelOf(WORK_MODES, job.work_mode)
+      ].filter(Boolean)
+    : job.positions;
+  const project = formA
+    ? [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), labelOf(CREW_PROJECT_TYPES, job.project_type).split(' (')[0], labelOf(PROJECT_PHASES, job.project_phase).split(' (')[0]]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
+  const phone = (job.contact_phone || '').replace(/[^\d+]/g, '');
   return (
     <li className="dv-card p-6 md:p-7">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          {job.company && <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{job.company}</p>}
-          <h2 className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2] md:text-[24px]">{job.title}</h2>
+          {job.company && (
+            <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">
+              {job.company}
+              {job.company_type ? <span className="font-normal"> · {labelOf(COMPANY_TYPES, job.company_type).split(' (')[0]}</span> : null}
+            </p>
+          )}
+          <h2 className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2] md:text-[24px]">{formA && role ? role.vi : job.title}</h2>
+          {formA && role && <p className="mt-0.5 text-[14px] text-[var(--dv-text-secondary)]">{role.en}</p>}
+          {project && <p className="mt-2 text-[14px]">{project}</p>}
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {job.positions.map(p => (
+            {tags.map(p => (
               <span key={p} className="rounded-full bg-[var(--dv-bg-alt)] px-3 py-1 text-[13px] font-medium">
                 {p}
               </span>
@@ -93,17 +151,30 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
             </p>
           )}
         </div>
-        <div className="shrink-0 md:text-right">
+        <div className="flex shrink-0 flex-col gap-2 md:items-end">
           {job.deadline && <p className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</p>}
-          {link ? (
-            <a href={link} target={link.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="dv-btn dv-btn-primary mt-2 !h-10 !py-0 text-[14px]">
+          {formA ? (
+            <>
+              {job.contact_email && (
+                <a href={`mailto:${job.contact_email}`} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+                  <Mail className="h-4 w-4" /> Gửi CV / Showreel
+                </a>
+              )}
+              {phone && (
+                <a href={`tel:${phone}`} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
+                  <Phone className="h-4 w-4" /> {job.contact_phone}
+                </a>
+              )}
+            </>
+          ) : legacyLink ? (
+            <a href={legacyLink} target={legacyLink.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
               <Phone className="h-4 w-4" /> Liên hệ ứng tuyển
             </a>
           ) : null}
         </div>
       </div>
 
-      {(job.description || !link) && (
+      {!formA && (job.description || !legacyLink) && (
         <div className="mt-4 border-t border-[#f0f0f2] pt-4">
           {job.description && (
             <>

@@ -1,5 +1,17 @@
 // Tin tuyển ekip (dienvienvn.com/tuyen-dung): đối tác / ACT đăng, ACT duyệt; người xem liên hệ trực tiếp.
 import { z } from 'zod';
+import {
+  COMPANY_TYPES,
+  CREW_PROJECT_TYPES,
+  DEPARTMENTS,
+  EMPLOYMENT_TYPES,
+  PROJECT_PHASES,
+  SALARY_TYPES,
+  SENIORITY_LEVELS,
+  WORK_CITIES,
+  WORK_MODES,
+  roleOf
+} from './crew-taxonomy';
 
 export type CrewJobStatus = 'draft' | 'open' | 'closed';
 
@@ -16,16 +28,35 @@ export interface CrewJob {
   contact: string;
   deadline: string | null;
   status: CrewJobStatus;
+  // Form A (tài liệu Trang tuyển dụng)
+  company_type?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  project_name?: string | null;
+  project_hidden?: boolean | null;
+  project_type?: string | null;
+  project_phase?: string | null;
+  department?: string | null;
+  role_title?: string | null;
+  seniority_level?: string | null;
+  employment_type?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  shooting_days?: number | null;
+  city?: string | null;
+  location_detail?: string | null;
+  work_mode?: string | null;
+  salary_type?: string | null;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  currency?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-/** Phần hiện công khai (không có partner_id / người tạo). */
-export type PublicCrewJob = Pick<
-  CrewJob,
-  'id' | 'title' | 'company' | 'positions' | 'description' | 'location' | 'work_time' | 'compensation' | 'contact' | 'deadline' | 'created_at'
->;
+/** Phần hiện công khai (không có partner_id / người tạo; tên dự án bảo mật đã bị bỏ). */
+export type PublicCrewJob = Omit<CrewJob, 'partner_id' | 'status' | 'created_by' | 'updated_at' | 'project_hidden'>;
 
 export const CREW_JOB_STATUS: Record<CrewJobStatus, { label: string; badge: string }> = {
   draft: { label: 'Chờ duyệt', badge: 'bg-amber-50 text-amber-800 border-amber-300' },
@@ -49,58 +80,98 @@ export const CREW_POSITION_SUGGESTIONS = [
 ];
 
 const text = (max: number) => z.string().trim().max(max).optional().default('');
+const optEnum = (ids: string[]) => z.enum(ids as [string, ...string[]]).optional().or(z.literal('')).default('');
+const enumOf = (list: { id: string }[], msg: string) => z.enum(list.map(o => o.id) as [string, ...string[]], { errorMap: () => ({ message: msg }) });
+const date = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).default('');
+const money = z.coerce.number().int().min(0).max(100_000_000_000).optional().nullable().or(z.literal('')).default(null);
 
-export const crewJobSchema = z.object({
-  title: z.string().trim().min(3, 'Vui lòng nhập tiêu đề tin').max(160),
-  company: text(160),
-  positions: z.array(z.string().trim().min(1).max(60)).min(1, 'Chọn hoặc nhập ít nhất một vị trí').max(20),
-  description: text(5000),
-  location: text(120),
-  work_time: text(160),
-  compensation: text(160),
-  contact: z.string().trim().min(5, 'Vui lòng nhập cách liên hệ (SĐT, email hoặc link đăng ký)').max(300),
-  deadline: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional()
-    .or(z.literal(''))
-    .default(null)
-});
+/** Form A: Đăng tin tuyển dụng (Production House / Producer / Đạo diễn). */
+export const crewJobSchema = z
+  .object({
+    // 1. Thông tin đơn vị tuyển dụng
+    company_name: z.string().trim().min(2, 'Vui lòng nhập tên đơn vị tuyển dụng').max(160),
+    company_type: enumOf(COMPANY_TYPES, 'Vui lòng chọn loại hình đơn vị'),
+    contact_email: z.string().trim().email('Email nhận CV/Showreel chưa đúng định dạng').max(160),
+    contact_phone: z
+      .string()
+      .trim()
+      .max(20)
+      .refine(v => /^\+?\d{9,12}$/.test(v.replace(/[\s.-]/g, '')), 'Số điện thoại / Zalo chưa đúng định dạng'),
+    // 2. Thông tin dự án
+    project_name: text(160),
+    project_hidden: z.boolean().optional().default(false),
+    project_type: enumOf(CREW_PROJECT_TYPES, 'Vui lòng chọn loại hình dự án'),
+    project_phase: optEnum(PROJECT_PHASES.map(o => o.id)),
+    // 3. Vị trí & yêu cầu chuyên môn
+    department: enumOf(DEPARTMENTS, 'Vui lòng chọn phân nhóm chuyên môn'),
+    role_title: z.string().trim().min(1, 'Vui lòng chọn vị trí cụ thể'),
+    seniority_level: enumOf(SENIORITY_LEVELS, 'Vui lòng chọn cấp độ kinh nghiệm'),
+    // 4. Thời gian & hình thức làm việc
+    employment_type: enumOf(EMPLOYMENT_TYPES, 'Vui lòng chọn hình thức hợp đồng'),
+    start_date: date,
+    end_date: date,
+    shooting_days: z.coerce.number().int().min(0).max(1000).optional().nullable().or(z.literal('')).default(null),
+    city: optEnum(WORK_CITIES.map(o => o.id)),
+    location_detail: text(200),
+    work_mode: optEnum(WORK_MODES.map(o => o.id)),
+    // 5. Ngân sách & thù lao
+    salary_type: enumOf(SALARY_TYPES, 'Vui lòng chọn cách tính thù lao'),
+    salary_min: money,
+    salary_max: money
+  })
+  .superRefine((v, ctx) => {
+    if (!roleOf(v.department, v.role_title)) ctx.addIssue({ code: 'custom', path: ['role_title'], message: 'Vui lòng chọn vị trí cụ thể' });
+    if (v.start_date && v.end_date && v.end_date < v.start_date) {
+      ctx.addIssue({ code: 'custom', path: ['end_date'], message: 'Ngày kết thúc phải sau ngày bắt đầu' });
+    }
+    const [lo, hi] = [Number(v.salary_min) || 0, Number(v.salary_max) || 0];
+    if (lo && hi && lo > hi) ctx.addIssue({ code: 'custom', path: ['salary_max'], message: 'Mức tối đa phải lớn hơn mức tối thiểu' });
+  });
 
 export type CrewJobInput = z.infer<typeof crewJobSchema>;
 
-/** Chuẩn hoá thành cột của bảng crew_jobs (chuỗi rỗng → null). */
+/** Chuẩn hoá thành cột của bảng crew_jobs (chuỗi rỗng → null; tiêu đề / liên hệ / vị trí tính sẵn cho trang công khai). */
 export function toCrewJobColumns(input: CrewJobInput) {
   const orNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
+  const num = (v: unknown) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
+  const role = roleOf(input.department, input.role_title);
+  const project = input.project_hidden ? null : orNull(input.project_name);
   return {
-    title: input.title.trim(),
-    company: orNull(input.company),
-    positions: Array.from(new Set(input.positions.map(p => p.trim()).filter(Boolean))),
-    description: orNull(input.description),
-    location: orNull(input.location),
-    work_time: orNull(input.work_time),
-    compensation: orNull(input.compensation),
-    contact: input.contact.trim(),
-    deadline: orNull(input.deadline || null)
+    title: [role?.vi || 'Tuyển dụng', project].filter(Boolean).join(' – '),
+    company: input.company_name.trim(),
+    positions: role ? [role.vi] : [],
+    contact: [input.contact_email.trim(), input.contact_phone.trim()].join(' · '),
+    company_type: input.company_type,
+    contact_email: input.contact_email.trim(),
+    contact_phone: input.contact_phone.trim(),
+    project_name: orNull(input.project_name),
+    project_hidden: !!input.project_hidden,
+    project_type: input.project_type,
+    project_phase: orNull(input.project_phase),
+    department: input.department,
+    role_title: input.role_title,
+    seniority_level: input.seniority_level,
+    employment_type: input.employment_type,
+    start_date: orNull(input.start_date),
+    end_date: orNull(input.end_date),
+    shooting_days: num(input.shooting_days),
+    city: orNull(input.city),
+    location_detail: orNull(input.location_detail),
+    work_mode: orNull(input.work_mode),
+    salary_type: input.salary_type,
+    salary_min: input.salary_type === 'negotiable' ? null : num(input.salary_min),
+    salary_max: input.salary_type === 'negotiable' ? null : num(input.salary_max),
+    currency: 'VND'
   };
 }
 
 export function toPublicCrewJob(j: CrewJob): PublicCrewJob {
-  return {
-    id: j.id,
-    title: j.title,
-    company: j.company,
-    positions: j.positions || [],
-    description: j.description,
-    location: j.location,
-    work_time: j.work_time,
-    compensation: j.compensation,
-    contact: j.contact,
-    deadline: j.deadline,
-    created_at: j.created_at
-  };
+  const { partner_id: _p, status: _s, created_by: _c, updated_at: _u, project_hidden, ...rest } = j;
+  void _p;
+  void _s;
+  void _c;
+  void _u;
+  return { ...rest, positions: j.positions || [], project_name: project_hidden ? null : j.project_name || null };
 }
 
 /** Tin còn hạn: chưa có hạn, hoặc hạn từ hôm nay trở đi (giờ Việt Nam). */
