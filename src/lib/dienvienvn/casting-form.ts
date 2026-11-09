@@ -448,6 +448,12 @@ function buildExperience(exp: CastingDraft['experience']): ActingExperience {
  * Chuyển dữ liệu form thành bản ghi talent_profiles đúng chuẩn CRM.
  * id / created_at / review_status được server gán lại khi lưu.
  */
+/** "facebook.com/abc" → "https://facebook.com/abc" (link mạng xã hội luôn mở được). */
+const withHttps = (v: string) => {
+  const t = v.trim();
+  return t && !/^https?:\/\//i.test(t) ? `https://${t}` : t;
+};
+
 export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'> {
   const phone = normalizePhone(d.phone);
   const accents = d.accents.map(a => ({ accent: a, level: 'Bản ngữ' }));
@@ -477,10 +483,10 @@ export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'>
     acting_genres: [],
     role_willingness: d.role_willingness,
     social_links: {
-      facebook: d.social_links.facebook.trim(),
-      instagram: d.social_links.instagram.trim(),
-      tiktok: d.social_links.tiktok.trim(),
-      showreel_url: d.social_links.showreel_url.trim()
+      facebook: withHttps(d.social_links.facebook),
+      instagram: withHttps(d.social_links.instagram),
+      tiktok: withHttps(d.social_links.tiktok),
+      showreel_url: withHttps(d.social_links.showreel_url)
     },
     languages: [
       { language: 'Tiếng Việt', level: 'Bản ngữ' },

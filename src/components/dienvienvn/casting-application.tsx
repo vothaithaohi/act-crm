@@ -771,13 +771,13 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                       <div>
                         <p className="text-[15px] font-semibold">Tạo mật khẩu đăng nhập</p>
                         <p className="mt-0.5 text-[12px] leading-[1.4] text-[var(--dv-text-secondary)]">
-                          Dùng cùng email ở bước 1 để đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển dự án. Không cần mở email xác nhận.
+                          Mật khẩu ít nhất {MIN_PASSWORD} ký tự. Dùng cùng email ở bước 1 để đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển dự án. Không cần mở email xác nhận.
                         </p>
                       </div>
                       <input
                         type="password"
                         autoComplete="new-password"
-                        placeholder={`Mật khẩu (ít nhất ${MIN_PASSWORD} ký tự)`}
+                        placeholder="Mật khẩu"
                         aria-label="Mật khẩu"
                         className="dv-input"
                         value={password}

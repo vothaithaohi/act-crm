@@ -180,7 +180,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
         <TextInput
           id="address"
           autoComplete="street-address"
-          placeholder="Số nhà, tên đường, phường/xã…"
+          placeholder="Số nhà, đường…"
           value={draft.address}
           onChange={e => update({ address: e.target.value })}
         />
@@ -555,10 +555,10 @@ export function StepWillingness({ draft, update }: StepProps) {
 /* ---------------- Bước 6 ---------------- */
 export function StepMedia({ draft, update, errors, application }: StepProps) {
   const socials: { key: keyof CastingDraft['social_links']; label: string; ph: string }[] = [
-    { key: 'facebook', label: 'Facebook', ph: 'https://facebook.com/…' },
-    { key: 'instagram', label: 'Instagram', ph: 'https://instagram.com/…' },
-    { key: 'tiktok', label: 'TikTok', ph: 'https://tiktok.com/@…' },
-    { key: 'showreel_url', label: 'Showreel (YouTube / Drive)', ph: 'https://youtube.com/watch?v=…' }
+    { key: 'facebook', label: 'Facebook', ph: 'facebook.com/…' },
+    { key: 'instagram', label: 'Instagram', ph: 'instagram.com/…' },
+    { key: 'tiktok', label: 'TikTok', ph: 'tiktok.com/@…' },
+    { key: 'showreel_url', label: 'Showreel (YouTube / Drive)', ph: 'Link YouTube / Drive' }
   ];
   return (
     <div className="space-y-6">
