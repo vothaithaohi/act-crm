@@ -30,11 +30,19 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   // Trang dự án công khai: ai cũng xem được; ứng tuyển cần đăng nhập hoặc nộp hồ sơ mới
   useEffect(() => {
     fetchPublicProject(projectId)
-      .then(setProject)
+      .then(p => {
+        setProject(p);
+        // Link cũ (tên thật trước khi bật "Ẩn tên", hoặc tên cũ): đổi địa chỉ sang đường dẫn hiện tại, không lộ tên thật
+        const canonical = p ? projectPathName(p.display_name, p.code) || p.id : '';
+        if (canonical && decodeURIComponent(projectId).toLowerCase() !== canonical) {
+          window.history.replaceState(window.history.state, '', href(`/du-an/${canonical}`) + window.location.search + window.location.hash);
+        }
+      })
       .catch(e => {
         setError(e instanceof Error ? e.message : 'Không tải được dự án.');
         setProject(null);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   if (project === undefined) {

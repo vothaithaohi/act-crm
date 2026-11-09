@@ -252,7 +252,8 @@ export function projectPathName(name: string, code: string): string {
 
 /**
  * Mức khớp giữa đường dẫn và dự án (0 = không khớp):
- * 3 = đúng tên (mot-phim-linh-dinh), 2 = tên + mã (mot-phim-linh-dinh-dv-01), 1 = kết thúc bằng mã (link cũ khi đã đổi tên).
+ * 3 = đúng tên (mot-phim-linh-dinh), 2 = tên + mã (mot-phim-linh-dinh-dv-01), 1 = kết thúc bằng mã (link cũ khi đã đổi tên),
+ * 1 = tên thật của dự án (link đã gửi trước khi bật "Ẩn tên" vẫn mở được).
  */
 export function projectSlugScore(param: string, p: Pick<CastingProject, 'code' | 'title' | 'hide_title'>): number {
   const key = param.trim().toLowerCase();
@@ -261,6 +262,7 @@ export function projectSlugScore(param: string, p: Pick<CastingProject, 'code' |
   if (key === projectPathName(name, p.code)) return 3;
   if (key === projectSlug(name, p.code)) return 2;
   if (c && (key === c || key.endsWith(`-${c}`))) return 1;
+  if (p.hide_title && p.title && (key === projectPathName(p.title, p.code) || key === projectSlug(p.title, p.code))) return 1;
   return 0;
 }
 
