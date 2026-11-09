@@ -8,7 +8,7 @@ import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { useDvvnHref } from './base-path';
 import { FlipCountdown, useLaunched } from './flip-countdown';
-import { ProjectsSection } from './projects-section';
+import { ProjectSlider } from './project-slider';
 import { DvLogo, Reveal, SiteFooter } from './site-chrome';
 
 /** Trang chủ chia 2 luồng: diễn viên và người tìm diễn viên. Mỗi luồng chỉ hiện phần dành cho mình. */
@@ -514,7 +514,7 @@ export function DienVienVNLanding({ stats }: { stats: HomeStats }) {
       <LandingNav audience={audience} onAudience={setAudience} />
       <main>
         <Hero stats={stats} audience={audience} onAudience={setAudience} />
-        {talent && <ProjectsSection />}
+        {talent && <ProjectSlider />}
         <FacesSection faces={stats.faces} />
         <AudienceTile audience={audience} />
         <Process audience={audience} />
