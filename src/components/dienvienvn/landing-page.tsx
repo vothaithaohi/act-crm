@@ -26,7 +26,8 @@ function hiringLinks(href: (p: string) => string) {
   ];
 }
 
-function HiringDropdown({ linkCls }: { linkCls: string }) {
+/** Rê chuột: mở menu. Bấm: chuyển trang chủ sang "Tôi tìm diễn viên". */
+function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active: boolean; onSelect: () => void }) {
   const href = useDvvnHref();
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -37,7 +38,17 @@ function HiringDropdown({ linkCls }: { linkCls: string }) {
   }, [open]);
   return (
     <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-haspopup="menu" className={`${linkCls} inline-flex items-center gap-1 ${open ? '!text-black' : ''}`}>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(false);
+          onSelect();
+        }}
+        onFocus={() => setOpen(true)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`${linkCls} inline-flex items-center gap-1 ${open ? '!text-black' : ''} ${active ? '!text-black font-semibold' : ''}`}
+      >
         Dành cho nhà sản xuất <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -78,7 +89,7 @@ function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: 
           <button type="button" onClick={() => go('talent')} className={`${linkCls} ${audience === 'talent' ? '!text-black font-semibold' : ''}`}>
             Dành cho diễn viên
           </button>
-          <HiringDropdown linkCls={linkCls} />
+          <HiringDropdown linkCls={linkCls} active={audience === 'hiring'} onSelect={() => go('hiring')} />
           <Link href={href('/dien-vien')} className={linkCls}>
             Diễn viên
           </Link>
@@ -116,7 +127,9 @@ function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: 
             Dành cho diễn viên
           </button>
           <div className="border-b border-[#f0f0f2] py-3.5">
-            <p className="text-[17px] font-semibold">Dành cho nhà sản xuất</p>
+            <button type="button" onClick={() => go('hiring')} className="w-full text-left text-[17px] font-semibold">
+              Dành cho nhà sản xuất
+            </button>
             <div className="mt-1.5 space-y-0.5">
               {hiringLinks(href).map(l => (
                 <Link key={l.label} href={l.href} onClick={() => setOpen(false)} className="block py-1.5 pl-3 text-[15px] text-black/75">
