@@ -8,6 +8,7 @@ import { publicSiteUrl } from './hosts';
 import { PartnerAccount, PartnerProjectSummary, PartnerTalent } from './partners';
 import { CastingProject, ProjectApplication, newShareToken, nextProjectCode, partnerProjectPath, projectSlugScore, slugifyVi } from '@/lib/projects/types';
 import { PartnerProjectInput, toProjectColumns } from './partner-project-input';
+import { sendMail } from './mailer';
 
 /** Bỏ ký tự đặc biệt của LIKE để so khớp email chính xác (không phân biệt hoa thường). */
 const likeExact = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`);
@@ -55,7 +56,7 @@ export async function findPartnerForUser(db: SupabaseClient, user: User): Promis
 }
 
 /** ready: đối tác đã tự đặt mật khẩu khi đăng ký → duyệt xong đăng nhập được ngay, không cần email. */
-export type PartnerEmailResult = 'invited' | 'reset' | 'ready' | 'staff' | 'failed';
+export type PartnerEmailResult = 'invited' | 'reset' | 'ready' | 'staff' | 'failed' | 'approved' | 'approved_no_email';
 
 /**
  * Gửi email cho đối tác: lần đầu là email mời tạo mật khẩu, đã kích hoạt rồi thì là email đặt lại mật khẩu.
@@ -105,6 +106,56 @@ export async function sendPartnerEmail(db: SupabaseClient, partner: PartnerAccou
   }
   if (data?.user?.id) await link(data.user.id);
   return 'invited';
+}
+
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+/** Email "Tài khoản đối tác đã được duyệt" (đối tác tự đăng ký): đăng nhập bằng mật khẩu đã có, không gửi email đặt lại mật khẩu. */
+function approvedEmail(partner: PartnerAccount, loginUrl: string, existingAccount: boolean) {
+  const name = escapeHtml(partner.full_name || 'bạn');
+  const email = escapeHtml(partner.email);
+  const how = existingAccount
+    ? `Bạn có thể đăng nhập ngay bằng email <b>${email}</b> và mật khẩu hiện có của tài khoản DienVienVN dùng email này`
+    : `Bạn có thể đăng nhập ngay bằng email <b>${email}</b> và mật khẩu đã đặt khi đăng ký`;
+  const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1d1d1f">
+  <p style="font-size:20px;font-weight:600;margin:0 0 24px">🎬 DienVienVN</p>
+  <h2 style="font-size:24px;margin:0 0 12px">Tài khoản đối tác của bạn đã được duyệt.</h2>
+  <p style="font-size:15px;line-height:1.5;color:#424245;margin:0 0 24px">
+    Xin chào ${name}, DienVienVN đã duyệt tài khoản đối tác của bạn. ${how} để đăng dự án casting, đăng tin tuyển ekip và xem hồ sơ diễn viên.
+  </p>
+  <a href="${loginUrl}" style="display:inline-block;background:#1d1d1f;color:#ffffff;text-decoration:none;font-size:15px;padding:12px 24px;border-radius:980px">Đăng nhập cổng đối tác</a>
+  <p style="font-size:13px;line-height:1.5;color:#86868b;margin:24px 0 0">Quên mật khẩu? Bấm &ldquo;Quên mật khẩu&rdquo; ở trang đăng nhập.</p>
+</div>`;
+  const text = `Tài khoản đối tác của bạn đã được duyệt.\n\nXin chào ${partner.full_name || 'bạn'}, DienVienVN đã duyệt tài khoản đối tác của bạn. ${
+    existingAccount ? 'Đăng nhập bằng mật khẩu hiện có của tài khoản DienVienVN dùng email này.' : 'Đăng nhập bằng mật khẩu đã đặt khi đăng ký.'
+  }\n\nĐăng nhập cổng đối tác: ${loginUrl}\nQuên mật khẩu? Bấm "Quên mật khẩu" ở trang đăng nhập.`;
+  return { subject: 'Tài khoản đối tác DienVienVN đã được duyệt', html, text };
+}
+
+/**
+ * Khi ACT bấm Duyệt đối tác tự đăng ký: gửi email "đã được duyệt" thay cho email đặt lại mật khẩu.
+ * Đối tác do ACT tạo (chưa có mật khẩu) hoặc email thuộc tài khoản tự tạo chưa xác minh: giữ luồng email mời như cũ.
+ */
+export async function sendPartnerApprovalEmail(db: SupabaseClient, partner: PartnerAccount, headers: Headers): Promise<PartnerEmailResult> {
+  if (partner.created_by !== 'Tự đăng ký') return sendPartnerEmail(db, partner, headers);
+  const email = partner.email.trim().toLowerCase();
+  if (await isStaffEmail(db, email)) return 'staff';
+
+  let existingAccount = false;
+  if (partner.auth_user_id) {
+    const { data } = await db.auth.admin.getUserById(partner.auth_user_id);
+    if (!data?.user) return sendPartnerEmail(db, partner, headers);
+    existingAccount = !isSelfSignup(data.user);
+  } else {
+    // Email đã có tài khoản trước khi đăng ký đối tác (mật khẩu đăng ký không được áp dụng)
+    const existing = await findAuthUserByEmail(db, email);
+    if (!existing || isSelfSignup(existing)) return sendPartnerEmail(db, partner, headers);
+    await db.from('partner_accounts').update({ auth_user_id: existing.id }).eq('id', partner.id);
+    existingAccount = true;
+  }
+  const loginUrl = `${publicSiteUrl(headers)}/dang-nhap?next=${encodeURIComponent('/doi-tac')}`;
+  const ok = await sendMail({ to: email, ...approvedEmail(partner, loginUrl, existingAccount) });
+  return ok ? 'approved' : 'approved_no_email';
 }
 
 /** Ghi nhật ký đối tác đã xem dự án / hồ sơ nào. Không bao giờ làm hỏng trang (bảng chưa có thì bỏ qua). */

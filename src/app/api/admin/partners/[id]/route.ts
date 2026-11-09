@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
+import { sendPartnerApprovalEmail, sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
 import { PartnerAccount } from '@/lib/dienvienvn/partners';
 import { cleanProjectIds, EMAIL_RESULT_MESSAGE, guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (resend || approving) {
     if (partner.status !== 'active') return NextResponse.json({ error: 'Tài khoản đang bị khoá. Mở khoá trước khi gửi email.' }, { status: 400 });
-    const result = await sendPartnerEmail(g.db, partner, req.headers);
+    const result = approving ? await sendPartnerApprovalEmail(g.db, partner, req.headers) : await sendPartnerEmail(g.db, partner, req.headers);
     const { data: fresh } = await g.db.from('partner_accounts').select('*').eq('id', id).single();
     return NextResponse.json({ partner: (fresh || partner) as PartnerAccount, email: result, message: EMAIL_RESULT_MESSAGE[result] });
   }

@@ -12,7 +12,9 @@ export const EMAIL_RESULT_MESSAGE: Record<string, string> = {
   reset: 'Email này đã có tài khoản — đã gửi email đặt mật khẩu.',
   ready: 'Đối tác đã đặt mật khẩu khi đăng ký — đăng nhập được ngay, không cần email.',
   staff: 'Email thuộc nhân sự CRM nên không gửi email đặt mật khẩu. Hãy dùng email khác cho tài khoản đối tác.',
-  failed: 'Chưa gửi được email. Kiểm tra cấu hình SMTP trong Supabase rồi bấm "Gửi lại email".'
+  failed: 'Chưa gửi được email. Kiểm tra cấu hình SMTP trong Supabase rồi bấm "Gửi lại email".',
+  approved: 'Đã duyệt và gửi email "Tài khoản đối tác đã được duyệt".',
+  approved_no_email: 'Đã duyệt — đối tác đăng nhập được ngay, nhưng chưa gửi được email báo duyệt (kiểm tra cấu hình SMTP_* trên Vercel).'
 };
 
 export async function guardPartnerAdmin(req: NextRequest) {
