@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, ChevronRight, Clapperboard, Menu, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronRight, Clapperboard, Menu, X } from 'lucide-react';
 import { CASTING_STEPS } from '@/lib/dienvienvn/casting-form';
 import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
@@ -17,6 +17,45 @@ type Audience = 'talent' | 'hiring';
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 
 /* ---------------- Thanh menu ---------------- */
+/** Menu thả xuống "Dành cho nhà sản xuất" (kiểu Find Talent của Backstage). */
+function hiringLinks(href: (p: string) => string) {
+  return [
+    { href: href('/doi-tac/du-an/moi'), label: 'Đăng tuyển dự án', desc: 'Đăng casting call, tìm diễn viên cho các vai' },
+    { href: href('/doi-tac/tuyen-dung/moi'), label: 'Đăng tuyển dụng ekip', desc: 'Tuyển ekip audition, trường quay, hậu kỳ' },
+    { href: href('/tai-sao-chon-dienvienvn'), label: 'Tại sao chọn DienVienVN?', desc: 'Quy trình làm việc và quyền lợi của đối tác' }
+  ];
+}
+
+function HiringDropdown({ linkCls }: { linkCls: string }) {
+  const href = useDvvnHref();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-haspopup="menu" className={`${linkCls} inline-flex items-center gap-1 ${open ? '!text-black' : ''}`}>
+        Dành cho nhà sản xuất <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3">
+          <div role="menu" className="w-[320px] rounded-[18px] border border-black/[0.06] bg-white p-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)]">
+            {hiringLinks(href).map(l => (
+              <Link key={l.label} role="menuitem" href={l.href} onClick={() => setOpen(false)} className="block rounded-[12px] px-4 py-3 hover:bg-[var(--dv-bg-alt)]">
+                <span className="block text-[15px] font-semibold text-[#1d1d1f]">{l.label}</span>
+                <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{l.desc}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
   const href = useDvvnHref();
   const session = useActorSession();
@@ -39,9 +78,7 @@ function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: 
           <button type="button" onClick={() => go('talent')} className={`${linkCls} ${audience === 'talent' ? '!text-black font-semibold' : ''}`}>
             Dành cho diễn viên
           </button>
-          <button type="button" onClick={() => go('hiring')} className={`${linkCls} ${audience === 'hiring' ? '!text-black font-semibold' : ''}`}>
-            Dành cho nhà sản xuất
-          </button>
+          <HiringDropdown linkCls={linkCls} />
           <Link href={href('/dien-vien')} className={linkCls}>
             Diễn viên
           </Link>
@@ -78,9 +115,16 @@ function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: 
           <button type="button" onClick={() => go('talent')} className={mobileCls}>
             Dành cho diễn viên
           </button>
-          <button type="button" onClick={() => go('hiring')} className={mobileCls}>
-            Dành cho nhà sản xuất
-          </button>
+          <div className="border-b border-[#f0f0f2] py-3.5">
+            <p className="text-[17px] font-semibold">Dành cho nhà sản xuất</p>
+            <div className="mt-1.5 space-y-0.5">
+              {hiringLinks(href).map(l => (
+                <Link key={l.label} href={l.href} onClick={() => setOpen(false)} className="block py-1.5 pl-3 text-[15px] text-black/75">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          </div>
           <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>
             Diễn viên
           </Link>
