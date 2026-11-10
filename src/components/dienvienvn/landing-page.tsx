@@ -12,7 +12,7 @@ import { ProjectSlider } from './project-slider';
 import { DvLogo, Reveal, SiteFooter } from './site-chrome';
 
 /** Trang chủ chia 2 luồng: diễn viên và người tìm diễn viên. Mỗi luồng chỉ hiện phần dành cho mình. */
-type Audience = 'talent' | 'hiring';
+export type Audience = 'talent' | 'hiring';
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 
@@ -67,7 +67,7 @@ function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active
   );
 }
 
-function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
+export function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
   const href = useDvvnHref();
   const session = useActorSession();
   const [open, setOpen] = useState(false);
