@@ -18,6 +18,8 @@ import { experienceGroups, foldVi, skillGroups, trainingList } from '@/lib/dienv
 import { LoginGate } from './actor-pages';
 import { CREW_JOB_STATUS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from './crew-job-fields';
+import { CrewProfileDetails } from './crew-profile-view';
+import type { CrewApplicantView } from '@/lib/dienvienvn/crew-server';
 import { useDvvnHref } from './base-path';
 import { GlobalNav } from './site-chrome';
 
@@ -914,7 +916,7 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
 /* ---------------- Tin tuyển ekip của đối tác ---------------- */
 function PartnerCrewJobsSection() {
   const href = useDvvnHref();
-  const api = usePartnerApi<{ jobs: CrewJob[] }>('/api/dienvienvn/partner/crew-jobs');
+  const api = usePartnerApi<{ jobs: (CrewJob & { applicant_count?: number })[] }>('/api/dienvienvn/partner/crew-jobs');
   const jobs = api.data?.jobs || [];
   return (
     <section className="mb-12">
@@ -942,9 +944,13 @@ function PartnerCrewJobsSection() {
               </span>
               <p className="mt-2 text-[17px] font-semibold leading-[1.3]">{j.title}</p>
               <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">{j.positions.join(' · ')}</p>
-              {j.status === 'draft' && (
+              {j.status === 'draft' ? (
                 <Link href={href(`/doi-tac/tuyen-dung/${j.id}/sua`)} className="dv-link mt-auto pt-4 text-[14px]">
                   Sửa tin <ChevronRight className="h-4 w-4" />
+                </Link>
+              ) : (
+                <Link href={href(`/doi-tac/tuyen-dung/${j.id}/ung-vien`)} className="dv-link mt-auto pt-4 text-[14px]">
+                  Xem ứng viên ({j.applicant_count || 0}) <ChevronRight className="h-4 w-4" />
                 </Link>
               )}
             </li>
@@ -952,6 +958,41 @@ function PartnerCrewJobsSection() {
         </ul>
       )}
     </section>
+  );
+}
+
+/** Ứng viên ekip của một tin tuyển (chỉ hồ sơ đã được DienVienVN duyệt). */
+export function PartnerCrewApplicants({ jobId }: { jobId: string }) {
+  const href = useDvvnHref();
+  const api = usePartnerApi<{ job: { id: string; title: string; company: string | null } | null; applicants: CrewApplicantView[] }>(
+    `/api/dienvienvn/partner/crew-jobs/${encodeURIComponent(jobId)}/applicants`
+  );
+  if (!api.data) return <Gate {...api} next={href(`/doi-tac/tuyen-dung/${jobId}/ung-vien`)} />;
+  const { job, applicants } = api.data;
+  return (
+    <PortalShell>
+      <div className="mx-auto max-w-[880px]">
+        <Link href={href('/doi-tac')} className="dv-link text-[14px]">
+          <ChevronLeft className="h-4 w-4" /> Cổng đối tác
+        </Link>
+        <h1 className="dv-display dv-headline mt-4">Ứng viên.</h1>
+        {job && <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{job.title}</p>}
+        {applicants.length === 0 ? (
+          <div className="dv-card mt-8 p-10 text-center">
+            <p className="text-[19px] font-semibold">Chưa có ứng viên.</p>
+            <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">Hồ sơ ứng viên hiện tại đây sau khi DienVienVN duyệt. Bạn sẽ nhận email khi có ứng viên mới.</p>
+          </div>
+        ) : (
+          <ul className="mt-8 space-y-3">
+            {applicants.map(a => (
+              <li key={a.id} className="dv-card p-6">
+                <CrewProfileDetails p={a} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </PortalShell>
   );
 }
 

@@ -56,6 +56,8 @@ export async function reclaimSelfSignup(db: SupabaseClient, user: User, redirect
   }
   await db.from('talent_profiles').update({ auth_user_id: data.user.id }).eq('auth_user_id', user.id);
   await db.from('partner_accounts').update({ auth_user_id: data.user.id }).eq('auth_user_id', user.id);
+  // Hồ sơ ekip (bảng có thể chưa có nếu chưa chạy migration — bỏ qua lỗi)
+  await db.from('crew_profiles').update({ auth_user_id: data.user.id }).eq('auth_user_id', user.id).then(() => undefined, () => undefined);
   return data.user.id;
 }
 

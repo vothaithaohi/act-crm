@@ -19,6 +19,7 @@ import {
   Handshake,
   Mic,
   BriefcaseBusiness,
+  UsersRound,
   Library
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -82,6 +83,13 @@ export function Sidebar() {
       title: 'Tuyển dụng ekip',
       href: '/crew-jobs',
       icon: BriefcaseBusiness,
+      badge: null,
+      visible: can('talents:write')
+    },
+    {
+      title: 'Hồ sơ ekip',
+      href: '/crew-profiles',
+      icon: UsersRound,
       badge: null,
       visible: can('talents:write')
     },

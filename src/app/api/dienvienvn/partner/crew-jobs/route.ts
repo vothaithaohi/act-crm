@@ -16,7 +16,17 @@ export async function GET(req: NextRequest) {
   if (partner instanceof NextResponse) return partner;
   const { data, error } = await db.from('crew_jobs').select('*').eq('partner_id', partner.id).order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: MISSING }, { status: 500 });
-  return NextResponse.json({ mode: 'live', jobs: (data || []) as CrewJob[], company: partner.company || '' }, { headers: { 'Cache-Control': 'no-store' } });
+  const jobs = (data || []) as CrewJob[];
+  // Số ứng viên mỗi tin (chỉ hồ sơ ekip đã được DienVienVN duyệt); bảng chưa có thì coi như 0
+  const counts = new Map<string, number>();
+  if (jobs.length) {
+    const { data: apps } = await db.from('crew_applications').select('job_id, crew_profiles!inner(review_status)').in('job_id', jobs.map(j => j.id)).eq('crew_profiles.review_status', 'approved');
+    for (const a of (apps || []) as { job_id: string }[]) counts.set(a.job_id, (counts.get(a.job_id) || 0) + 1);
+  }
+  return NextResponse.json(
+    { mode: 'live', jobs: jobs.map(j => ({ ...j, applicant_count: counts.get(j.id) || 0 })), company: partner.company || '' },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }
 
 export async function POST(req: NextRequest) {

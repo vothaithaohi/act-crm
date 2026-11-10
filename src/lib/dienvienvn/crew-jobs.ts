@@ -63,8 +63,8 @@ export interface CrewJob {
   updated_at: string;
 }
 
-/** Phần hiện công khai (không có partner_id / người tạo; tên dự án bảo mật đã bị bỏ). */
-export type PublicCrewJob = Omit<CrewJob, 'partner_id' | 'status' | 'created_by' | 'updated_at' | 'project_hidden'>;
+/** Phần hiện công khai (không có partner_id / người tạo / liên hệ của NSX; tên dự án bảo mật đã bị bỏ). Ứng tuyển qua DienVienVN. */
+export type PublicCrewJob = Omit<CrewJob, 'partner_id' | 'status' | 'created_by' | 'updated_at' | 'project_hidden' | 'contact' | 'contact_email' | 'contact_phone'>;
 
 export const CREW_JOB_STATUS: Record<CrewJobStatus, { label: string; badge: string }> = {
   draft: { label: 'Chờ duyệt', badge: 'bg-amber-50 text-amber-800 border-amber-300' },
@@ -213,11 +213,8 @@ export function parseCrewJobBatch(body: unknown): { ok: true; inputs: CrewJobInp
 }
 
 export function toPublicCrewJob(j: CrewJob): PublicCrewJob {
-  const { partner_id: _p, status: _s, created_by: _c, updated_at: _u, project_hidden, ...rest } = j;
-  void _p;
-  void _s;
-  void _c;
-  void _u;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { partner_id, status, created_by, updated_at, project_hidden, contact, contact_email, contact_phone, ...rest } = j;
   return { ...rest, positions: j.positions || [], project_name: project_hidden ? null : j.project_name || null };
 }
 

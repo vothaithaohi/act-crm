@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, Mail, MapPin, Phone } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, MapPin } from 'lucide-react';
 import {
   COMPANY_TYPES,
   CREW_PROJECT_TYPES,
@@ -17,7 +17,7 @@ import {
   labelOf,
   roleLabel
 } from '@/lib/dienvienvn/crew-taxonomy';
-import { PublicCrewJob, contactHref } from '@/lib/dienvienvn/crew-jobs';
+import { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { useDvvnHref } from './base-path';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
@@ -32,7 +32,7 @@ export function CrewJobBoard({ jobs }: { jobs: PublicCrewJob[] }) {
         <div className="mx-auto max-w-[980px]">
           <h1 className="dv-display dv-headline">Tuyển dụng ekip.</h1>
           <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-            Ekip audition, trường quay và hậu kỳ cho các dự án trên DienVienVN. Xem tin và liên hệ trực tiếp với bên tuyển.
+            Ekip audition, trường quay và hậu kỳ cho các dự án trên DienVienVN. Tạo hồ sơ ekip một lần, ứng tuyển các tin phù hợp.
           </p>
 
           <section className="mt-8 flex flex-col gap-4 rounded-[18px] bg-[#1d1d1f] p-6 text-white sm:flex-row sm:items-center sm:justify-between md:p-7">
@@ -89,10 +89,10 @@ function salaryText(job: PublicCrewJob): string {
 }
 
 function CrewJobCard({ job }: { job: PublicCrewJob }) {
+  const href = useDvvnHref();
   const [open, setOpen] = useState(false);
   const formA = !!job.role_title;
   const role = roleLabel(job.department, job.role_title, job.role_other);
-  const legacyLink = formA ? null : contactHref(job.contact);
   const dates = [job.start_date ? formatVnDate(job.start_date) : '', job.end_date ? formatVnDate(job.end_date) : ''].filter(Boolean).join(' → ');
   const place = [labelOf(WORK_CITIES, job.city), job.location_detail].filter(Boolean).join(' · ');
   const facts = (
@@ -121,7 +121,6 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
         .filter(Boolean)
         .join(' · ')
     : '';
-  const phone = (job.contact_phone || '').replace(/[^\d+]/g, '');
   return (
     <li className="dv-card p-6 md:p-7">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -154,29 +153,14 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
         </div>
         <div className="flex shrink-0 flex-col gap-2 md:items-end">
           {job.deadline && <p className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</p>}
-          {formA ? (
-            <>
-              {job.contact_email && (
-                <a href={`mailto:${job.contact_email}`} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-                  <Mail className="h-4 w-4" /> Gửi CV / Showreel
-                </a>
-              )}
-              {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm portfolio/CV</p>}
-              {phone && (
-                <a href={`tel:${phone}`} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-                  <Phone className="h-4 w-4" /> {job.contact_phone}
-                </a>
-              )}
-            </>
-          ) : legacyLink ? (
-            <a href={legacyLink} target={legacyLink.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-              <Phone className="h-4 w-4" /> Liên hệ ứng tuyển
-            </a>
-          ) : null}
+          <Link href={href(`/tuyen-dung/ung-tuyen/${job.id}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+            Ứng tuyển
+          </Link>
+          {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm portfolio/CV</p>}
         </div>
       </div>
 
-      {!formA && (job.description || !legacyLink) && (
+      {!formA && job.description && (
         <div className="mt-4 border-t border-[#f0f0f2] pt-4">
           {job.description && (
             <>
@@ -188,10 +172,6 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
               )}
             </>
           )}
-          <p className="mt-3 text-[14px]">
-            <span className="font-semibold">Liên hệ: </span>
-            <span className="break-words text-[var(--dv-text-secondary)]">{job.contact}</span>
-          </p>
         </div>
       )}
     </li>

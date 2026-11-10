@@ -359,8 +359,9 @@ export function SetPassword() {
     }
     const user = updated?.user || (await c.auth.getUser()).data.user;
     setBusy(false);
-    // Đối tác → cổng đối tác (tự báo "đang chờ duyệt" nếu chưa duyệt); diễn viên → trang tài khoản
-    const dest = user?.user_metadata?.kind === 'dienvienvn_partner' ? '/doi-tac' : '/tai-khoan';
+    // Đối tác → cổng đối tác (tự báo "đang chờ duyệt" nếu chưa duyệt); ekip → tài khoản ekip; diễn viên → trang tài khoản
+    const kindOf = user?.user_metadata?.kind;
+    const dest = kindOf === 'dienvienvn_partner' ? '/doi-tac' : kindOf === 'dienvienvn_crew' ? '/tai-khoan/ekip' : '/tai-khoan';
     setPhase('done');
     window.setTimeout(() => router.replace(href(dest)), 1200);
   };
@@ -480,6 +481,7 @@ export function ActorAccount() {
       }
       if (!res.ok) return setProblem(body.error || 'Không tải được hồ sơ.');
       if (body.partner) return router.replace(href('/doi-tac'));
+      if (body.crew) return router.replace(href('/tai-khoan/ekip'));
       setData(body);
       fetchPublicProjects()
         .then(list => !cancelled && setProjects(list.filter(p => !isDeadlinePassed(p.deadline))))

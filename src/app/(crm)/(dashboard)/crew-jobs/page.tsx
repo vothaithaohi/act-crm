@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { BriefcaseBusiness, Check, ExternalLink, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { BriefcaseBusiness, Check, ExternalLink, Loader2, Pencil, Plus, Trash2, UsersRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
 import { useCRM } from '@/lib/store/crm-context';
 import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, parseCrewJobBatch, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
+import { CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
+import { CREW_REVIEW_STATUS, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
 
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
 const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql, 20261113_crew_jobs_form_a.sql và 20261114_crew_jobs_multi_role.sql trong Supabase.';
@@ -23,6 +25,9 @@ export default function CrewJobsPage() {
   const [filter, setFilter] = useState<'all' | CrewJobStatus>('all');
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Ứng viên ekip theo tin (bảng crew_applications có sau migration 20261115_crew_profiles.sql)
+  const [applicants, setApplicants] = useState<Map<string, { profile: CrewProfile; applied_at: string }[]>>(new Map());
+  const [viewing, setViewing] = useState<CrewJob | null>(null);
 
   const load = useCallback(async () => {
     const db = createClient();
@@ -33,6 +38,18 @@ export default function CrewJobsPage() {
     const list = (data || []) as CrewJob[];
     // Tin chờ duyệt lên đầu
     setJobs([...list.filter(j => j.status === 'draft'), ...list.filter(j => j.status !== 'draft')]);
+    const [{ data: apps }, { data: profiles }] = await Promise.all([
+      db.from('crew_applications').select('*').order('created_at', { ascending: false }),
+      db.from('crew_profiles').select('*')
+    ]);
+    const byId = new Map(((profiles || []) as CrewProfile[]).map(p => [p.id, p]));
+    const grouped = new Map<string, { profile: CrewProfile; applied_at: string }[]>();
+    for (const a of (apps || []) as { job_id: string; crew_profile_id: string; created_at: string }[]) {
+      const profile = byId.get(a.crew_profile_id);
+      if (!profile) continue;
+      grouped.set(a.job_id, [...(grouped.get(a.job_id) || []), { profile, applied_at: a.created_at }]);
+    }
+    setApplicants(grouped);
   }, []);
 
   useEffect(() => {
@@ -152,6 +169,9 @@ export default function CrewJobsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {busyId === j.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                      <button onClick={() => setViewing(j)} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
+                        <UsersRound className="w-3.5 h-3.5" /> Ứng viên · {(applicants.get(j.id) || []).length}
+                      </button>
                       {j.status === 'draft' && (
                         <button onClick={() => setStatus(j, 'open', 'Đã duyệt — tin hiện công khai.')} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
                           <Check className="w-3.5 h-3.5" /> Duyệt
@@ -185,8 +205,42 @@ export default function CrewJobsPage() {
         )}
       </div>
 
+      {viewing && <ApplicantsModal job={viewing} list={applicants.get(viewing.id) || []} onClose={() => setViewing(null)} />}
       {editing && <CrewJobModal draft={editing} onClose={() => setEditing(null)} onSave={async d => (await save(d)) && setEditing(null)} />}
     </PermissionGuard>
+  );
+}
+
+function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { profile: CrewProfile; applied_at: string }[]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">Ứng viên</h2>
+            <p className="text-xs text-muted-foreground">{job.title}</p>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-muted" aria-label="Đóng">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">Nhà tuyển dụng chỉ thấy ứng viên có hồ sơ đã duyệt. Duyệt hồ sơ tại mục &ldquo;Hồ sơ ekip&rdquo;.</p>
+        {list.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Chưa có ứng viên.</p>
+        ) : (
+          <div className="space-y-3">
+            {list.map(({ profile, applied_at }) => (
+              <div key={profile.id} className="rounded-xl border p-4 space-y-2">
+                <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${CREW_REVIEW_STATUS[profile.review_status].badge}`}>
+                  Hồ sơ: {CREW_REVIEW_STATUS[profile.review_status].label}
+                </span>
+                <CrewProfileDetails p={{ ...profile, applied_at }} compact />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

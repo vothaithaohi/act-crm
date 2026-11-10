@@ -1,0 +1,150 @@
+'use client';
+
+import React, { useCallback, useEffect, useState } from 'react';
+import { Check, ChevronDown, Loader2, UsersRound, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { PermissionGuard } from '@/components/auth/permission-guard';
+import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/supabase/authed-fetch';
+import { CREW_REVIEW_STATUS, CrewProfile, CrewReviewStatus, crewPrimaryRoleText } from '@/lib/dienvienvn/crew-profiles';
+import { CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
+
+const MIGRATION_HINT = 'Hãy chạy migration 20261115_crew_profiles.sql trong Supabase.';
+
+/** Hồ sơ ekip (Form B) do ekip tự tạo khi ứng tuyển: ACT duyệt trước khi nhà tuyển dụng thấy hồ sơ. */
+export default function CrewProfilesPage() {
+  const [list, setList] = useState<(CrewProfile & { app_count: number })[] | null>(null);
+  const [problem, setProblem] = useState('');
+  const [filter, setFilter] = useState<'all' | CrewReviewStatus>('pending');
+  const [open, setOpen] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const db = createClient();
+    if (!db) return setProblem('Tính năng cần kết nối Supabase (chế độ demo chưa hỗ trợ).');
+    const [{ data, error }, { data: apps }] = await Promise.all([
+      db.from('crew_profiles').select('*').order('created_at', { ascending: false }),
+      db.from('crew_applications').select('crew_profile_id')
+    ]);
+    if (error) return setProblem(`Không tải được hồ sơ ekip: ${error.message}. ${MIGRATION_HINT}`);
+    const counts = new Map<string, number>();
+    for (const a of (apps || []) as { crew_profile_id: string }[]) counts.set(a.crew_profile_id, (counts.get(a.crew_profile_id) || 0) + 1);
+    setProblem('');
+    setList(((data || []) as CrewProfile[]).map(p => ({ ...p, app_count: counts.get(p.id) || 0 })));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const review = async (p: CrewProfile, review_status: CrewReviewStatus) => {
+    setBusyId(p.id);
+    try {
+      const res = await authedFetch(`/api/admin/crew-profiles/${p.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_status })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return toast.error(body.error || 'Không lưu được');
+      setList(l => (l || []).map(x => (x.id === p.id ? { ...x, review_status } : x)));
+      toast.success(
+        review_status === 'approved'
+          ? body.notified
+            ? `Đã duyệt — đã gửi email báo ${body.notified} nhà tuyển dụng.`
+            : 'Đã duyệt hồ sơ.'
+          : review_status === 'rejected'
+          ? 'Đã từ chối hồ sơ.'
+          : 'Đã chuyển về chờ duyệt.'
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const shown = (list || []).filter(p => filter === 'all' || p.review_status === filter);
+
+  return (
+    <PermissionGuard permission="talents:write" customTitle="Hồ sơ ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý hồ sơ ekip.">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
+            <UsersRound className="w-6 h-6" /> Hồ sơ ekip
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Ekip tạo hồ sơ khi bấm &ldquo;Ứng tuyển&rdquo; tin tuyển dụng. Nhà tuyển dụng chỉ thấy hồ sơ đã duyệt; duyệt xong hệ thống gửi email báo nhà tuyển dụng của
+            các tin hồ sơ đã ứng tuyển.
+          </p>
+        </div>
+
+        {problem ? (
+          <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 text-sm text-destructive">{problem}</div>
+        ) : !list ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {(['pending', 'approved', 'rejected', 'all'] as const).map(k => (
+                <button
+                  key={k}
+                  onClick={() => setFilter(k)}
+                  className={`h-8 px-3 rounded-full border text-xs font-semibold ${filter === k ? 'bg-[#1d1d1f] text-white border-[#1d1d1f]' : 'hover:bg-muted'}`}
+                >
+                  {k === 'all' ? `Tất cả · ${list.length}` : `${CREW_REVIEW_STATUS[k].label} · ${list.filter(p => p.review_status === k).length}`}
+                </button>
+              ))}
+            </div>
+            {shown.length === 0 ? (
+              <div className="p-12 rounded-2xl border bg-card text-center text-sm text-muted-foreground">Không có hồ sơ nào.</div>
+            ) : (
+              <div className="rounded-2xl border bg-card divide-y">
+                {shown.map(p => (
+                  <div key={p.id} className="p-4">
+                    <div className="flex flex-col md:flex-row md:items-center gap-3">
+                      <button type="button" onClick={() => setOpen(o => (o === p.id ? null : p.id))} className="min-w-0 flex-1 text-left">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${CREW_REVIEW_STATUS[p.review_status].badge}`}>
+                            {CREW_REVIEW_STATUS[p.review_status].label}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">{p.app_count} lượt ứng tuyển</span>
+                        </div>
+                        <p className="mt-1 font-semibold flex items-center gap-1.5">
+                          {p.full_name}
+                          {p.display_name ? <span className="font-normal text-muted-foreground">· {p.display_name}</span> : null}
+                          <ChevronDown className={`w-4 h-4 transition-transform ${open === p.id ? 'rotate-180' : ''}`} />
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {[crewPrimaryRoleText(p), p.public_email, new Date(p.created_at).toLocaleDateString('vi-VN')].filter(Boolean).join(' · ')}
+                        </p>
+                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        {p.review_status !== 'approved' && (
+                          <button onClick={() => review(p, 'approved')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
+                            <Check className="w-3.5 h-3.5" /> Duyệt
+                          </button>
+                        )}
+                        {p.review_status !== 'rejected' && (
+                          <button onClick={() => review(p, 'rejected')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
+                            <X className="w-3.5 h-3.5" /> Từ chối
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {open === p.id && (
+                      <div className="mt-4 rounded-xl border bg-background p-4">
+                        <CrewProfileDetails p={p} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </PermissionGuard>
+  );
+}
