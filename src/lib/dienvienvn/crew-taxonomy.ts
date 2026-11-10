@@ -121,6 +121,12 @@ export const DEPARTMENTS: Department[] = [
   }
 ];
 
+/** Lựa chọn "Khác": phân nhóm / vị trí nằm ngoài danh sách có sẵn, người đăng tự nhập tên vị trí. */
+export const OTHER_ID = 'other';
+export const OTHER_DEPARTMENT: Department = { id: OTHER_ID, label: 'Khác', roles: [] };
+/** Danh sách phân nhóm hiện trong form (thêm "Khác" ở cuối). */
+export const DEPARTMENT_OPTIONS: Department[] = [...DEPARTMENTS, OTHER_DEPARTMENT];
+
 export const SENIORITY_LEVELS: Option[] = [
   { id: 'intern', label: 'Intern / Trainee (Học việc / Thực tập)' },
   { id: 'junior', label: 'Junior (1–2 năm kinh nghiệm / Đã làm các dự án nhỏ)' },
@@ -157,5 +163,13 @@ export const SALARY_TYPES: Option[] = [
 ];
 
 export const labelOf = (list: Option[], id?: string | null) => list.find(o => o.id === id)?.label || '';
-export const departmentOf = (id?: string | null) => DEPARTMENTS.find(d => d.id === id) || null;
+export const departmentOf = (id?: string | null) => DEPARTMENT_OPTIONS.find(d => d.id === id) || null;
 export const roleOf = (dept?: string | null, role?: string | null) => departmentOf(dept)?.roles.find(x => x.id === role) || null;
+
+/** Tên vị trí để hiển thị: vị trí có sẵn (vi/en) hoặc tên tự nhập khi chọn "Khác". */
+export function roleLabel(dept?: string | null, role?: string | null, other?: string | null): { vi: string; en: string } | null {
+  const found = roleOf(dept, role);
+  if (found) return { vi: found.vi, en: found.en };
+  if (role === OTHER_ID && other?.trim()) return { vi: other.trim(), en: '' };
+  return null;
+}

@@ -17,7 +17,7 @@ import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { experienceGroups, foldVi, skillGroups, trainingList } from '@/lib/dienvienvn/talent-sections';
 import { LoginGate } from './actor-pages';
 import { CREW_JOB_STATUS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
-import { CrewFormA, CrewJobFields, crewFormFrom } from './crew-job-fields';
+import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from './crew-job-fields';
 import { useDvvnHref } from './base-path';
 import { GlobalNav } from './site-chrome';
 
@@ -996,7 +996,7 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
       const res = await actorFetch(editing ? `/api/dienvienvn/partner/crew-jobs/${jobId}` : '/api/dienvienvn/partner/crew-jobs', {
         method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(crewFormPayload(form, editing))
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.id) return setError(body.error || 'Không lưu được. Vui lòng thử lại.');
@@ -1018,7 +1018,7 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
         <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">Tin hiện tại dienvienvn.com/tuyen-dung sau khi đội ngũ DienVienVN duyệt.</p>
 
         <div className="mt-8">
-          <CrewJobFields value={form} onChange={setForm} />
+          <CrewJobFields value={form} onChange={setForm} multi={!editing} />
         </div>
 
         {error && (

@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import type { CrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { Plus, Trash2 } from 'lucide-react';
+import { CREW_MAX_POSITIONS, type CrewJob } from '@/lib/dienvienvn/crew-jobs';
 import {
   COMPANY_TYPES,
   CREW_PROJECT_TYPES,
-  DEPARTMENTS,
+  DEPARTMENT_OPTIONS,
+  OTHER_ID,
   EMPLOYMENT_TYPES,
   Option,
   PROJECT_PHASES,
@@ -16,7 +18,18 @@ import {
   departmentOf
 } from '@/lib/dienvienvn/crew-taxonomy';
 
-/** Dữ liệu Form A khi đang nhập (giá trị gửi lên API /crew-jobs). */
+/** Phần riêng của từng vị trí tuyển (một dự án tuyển được nhiều vị trí). */
+export interface CrewPositionForm {
+  department: string;
+  role_title: string;
+  role_other: string;
+  seniority_level: string;
+  salary_type: string;
+  salary_min: string;
+  salary_max: string;
+}
+
+/** Dữ liệu Form A khi đang nhập: thông tin chung của dự án + danh sách vị trí. */
 export interface CrewFormA {
   company_name: string;
   company_type: string;
@@ -26,9 +39,8 @@ export interface CrewFormA {
   project_hidden: boolean;
   project_type: string;
   project_phase: string;
-  department: string;
-  role_title: string;
-  seniority_level: string;
+  requires_cv: boolean;
+  positions: CrewPositionForm[];
   employment_type: string;
   start_date: string;
   end_date: string;
@@ -36,9 +48,22 @@ export interface CrewFormA {
   city: string;
   location_detail: string;
   work_mode: string;
-  salary_type: string;
-  salary_min: string;
-  salary_max: string;
+}
+
+export const emptyCrewPosition = (): CrewPositionForm => ({
+  department: '',
+  role_title: '',
+  role_other: '',
+  seniority_level: '',
+  salary_type: '',
+  salary_min: '',
+  salary_max: ''
+});
+
+/** Dữ liệu gửi API: đăng mới gửi cả danh sách vị trí; sửa một tin thì gửi đúng một vị trí. */
+export function crewFormPayload(form: CrewFormA, single: boolean) {
+  const { positions, ...shared } = form;
+  return single ? { ...shared, ...positions[0] } : { ...shared, positions };
 }
 
 export function crewFormFrom(j?: Partial<CrewJob> | null, fallbackCompany = ''): CrewFormA {
@@ -52,19 +77,25 @@ export function crewFormFrom(j?: Partial<CrewJob> | null, fallbackCompany = ''):
     project_hidden: !!j?.project_hidden,
     project_type: s(j?.project_type),
     project_phase: s(j?.project_phase),
-    department: s(j?.department),
-    role_title: s(j?.role_title),
-    seniority_level: s(j?.seniority_level),
+    requires_cv: !!j?.requires_cv,
+    positions: [
+      {
+        department: s(j?.department),
+        role_title: s(j?.role_title),
+        role_other: s(j?.role_other),
+        seniority_level: s(j?.seniority_level),
+        salary_type: s(j?.salary_type),
+        salary_min: s(j?.salary_min),
+        salary_max: s(j?.salary_max)
+      }
+    ],
     employment_type: s(j?.employment_type),
     start_date: s(j?.start_date),
     end_date: s(j?.end_date),
     shooting_days: s(j?.shooting_days),
     city: s(j?.city),
     location_detail: s(j?.location_detail),
-    work_mode: s(j?.work_mode),
-    salary_type: s(j?.salary_type),
-    salary_min: s(j?.salary_min),
-    salary_max: s(j?.salary_max)
+    work_mode: s(j?.work_mode)
   };
 }
 
@@ -112,11 +143,114 @@ function SelectBox({ id, list, v, onPick, placeholder, cls }: { id: string; list
   );
 }
 
-export function CrewJobFields({ value, onChange, variant = 'dv' }: { value: CrewFormA; onChange: (v: CrewFormA) => void; variant?: Variant }) {
+/** Một vị trí tuyển: phân nhóm, vị trí cụ thể (hoặc "Khác" tự nhập), cấp độ, thù lao. */
+function PositionCard({
+  index,
+  value,
+  onChange,
+  onRemove,
+  ui,
+  numbered
+}: {
+  index: number;
+  value: CrewPositionForm;
+  onChange: (v: CrewPositionForm) => void;
+  onRemove?: () => void;
+  ui: (typeof UI)[Variant];
+  numbered: boolean;
+}) {
+  const set = (patch: Partial<CrewPositionForm>) => onChange({ ...value, ...patch });
+  const dept = departmentOf(value.department);
+  const isOtherDept = value.department === OTHER_ID;
+  const negotiable = value.salary_type === 'negotiable';
+  const id = (k: string) => `cj-${k}-${index}`;
+  const field = 'space-y-1.5';
+  const grid = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
+  return (
+    <div className={numbered ? 'space-y-4 rounded-[14px] border border-[#e5e5ea] p-4' : 'space-y-4'}>
+      {numbered && (
+        <div className="flex items-center justify-between">
+          <p className="text-[15px] font-semibold">Vị trí {index + 1}</p>
+          {onRemove && (
+            <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-[13px] text-[#b00020] hover:underline">
+              <Trash2 className="h-4 w-4" /> Xoá vị trí
+            </button>
+          )}
+        </div>
+      )}
+      <div className={grid}>
+        <div className={field}>
+          <FieldLabel cls={ui.label} required htmlFor={id('dept')}>Phân nhóm chuyên môn</FieldLabel>
+          <SelectBox
+            cls={ui.input}
+            id={id('dept')}
+            list={DEPARTMENT_OPTIONS}
+            v={value.department}
+            onPick={x => set({ department: x, role_title: x === OTHER_ID ? OTHER_ID : '', role_other: x === OTHER_ID ? value.role_other : '' })}
+            placeholder="Chọn phân nhóm"
+          />
+        </div>
+        <div className={field}>
+          <FieldLabel cls={ui.label} required htmlFor={id('role')}>Vị trí cụ thể</FieldLabel>
+          <select id={id('role')} className={ui.input} value={value.role_title} disabled={!dept} onChange={e => set({ role_title: e.target.value })}>
+            <option value="">{dept ? 'Chọn vị trí' : 'Chọn phân nhóm trước'}</option>
+            {dept?.roles.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.vi} ({r.en})
+              </option>
+            ))}
+            {dept && <option value={OTHER_ID}>Khác (tự nhập)</option>}
+          </select>
+        </div>
+      </div>
+      {value.role_title === OTHER_ID && (
+        <div className={field}>
+          <FieldLabel cls={ui.label} required htmlFor={id('other')}>Tên vị trí</FieldLabel>
+          <input
+            id={id('other')}
+            className={ui.input}
+            value={value.role_other}
+            maxLength={120}
+            onChange={e => set({ role_other: e.target.value })}
+            placeholder={isOtherDept ? 'VD: Điều phối diễn viên quần chúng' : 'Nhập vị trí không có trong danh sách'}
+          />
+        </div>
+      )}
+      <div className={field}>
+        <FieldLabel cls={ui.label} required htmlFor={id('senior')}>Cấp độ kinh nghiệm kỳ vọng</FieldLabel>
+        <SelectBox cls={ui.input} id={id('senior')} list={SENIORITY_LEVELS} v={value.seniority_level} onPick={x => set({ seniority_level: x })} placeholder="Chọn cấp độ" />
+      </div>
+      <div className={field}>
+        <FieldLabel cls={ui.label} required htmlFor={id('stype')}>Cách tính thù lao</FieldLabel>
+        <SelectBox cls={ui.input} id={id('stype')} list={SALARY_TYPES} v={value.salary_type} onPick={x => set({ salary_type: x })} placeholder="Chọn cách tính" />
+      </div>
+      {!negotiable && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className={field}>
+            <FieldLabel cls={ui.label} htmlFor={id('smin')}>Mức tối thiểu</FieldLabel>
+            <input id={id('smin')} inputMode="numeric" className={ui.input} value={value.salary_min} onChange={e => set({ salary_min: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 1500000" />
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} htmlFor={id('smax')}>Mức tối đa</FieldLabel>
+            <input id={id('smax')} inputMode="numeric" className={ui.input} value={value.salary_max} onChange={e => set({ salary_max: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 2500000" />
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} htmlFor={id('cur')}>Đơn vị tiền tệ</FieldLabel>
+            <input id={id('cur')} className={ui.input} value="VND" readOnly />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Form A. `multi`: cho thêm nhiều vị trí (khi đăng mới); khi sửa một tin chỉ có một vị trí. */
+export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }: { value: CrewFormA; onChange: (v: CrewFormA) => void; variant?: Variant; multi?: boolean }) {
   const ui = UI[variant];
   const set = (patch: Partial<CrewFormA>) => onChange({ ...value, ...patch });
-  const dept = departmentOf(value.department);
-  const negotiable = value.salary_type === 'negotiable';
+  const positions = value.positions.length ? value.positions : [emptyCrewPosition()];
+  const setPosition = (i: number, p: CrewPositionForm) => set({ positions: positions.map((x, j) => (j === i ? p : x)) });
+  const numbered = multi || positions.length > 1;
 
   const field = 'space-y-1.5';
   const grid = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
@@ -174,30 +308,36 @@ export function CrewJobFields({ value, onChange, variant = 'dv' }: { value: Crew
         </div>
       </section>
 
-      {/* 3. Vị trí & yêu cầu chuyên môn */}
+      {/* 3. Vị trí & yêu cầu chuyên môn (một dự án tuyển được nhiều vị trí) */}
       <section className={ui.section}>
-        <p className={ui.title}>3. Vị trí &amp; yêu cầu chuyên môn</p>
-        <div className={grid}>
-          <div className={field}>
-            <FieldLabel cls={ui.label} required htmlFor="cj-dept">Phân nhóm chuyên môn</FieldLabel>
-            <SelectBox cls={ui.input} id="cj-dept" list={DEPARTMENTS} v={value.department} onPick={x => set({ department: x, role_title: '' })} placeholder="Chọn phân nhóm" />
-          </div>
-          <div className={field}>
-            <FieldLabel cls={ui.label} required htmlFor="cj-role">Vị trí cụ thể</FieldLabel>
-            <select id="cj-role" className={ui.input} value={value.role_title} disabled={!dept} onChange={e => set({ role_title: e.target.value })}>
-              <option value="">{dept ? 'Chọn vị trí' : 'Chọn phân nhóm trước'}</option>
-              {dept?.roles.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.vi} ({r.en})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <p className={ui.title}>3. Vị trí, yêu cầu chuyên môn &amp; thù lao</p>
+          {multi && <p className={ui.hint}>Một dự án tuyển được nhiều vị trí. Mỗi vị trí hiện thành một tin riêng trên trang tuyển dụng.</p>}
         </div>
-        <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor="cj-senior">Cấp độ kinh nghiệm kỳ vọng</FieldLabel>
-          <SelectBox cls={ui.input} id="cj-senior" list={SENIORITY_LEVELS} v={value.seniority_level} onPick={x => set({ seniority_level: x })} placeholder="Chọn cấp độ" />
-        </div>
+        {positions.map((p, i) => (
+          <PositionCard
+            key={i}
+            index={i}
+            value={p}
+            ui={ui}
+            numbered={numbered}
+            onChange={v => setPosition(i, v)}
+            onRemove={positions.length > 1 ? () => set({ positions: positions.filter((_, j) => j !== i) }) : undefined}
+          />
+        ))}
+        {multi && positions.length < CREW_MAX_POSITIONS && (
+          <button
+            type="button"
+            onClick={() => set({ positions: [...positions, emptyCrewPosition()] })}
+            className={variant === 'dv' ? 'dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]' : 'h-9 inline-flex items-center gap-1.5 px-3 rounded-lg border text-xs font-semibold hover:bg-muted'}
+          >
+            <Plus className="h-4 w-4" /> Thêm vị trí
+          </button>
+        )}
+        <label className="flex cursor-pointer items-center gap-2 text-[14px]">
+          <input type="checkbox" className={ui.check} checked={value.requires_cv} onChange={e => set({ requires_cv: e.target.checked })} />
+          Yêu cầu gửi kèm portfolio/CV
+        </label>
       </section>
 
       {/* 4. Thời gian & hình thức làm việc */}
@@ -237,30 +377,6 @@ export function CrewJobFields({ value, onChange, variant = 'dv' }: { value: Crew
         </div>
       </section>
 
-      {/* 5. Ngân sách & thù lao */}
-      <section className={ui.section}>
-        <p className={ui.title}>5. Ngân sách &amp; thù lao</p>
-        <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor="cj-stype">Cách tính thù lao</FieldLabel>
-          <SelectBox cls={ui.input} id="cj-stype" list={SALARY_TYPES} v={value.salary_type} onPick={x => set({ salary_type: x })} placeholder="Chọn cách tính" />
-        </div>
-        {!negotiable && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className={field}>
-              <FieldLabel cls={ui.label} htmlFor="cj-smin">Mức tối thiểu</FieldLabel>
-              <input id="cj-smin" inputMode="numeric" className={ui.input} value={value.salary_min} onChange={e => set({ salary_min: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 1500000" />
-            </div>
-            <div className={field}>
-              <FieldLabel cls={ui.label} htmlFor="cj-smax">Mức tối đa</FieldLabel>
-              <input id="cj-smax" inputMode="numeric" className={ui.input} value={value.salary_max} onChange={e => set({ salary_max: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 2500000" />
-            </div>
-            <div className={field}>
-              <FieldLabel cls={ui.label} htmlFor="cj-cur">Đơn vị tiền tệ</FieldLabel>
-              <input id="cj-cur" className={ui.input} value="VND" readOnly />
-            </div>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
 import { useCRM } from '@/lib/store/crm-context';
-import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, crewJobSchema, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
-import { CrewFormA, CrewJobFields, crewFormFrom } from '@/components/dienvienvn/crew-job-fields';
+import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, parseCrewJobBatch, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
+import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
 
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
-const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql và 20261113_crew_jobs_form_a.sql trong Supabase.';
+const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql, 20261113_crew_jobs_form_a.sql và 20261114_crew_jobs_multi_role.sql trong Supabase.';
 
 type Draft = { id?: string; status: CrewJobStatus; form: CrewFormA };
 const emptyDraft = (): Draft => ({ status: 'open', form: crewFormFrom(null, 'ACT Academy') });
@@ -65,20 +65,24 @@ export default function CrewJobsPage() {
   const save = async (d: Draft) => {
     const db = createClient();
     if (!db) return false;
-    const parsed = crewJobSchema.safeParse(d.form);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message || 'Thông tin chưa hợp lệ.');
+    // Đăng mới: mỗi vị trí là một tin (chung group_id); sửa: đúng một tin
+    const parsed = parseCrewJobBatch(crewFormPayload(d.form, !!d.id));
+    if (!parsed.ok) {
+      toast.error(parsed.error);
       return false;
     }
-    const record = { ...toCrewJobColumns(parsed.data), status: d.status, updated_at: new Date().toISOString() };
+    const now = new Date().toISOString();
+    const group_id = crypto.randomUUID();
     const { error } = d.id
-      ? await db.from('crew_jobs').update(record).eq('id', d.id)
-      : await db.from('crew_jobs').insert({ ...record, created_by: currentUser?.email || 'ACT' });
+      ? await db.from('crew_jobs').update({ ...toCrewJobColumns(parsed.inputs[0]), status: d.status, updated_at: now }).eq('id', d.id)
+      : await db
+          .from('crew_jobs')
+          .insert(parsed.inputs.map(input => ({ ...toCrewJobColumns(input), group_id, status: d.status, updated_at: now, created_by: currentUser?.email || 'ACT' })));
     if (error) {
       toast.error('Không lưu được tin', { description: `${error.message}. ${MIGRATION_HINT}` });
       return false;
     }
-    toast.success(d.id ? 'Đã lưu tin.' : 'Đã đăng tin.');
+    toast.success(d.id ? 'Đã lưu tin.' : parsed.inputs.length > 1 ? `Đã đăng ${parsed.inputs.length} tin (${parsed.inputs.length} vị trí).` : 'Đã đăng tin.');
     await load();
     return true;
   };
@@ -210,7 +214,7 @@ function CrewJobModal({ draft, onClose, onSave }: { draft: Draft; onClose: () =>
             ))}
           </select>
         </div>
-        <CrewJobFields variant="crm" value={d.form} onChange={form => setD(x => ({ ...x, form }))} />
+        <CrewJobFields variant="crm" multi={!d.id} value={d.form} onChange={form => setD(x => ({ ...x, form }))} />
         <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="h-10 px-4 rounded-lg border text-xs font-semibold hover:bg-muted">
             Huỷ

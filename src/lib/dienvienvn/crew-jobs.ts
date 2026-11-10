@@ -10,6 +10,8 @@ import {
   SENIORITY_LEVELS,
   WORK_CITIES,
   WORK_MODES,
+  OTHER_ID,
+  roleLabel,
   roleOf
 } from './crew-taxonomy';
 
@@ -38,6 +40,12 @@ export interface CrewJob {
   project_phase?: string | null;
   department?: string | null;
   role_title?: string | null;
+  /** Tên vị trí tự nhập khi chọn "Khác". */
+  role_other?: string | null;
+  /** Yêu cầu ứng viên gửi kèm portfolio / CV. */
+  requires_cv?: boolean | null;
+  /** Các vị trí đăng cùng một lần (cùng dự án) có chung group_id. */
+  group_id?: string | null;
   seniority_level?: string | null;
   employment_type?: string | null;
   start_date?: string | null;
@@ -103,8 +111,10 @@ export const crewJobSchema = z
     project_type: enumOf(CREW_PROJECT_TYPES, 'Vui lòng chọn loại hình dự án'),
     project_phase: optEnum(PROJECT_PHASES.map(o => o.id)),
     // 3. Vị trí & yêu cầu chuyên môn
-    department: enumOf(DEPARTMENTS, 'Vui lòng chọn phân nhóm chuyên môn'),
+    department: enumOf([...DEPARTMENTS, { id: OTHER_ID }], 'Vui lòng chọn phân nhóm chuyên môn'),
     role_title: z.string().trim().min(1, 'Vui lòng chọn vị trí cụ thể'),
+    role_other: text(120),
+    requires_cv: z.boolean().optional().default(false),
     seniority_level: enumOf(SENIORITY_LEVELS, 'Vui lòng chọn cấp độ kinh nghiệm'),
     // 4. Thời gian & hình thức làm việc
     employment_type: enumOf(EMPLOYMENT_TYPES, 'Vui lòng chọn hình thức hợp đồng'),
@@ -120,7 +130,11 @@ export const crewJobSchema = z
     salary_max: money
   })
   .superRefine((v, ctx) => {
-    if (!roleOf(v.department, v.role_title)) ctx.addIssue({ code: 'custom', path: ['role_title'], message: 'Vui lòng chọn vị trí cụ thể' });
+    if (v.role_title === OTHER_ID) {
+      if (v.role_other.length < 2) ctx.addIssue({ code: 'custom', path: ['role_other'], message: 'Vui lòng nhập tên vị trí (mục "Khác")' });
+    } else if (!roleOf(v.department, v.role_title)) {
+      ctx.addIssue({ code: 'custom', path: ['role_title'], message: 'Vui lòng chọn vị trí cụ thể' });
+    }
     if (v.start_date && v.end_date && v.end_date < v.start_date) {
       ctx.addIssue({ code: 'custom', path: ['end_date'], message: 'Ngày kết thúc phải sau ngày bắt đầu' });
     }
@@ -134,7 +148,7 @@ export type CrewJobInput = z.infer<typeof crewJobSchema>;
 export function toCrewJobColumns(input: CrewJobInput) {
   const orNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
   const num = (v: unknown) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
-  const role = roleOf(input.department, input.role_title);
+  const role = roleLabel(input.department, input.role_title, input.role_other);
   const project = input.project_hidden ? null : orNull(input.project_name);
   return {
     title: [role?.vi || 'Tuyển dụng', project].filter(Boolean).join(' – '),
@@ -150,6 +164,8 @@ export function toCrewJobColumns(input: CrewJobInput) {
     project_phase: orNull(input.project_phase),
     department: input.department,
     role_title: input.role_title,
+    role_other: input.role_title === OTHER_ID ? input.role_other.trim() : null,
+    requires_cv: !!input.requires_cv,
     seniority_level: input.seniority_level,
     employment_type: input.employment_type,
     start_date: orNull(input.start_date),
@@ -163,6 +179,37 @@ export function toCrewJobColumns(input: CrewJobInput) {
     salary_max: input.salary_type === 'negotiable' ? null : num(input.salary_max),
     currency: 'VND'
   };
+}
+
+/** Số vị trí tối đa đăng trong một lần. */
+export const CREW_MAX_POSITIONS = 10;
+
+/** Các trường riêng của từng vị trí (phần còn lại của Form A dùng chung cho cả dự án). */
+export const CREW_POSITION_KEYS = ['department', 'role_title', 'role_other', 'seniority_level', 'salary_type', 'salary_min', 'salary_max'] as const;
+
+/**
+ * Một lần đăng nhiều vị trí: { ...thông tin chung, positions: [{ department, role_title, … }] } → mỗi vị trí là một tin.
+ * Không có positions thì coi như một vị trí (cách gửi cũ / khi sửa một tin).
+ */
+export function parseCrewJobBatch(body: unknown): { ok: true; inputs: CrewJobInput[] } | { ok: false; error: string } {
+  if (!body || typeof body !== 'object') return { ok: false, error: 'Thông tin chưa hợp lệ.' };
+  const { positions, ...shared } = body as Record<string, unknown>;
+  const list = Array.isArray(positions) ? positions : [{}];
+  if (list.length === 0) return { ok: false, error: 'Vui lòng thêm ít nhất một vị trí.' };
+  if (list.length > CREW_MAX_POSITIONS) return { ok: false, error: `Mỗi lần đăng tối đa ${CREW_MAX_POSITIONS} vị trí.` };
+  const inputs: CrewJobInput[] = [];
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i] && typeof list[i] === 'object' ? (list[i] as Record<string, unknown>) : {};
+    const own = Object.fromEntries(CREW_POSITION_KEYS.filter(k => k in p).map(k => [k, p[k]]));
+    const parsed = crewJobSchema.safeParse({ ...shared, ...own });
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message || 'Thông tin chưa hợp lệ.';
+      const positionField = CREW_POSITION_KEYS.includes(parsed.error.issues[0]?.path[0] as (typeof CREW_POSITION_KEYS)[number]);
+      return { ok: false, error: list.length > 1 && positionField ? `Vị trí ${i + 1}: ${msg}` : msg };
+    }
+    inputs.push(parsed.data);
+  }
+  return { ok: true, inputs };
 }
 
 export function toPublicCrewJob(j: CrewJob): PublicCrewJob {

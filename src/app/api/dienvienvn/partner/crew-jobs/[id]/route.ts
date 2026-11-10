@@ -38,6 +38,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .from('crew_jobs')
     .update({ ...toCrewJobColumns(parsed.data), updated_at: new Date().toISOString() })
     .eq('id', r.job.id);
-  if (error) return NextResponse.json({ error: /column/.test(error.message) ? 'Hệ thống chưa sẵn sàng (cần chạy migration 20261113_crew_jobs_form_a.sql).' : 'Không lưu được tin. Vui lòng thử lại.' }, { status: 500 });
+  if (error) return NextResponse.json({ error: /column/.test(error.message) ? 'Hệ thống chưa sẵn sàng (cần chạy migration 20261113_crew_jobs_form_a.sql và 20261114_crew_jobs_multi_role.sql).' : 'Không lưu được tin. Vui lòng thử lại.' }, { status: 500 });
   return NextResponse.json({ id: r.job.id });
 }

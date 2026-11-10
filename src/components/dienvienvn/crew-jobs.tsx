@@ -12,9 +12,10 @@ import {
   SENIORITY_LEVELS,
   WORK_CITIES,
   WORK_MODES,
+  OTHER_ID,
   departmentOf,
   labelOf,
-  roleOf
+  roleLabel
 } from '@/lib/dienvienvn/crew-taxonomy';
 import { PublicCrewJob, contactHref } from '@/lib/dienvienvn/crew-jobs';
 import { useDvvnHref } from './base-path';
@@ -90,7 +91,7 @@ function salaryText(job: PublicCrewJob): string {
 function CrewJobCard({ job }: { job: PublicCrewJob }) {
   const [open, setOpen] = useState(false);
   const formA = !!job.role_title;
-  const role = roleOf(job.department, job.role_title);
+  const role = roleLabel(job.department, job.role_title, job.role_other);
   const legacyLink = formA ? null : contactHref(job.contact);
   const dates = [job.start_date ? formatVnDate(job.start_date) : '', job.end_date ? formatVnDate(job.end_date) : ''].filter(Boolean).join(' → ');
   const place = [labelOf(WORK_CITIES, job.city), job.location_detail].filter(Boolean).join(' · ');
@@ -109,7 +110,7 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
   ).filter(Boolean) as { icon: typeof MapPin; text: string }[];
   const tags = formA
     ? [
-        departmentOf(job.department)?.label,
+        job.department === OTHER_ID ? '' : departmentOf(job.department)?.label,
         labelOf(SENIORITY_LEVELS, job.seniority_level).split(' (')[0],
         labelOf(EMPLOYMENT_TYPES, job.employment_type).split(' (')[0],
         labelOf(WORK_MODES, job.work_mode)
@@ -132,7 +133,7 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
             </p>
           )}
           <h2 className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2] md:text-[24px]">{formA && role ? role.vi : job.title}</h2>
-          {formA && role && <p className="mt-0.5 text-[14px] text-[var(--dv-text-secondary)]">{role.en}</p>}
+          {formA && role?.en && <p className="mt-0.5 text-[14px] text-[var(--dv-text-secondary)]">{role.en}</p>}
           {project && <p className="mt-2 text-[14px]">{project}</p>}
           <div className="mt-3 flex flex-wrap gap-1.5">
             {tags.map(p => (
@@ -160,6 +161,7 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
                   <Mail className="h-4 w-4" /> Gửi CV / Showreel
                 </a>
               )}
+              {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm portfolio/CV</p>}
               {phone && (
                 <a href={`tel:${phone}`} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
                   <Phone className="h-4 w-4" /> {job.contact_phone}
