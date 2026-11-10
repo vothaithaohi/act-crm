@@ -214,12 +214,12 @@ export default function AdminPartnersPage() {
                           </>
                         )}
                         <button
-                          title="Gắn dự án"
+                          title="Chọn các dự án mà đối tác này được xem danh sách ứng viên"
                           disabled={busyId === p.id}
                           onClick={() => setProjectsFor(p)}
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted disabled:opacity-40"
+                          className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold whitespace-nowrap hover:bg-muted disabled:opacity-40"
                         >
-                          <FolderKanban className="w-4 h-4" />
+                          <FolderKanban className="w-3.5 h-3.5" /> Gắn dự án
                         </button>
                         <button
                           title="Gửi email để đối tác tự tạo mật khẩu mới (dùng khi đối tác quên mật khẩu hoặc chưa nhận được email mời)"
@@ -230,14 +230,15 @@ export default function AdminPartnersPage() {
                           <Mail className="w-3.5 h-3.5" /> Cấp lại mật khẩu
                         </button>
                         <button
-                          title={p.status === 'active' ? 'Khoá tài khoản' : 'Mở khoá tài khoản'}
+                          title={p.status === 'active' ? 'Khoá tài khoản: đối tác không vào được cổng đối tác nữa' : 'Mở khoá tài khoản: đối tác dùng lại được cổng đối tác'}
                           disabled={busyId === p.id || p.status === 'pending'}
                           onClick={() =>
                             patch(p, { status: p.status === 'active' ? 'disabled' : 'active' }, p.status === 'active' ? 'Đã khoá tài khoản.' : 'Đã mở khoá tài khoản.')
                           }
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted disabled:opacity-40"
+                          className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold whitespace-nowrap hover:bg-muted disabled:opacity-40"
                         >
-                          {p.status === 'active' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                          {p.status === 'active' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                          {p.status === 'active' ? 'Khoá' : 'Mở khoá'}
                         </button>
                         <button
                           title="Xoá tài khoản đối tác"
