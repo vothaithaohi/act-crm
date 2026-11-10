@@ -114,9 +114,8 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<
 function approvedEmail(partner: PartnerAccount, loginUrl: string, existingAccount: boolean) {
   const name = escapeHtml(partner.full_name || 'bạn');
   const email = escapeHtml(partner.email);
-  const how = existingAccount
-    ? `Bạn có thể đăng nhập ngay bằng email <b>${email}</b> và mật khẩu hiện có của tài khoản DienVienVN dùng email này`
-    : `Bạn có thể đăng nhập ngay bằng email <b>${email}</b> và mật khẩu đã đặt khi đăng ký`;
+  void existingAccount;
+  const how = `Bạn có thể đăng nhập ngay bằng email <b>${email}</b> và mật khẩu của bạn (nếu chưa tạo mật khẩu, mở email xác nhận DienVienVN đã gửi hoặc bấm &ldquo;Quên mật khẩu&rdquo;)`;
   const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1d1d1f">
   <p style="font-size:20px;font-weight:600;margin:0 0 24px">🎬 DienVienVN</p>
   <h2 style="font-size:24px;margin:0 0 12px">Tài khoản đối tác của bạn đã được duyệt.</h2>
@@ -126,9 +125,7 @@ function approvedEmail(partner: PartnerAccount, loginUrl: string, existingAccoun
   <a href="${loginUrl}" style="display:inline-block;background:#1d1d1f;color:#ffffff;text-decoration:none;font-size:15px;padding:12px 24px;border-radius:980px">Đăng nhập cổng đối tác</a>
   <p style="font-size:13px;line-height:1.5;color:#86868b;margin:24px 0 0">Quên mật khẩu? Bấm &ldquo;Quên mật khẩu&rdquo; ở trang đăng nhập.</p>
 </div>`;
-  const text = `Tài khoản đối tác của bạn đã được duyệt.\n\nXin chào ${partner.full_name || 'bạn'}, DienVienVN đã duyệt tài khoản đối tác của bạn. ${
-    existingAccount ? 'Đăng nhập bằng mật khẩu hiện có của tài khoản DienVienVN dùng email này.' : 'Đăng nhập bằng mật khẩu đã đặt khi đăng ký.'
-  }\n\nĐăng nhập cổng đối tác: ${loginUrl}\nQuên mật khẩu? Bấm "Quên mật khẩu" ở trang đăng nhập.`;
+  const text = `Tài khoản đối tác của bạn đã được duyệt.\n\nXin chào ${partner.full_name || 'bạn'}, DienVienVN đã duyệt tài khoản đối tác của bạn. Đăng nhập bằng email và mật khẩu của bạn (nếu chưa tạo mật khẩu, mở email xác nhận DienVienVN đã gửi hoặc bấm "Quên mật khẩu").\n\nĐăng nhập cổng đối tác: ${loginUrl}\nQuên mật khẩu? Bấm "Quên mật khẩu" ở trang đăng nhập.`;
   return { subject: 'Tài khoản đối tác DienVienVN đã được duyệt', html, text };
 }
 

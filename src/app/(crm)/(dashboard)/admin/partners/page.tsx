@@ -196,7 +196,7 @@ export default function AdminPartnersPage() {
                         {p.status === 'pending' && (
                           <>
                             <button
-                              title="Duyệt: kích hoạt và gửi email đặt mật khẩu"
+                              title="Duyệt: kích hoạt và gửi email báo tài khoản đã được duyệt"
                               disabled={busyId === p.id}
                               onClick={() => patch(p, { status: 'active' }, 'Đã duyệt tài khoản đối tác.')}
                               className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold disabled:opacity-40"

@@ -8,7 +8,7 @@ import { useDvvnHref } from './base-path';
 import { Field, SelectInput, TextInput } from './form-fields';
 import { GlobalNav } from './site-chrome';
 
-/** Đối tác tự đăng ký: gửi thông tin → DienVienVN duyệt → nhận email đặt mật khẩu. */
+/** Đối tác tự đăng ký: gửi thông tin + email → nhận email xác thực, tạo mật khẩu → DienVienVN duyệt. */
 export function PartnerSignup() {
   const href = useDvvnHref();
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', company: '', partner_type: 'producer' as PartnerType, note: '', website: '' });
@@ -118,7 +118,7 @@ export function PartnerSignup() {
                   Gửi đăng ký
                 </button>
                 <p className="text-center text-[13px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  DienVienVN xem xét từng đăng ký. Khi được duyệt, bạn nhận email để tự đặt mật khẩu và đăng nhập.
+                  Sau khi gửi, bạn nhận email để xác nhận và tạo mật khẩu. DienVienVN xem xét từng đăng ký; khi được duyệt, bạn dùng được cổng đối tác.
                 </p>
               </form>
               <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">

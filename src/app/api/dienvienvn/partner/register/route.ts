@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { isStaffEmail } from '@/lib/dienvienvn/actor-server';
+import { sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
+import type { PartnerAccount } from '@/lib/dienvienvn/partners';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 
-// Đối tác tự đăng ký: tạo tài khoản ở trạng thái "Chờ duyệt". Chưa có mật khẩu, chưa đăng nhập được.
-// DienVienVN duyệt trong CRM (Tài khoản đối tác) → hệ thống gửi email để đối tác tự đặt mật khẩu.
+// Đối tác tự đăng ký: điền thông tin + email → nhận ngay email xác thực, bấm link để tạo mật khẩu.
+// Tài khoản ở trạng thái "Chờ duyệt": DienVienVN duyệt trong CRM thì mới vào được cổng đối tác.
 const schema = z.object({
   full_name: z.string().trim().min(2, 'Vui lòng nhập họ tên').max(120),
   email: z.string().trim().toLowerCase().email('Email chưa đúng định dạng').max(160),
@@ -17,12 +19,14 @@ const schema = z.object({
   company: z.string().trim().max(160).optional().default(''),
   partner_type: z.enum(['director', 'producer', 'casting', 'agency', 'brand', 'other']).default('producer'),
   note: z.string().trim().max(1000).optional().default(''),
-  // Mật khẩu đặt ngay khi đăng ký: được duyệt là đăng nhập được, không cần mở email
   // Ô ẩn chống bot: người thật không bao giờ điền
   website: z.string().optional()
 });
 
-const OK = { ok: true, message: 'Đã nhận đăng ký. DienVienVN sẽ xem xét và kích hoạt tài khoản cho bạn.' };
+const OK = {
+  ok: true,
+  message: 'Đã nhận đăng ký. Mở email xác nhận để tạo mật khẩu; bạn dùng được cổng đối tác sau khi DienVienVN duyệt tài khoản.'
+};
 
 export async function POST(req: NextRequest) {
   if (isRateLimited(`partner-register:${clientIp(req.headers)}`, 5, 60 * 60 * 1000)) {
@@ -49,8 +53,7 @@ export async function POST(req: NextRequest) {
   const { data: dup } = await db.from('partner_accounts').select('id').ilike('email', input.email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
   if (dup?.length) return NextResponse.json(OK);
 
-  // Không tạo tài khoản lúc đăng ký: khi DienVienVN duyệt, đối tác nhận email xác thực và tự tạo mật khẩu qua link
-  const { error } = await db.from('partner_accounts').insert({
+  const { data: created, error } = await db.from('partner_accounts').insert({
     email: input.email,
     full_name: input.full_name,
     phone: input.phone,
@@ -61,16 +64,19 @@ export async function POST(req: NextRequest) {
     auth_user_id: null,
     project_ids: [],
     created_by: 'Tự đăng ký'
-  });
-  if (error) {
+  }).select('*').single();
+  if (error || !created) {
     // Email đã có tài khoản / đã đăng ký: trả cùng thông báo để không lộ email nào đã là đối tác
-    if (error.code === '23505') return NextResponse.json(OK);
-    const missing = /phone|status_check|pending/.test(error.message);
-    console.error('[dienvienvn] Đăng ký đối tác lỗi:', error.message);
+    if (error?.code === '23505') return NextResponse.json(OK);
+    const missing = /phone|status_check|pending/.test(error?.message || '');
+    console.error('[dienvienvn] Đăng ký đối tác lỗi:', error?.message);
     return NextResponse.json(
       { error: missing ? 'Hệ thống chưa sẵn sàng nhận đăng ký (cần chạy migration 20261107_partner_signup.sql).' : 'Không gửi được đăng ký. Vui lòng thử lại.' },
       { status: 500 }
     );
   }
+  // Gửi ngay email xác thực + tạo mật khẩu (mẫu "Hồ sơ đối tác của bạn đã được gửi")
+  const result = await sendPartnerEmail(db, created as PartnerAccount, req.headers);
+  if (result === 'failed') console.error('[dienvienvn] Đăng ký đối tác: chưa gửi được email xác thực cho', input.email);
   return NextResponse.json(OK);
 }
