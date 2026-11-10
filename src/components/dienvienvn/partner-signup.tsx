@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { PARTNER_TYPE_LABELS, PartnerType } from '@/lib/dienvienvn/partners';
 import { useDvvnHref } from './base-path';
 import { Field, SelectInput, TextInput } from './form-fields';
@@ -77,7 +77,15 @@ export function PartnerSignup() {
               <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
                 Dành cho đạo diễn, nhà sản xuất, casting director và agency. Đăng casting call, xem đầy đủ shortlist diễn viên và liên hệ diễn viên qua DienVienVN.
               </p>
-              <form onSubmit={submit} className="dv-card mt-8 space-y-5 p-6 md:p-8" noValidate>
+              <div className="mt-6 flex flex-col gap-3 rounded-[18px] border border-[#1d1d1f] bg-white p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
+                <p className="text-[15px] leading-[1.45]">
+                  <span className="font-semibold">Bạn là diễn viên?</span> Form này dành cho nhà sản xuất / đạo diễn.
+                </p>
+                <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]">
+                  Nộp hồ sơ diễn viên tại đây <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
+              <form onSubmit={submit} className="dv-card mt-4 space-y-5 p-6 md:p-8" noValidate>
                 <Field label="Họ và tên" required htmlFor="ps-name">
                   <TextInput id="ps-name" autoComplete="name" value={form.full_name} onChange={e => set({ full_name: e.target.value })} />
                 </Field>
