@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { useDvvnHref } from './base-path';
 import { Audience, AudienceTile, Closing, Hero, LandingNav, Process } from './landing-page';
 import { CrewCta, Ecosystem, Partners, Services, Story } from './landing-v1';
 import { SiteFooter } from './site-chrome';
+import { StageSpotlight } from './stage-spotlight';
 
 /**
  * Trang chủ mới 02 (bản xem trước): gộp phần tốt nhất của trang chủ mới 00 (/trang-chu-moi) và 01 (/trang-chu-moi-01).
@@ -15,6 +16,7 @@ import { SiteFooter } from './site-chrome';
 export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   const href = useDvvnHref();
   const [audience, setAudience] = useState<Audience>('talent');
+  const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Link trong email xác nhận rơi về trang chủ → chuyển tiếp tới trang tạo mật khẩu
@@ -32,6 +34,8 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
     <>
       <LandingNav audience={audience} onAudience={setAudience} />
       <main>
+        <div ref={heroRef} className="relative overflow-hidden">
+        <StageSpotlight targetRef={heroRef} />
         <Hero
           stats={stats}
           audience={audience}
@@ -42,6 +46,7 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
             </>
           }
         />
+        </div>
         <Story />
         <Ecosystem audience={audience} stats={stats} />
         <Process audience={audience} />
