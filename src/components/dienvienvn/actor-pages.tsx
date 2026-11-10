@@ -346,15 +346,23 @@ export function SetPassword() {
       }
       pending.current = null;
     }
-    const { error: err } = await c.auth.updateUser({ password });
-    setBusy(false);
-    if (err && isNetworkError(err)) return setError('Không kết nối được tới máy chủ. Kiểm tra mạng rồi bấm lưu lại.');
-    if (err) {
-      setError(/different|same/i.test(err.message) ? 'Mật khẩu mới phải khác mật khẩu cũ.' : 'Không lưu được mật khẩu. Link có thể đã hết hạn — vui lòng yêu cầu email mới.');
-      return;
+    const { data: updated, error: err } = await c.auth.updateUser({ password });
+    if (err && isNetworkError(err)) {
+      setBusy(false);
+      return setError('Không kết nối được tới máy chủ. Kiểm tra mạng rồi bấm lưu lại.');
     }
+    // Trùng mật khẩu cũ: người dùng đã xác minh email qua link và mật khẩu vẫn là mật khẩu này → coi như đã lưu
+    const samePassword = !!err && /different|same/i.test(err.message);
+    if (err && !samePassword) {
+      setBusy(false);
+      return setError('Không lưu được mật khẩu. Link có thể đã hết hạn — vui lòng yêu cầu email mới.');
+    }
+    const user = updated?.user || (await c.auth.getUser()).data.user;
+    setBusy(false);
+    // Đối tác → cổng đối tác (tự báo "đang chờ duyệt" nếu chưa duyệt); diễn viên → trang tài khoản
+    const dest = user?.user_metadata?.kind === 'dienvienvn_partner' ? '/doi-tac' : '/tai-khoan';
     setPhase('done');
-    window.setTimeout(() => router.replace(href('/tai-khoan')), 1200);
+    window.setTimeout(() => router.replace(href(dest)), 1200);
   };
 
   const title = kind === 'recovery' ? 'Đặt lại mật khẩu.' : kind === 'change' ? 'Đổi mật khẩu.' : 'Xác nhận tài khoản.';
