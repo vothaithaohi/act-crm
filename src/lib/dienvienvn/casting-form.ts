@@ -14,8 +14,8 @@ import {
 } from '@/lib/types/crm';
 import { ACT_ACADEMY_SCHOOL, OTHER_SCHOOL, findArtSchool } from './schools';
 
-/** Thời điểm ra mắt chính thức: 00:00:00 ngày 11/11/2026 theo giờ Việt Nam (GMT+7). */
-export const LAUNCH_AT_ISO = '2026-11-11T00:00:00+07:00';
+/** Thời điểm ra mắt chính thức (soft launch): 11:00:00 trưa ngày 11/11/2026 theo giờ Việt Nam (GMT+7). */
+export const LAUNCH_AT_ISO = '2026-11-11T11:00:00+07:00';
 export const LAUNCH_AT_MS = Date.parse(LAUNCH_AT_ISO);
 
 export const CASTING_STEPS = [

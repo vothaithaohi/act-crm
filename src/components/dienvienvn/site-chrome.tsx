@@ -37,7 +37,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[980px] px-4 py-5 md:px-[22px]">
         <div className="dv-small space-y-2 border-b border-[#d2d2d7] pb-4">
           <p>
-            1. Thời gian đếm ngược tính theo giờ Việt Nam (GMT+7). DienVienVN chính thức ra mắt lúc 00:00 ngày 11/11/2026.
+            1. Thời gian đếm ngược tính theo giờ Việt Nam (GMT+7). DienVienVN chính thức ra mắt lúc 11:00 ngày 11/11/2026.
           </p>
           <p>
             2. Hồ sơ diễn viên chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa
