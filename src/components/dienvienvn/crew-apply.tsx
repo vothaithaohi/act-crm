@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ChevronLeft, Loader2, LogOut } from 'lucide-react';
-import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { Check, ChevronLeft, Loader2 } from 'lucide-react';
+import { actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { LogoutButton } from './logout-button';
 import type { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { CREW_REVIEW_STATUS, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
 import { CREW_PROJECT_TYPES, labelOf, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
@@ -310,18 +311,7 @@ export function CrewAccount() {
   if (meError) return <Shell><ErrorBox>{meError}</ErrorBox></Shell>;
   const crew = me?.crew;
 
-  const logout = (
-    <button
-      type="button"
-      onClick={async () => {
-        await signOutActor();
-        router.replace(href('/'));
-      }}
-      className="dv-link text-[14px]"
-    >
-      <LogOut className="h-4 w-4" /> Đăng xuất
-    </button>
-  );
+  const logout = <LogoutButton to={href('/')} className="dv-link text-[14px]" />;
 
   if (!crew) {
     return (

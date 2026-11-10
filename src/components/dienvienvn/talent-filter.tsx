@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { RotateCcw, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, RotateCcw, X } from 'lucide-react';
 import type { PublicTalent } from '@/lib/dienvienvn/public-talents';
+import { ACCENT_OPTIONS, DANCE_OPTIONS, INSTRUMENT_OPTIONS, LANGUAGE_OPTIONS, MARTIAL_ARTS_OPTIONS, SPORT_OPTIONS } from '@/lib/dienvienvn/casting-form';
 
 /**
  * Bộ lọc chi tiết cho trang Diễn viên (dienvienvn.com/dien-vien), theo kiểu Smart Casting Filter của CRM,
@@ -38,12 +39,6 @@ export const EMPTY_FILTER: TalentFilter = {
   cities: []
 };
 
-const ACT_LEVELS = [
-  { id: 'ACT4', label: 'ACT 4', badge: 'Masterclass' },
-  { id: 'ACT3', label: 'ACT 3', badge: 'Ống kính' },
-  { id: 'ACT2', label: 'ACT 2', badge: 'Tâm lý' },
-  { id: 'ACT1', label: 'ACT 1', badge: 'Căn bản' }
-];
 
 const WILLINGNESS = [
   { id: 'kissing_scene', label: 'Sẵn sàng cảnh hôn' },
@@ -56,16 +51,38 @@ const WILLINGNESS = [
   { id: 'learn_new_skills', label: 'Sẵn sàng học ngoại ngữ / kỹ năng mới' }
 ];
 
-/** Nhóm kỹ năng (tên nhóm trùng skillGroups) → tiêu đề trong bộ lọc. */
-const SKILL_SECTIONS: { group: string; title: string }[] = [
-  { group: 'Giọng vùng miền', title: 'Giọng nói vùng miền' },
-  { group: 'Ngoại ngữ', title: 'Ngoại ngữ diễn xuất' },
-  { group: 'Võ thuật', title: 'Võ thuật & hành động' },
-  { group: 'Nhạc cụ', title: 'Nhạc cụ biểu diễn' },
-  { group: 'Nhảy', title: 'Kỹ năng vũ đạo & nhảy' },
-  { group: 'Thể thao', title: 'Kỹ năng thể thao' },
+/**
+ * Nhóm kỹ năng (tên nhóm trùng skillGroups) → tiêu đề, theo thứ tự trong bộ lọc: Ngoại ngữ, Giọng nói, rồi các kỹ năng.
+ * `preset`: lựa chọn do DienVienVN tạo (cùng danh sách của form nộp hồ sơ). Những gì diễn viên tự gõ thêm gom vào "Khác".
+ * Ca hát chưa có danh sách chuẩn: giữ các thể loại nhiều người chọn nhất.
+ */
+const SKILL_SECTIONS: { group: string; title: string; preset?: string[] }[] = [
+  { group: 'Ngoại ngữ', title: 'Ngoại ngữ', preset: LANGUAGE_OPTIONS },
+  { group: 'Giọng vùng miền', title: 'Giọng nói vùng miền', preset: ACCENT_OPTIONS.map(a => `Giọng ${a}`) },
+  { group: 'Võ thuật', title: 'Võ thuật & hành động', preset: MARTIAL_ARTS_OPTIONS },
+  { group: 'Nhạc cụ', title: 'Nhạc cụ biểu diễn', preset: INSTRUMENT_OPTIONS },
+  { group: 'Nhảy', title: 'Vũ đạo & nhảy', preset: DANCE_OPTIONS },
+  { group: 'Thể thao', title: 'Thể thao', preset: SPORT_OPTIONS },
   { group: 'Ca hát', title: 'Ca hát' }
 ];
+
+/** Mã của lựa chọn "Khác" trong mỗi nhóm kỹ năng. */
+export const OTHER_SKILL = '__khac__';
+const SINGING_TOP = 8;
+
+/** Các lựa chọn hiện trong bộ lọc của một nhóm: lựa chọn chuẩn có diễn viên chọn (giữ thứ tự chuẩn) + "Khác". */
+function sectionOptions(talents: PublicTalent[], group: string, preset?: string[]) {
+  const values = talents.map(t => t.skills.find(g => g.group === group)?.items || []);
+  const used = optionsOf(values);
+  const main = preset ? preset.filter(o => used.includes(o)) : used.slice(0, SINGING_TOP);
+  const hasOther = used.some(o => !main.includes(o));
+  return { main, mainSet: new Set(main), hasOther };
+}
+
+/** Kỹ năng của diễn viên có thuộc lựa chọn đã chọn không ("Khác" = có ít nhất một kỹ năng ngoài danh sách chính). */
+function skillMatches(items: string[], picked: string[], mainSet: Set<string>) {
+  return picked.some(p => (p === OTHER_SKILL ? items.some(i => !mainSet.has(i)) : items.includes(p)));
+}
 
 /** "Trường X · Diễn viên (đang học)" → "Trường X" */
 const schoolOf = (training: string) => training.split(' · ')[0].replace(/\s*\(đang học\)\s*$/, '').trim();
@@ -79,17 +96,17 @@ const inRange = (v: number | null, min: string, max: string) => {
 };
 
 export function applyFilter(list: PublicTalent[], f: TalentFilter): PublicTalent[] {
+  const mains = new Map(SKILL_SECTIONS.map(s => [s.group, sectionOptions(list, s.group, s.preset).mainSet]));
   return list.filter(t => {
     if (f.gender !== 'all' && t.gender !== f.gender) return false;
     if (!inRange(t.age, f.ageMin, f.ageMax)) return false;
     if (!inRange(t.height_cm, f.hMin, f.hMax)) return false;
     if (!inRange(t.weight_kg, f.wMin, f.wMax)) return false;
     if (f.schools.length && !t.trainings.some(x => f.schools.includes(schoolOf(x)))) return false;
-    if (f.actLevels.length && !f.actLevels.some(l => t.act_levels.includes(l))) return false;
     for (const [group, picked] of Object.entries(f.skills)) {
       if (!picked.length) continue;
       const items = t.skills.find(g => g.group === group)?.items || [];
-      if (!picked.some(p => items.includes(p))) return false;
+      if (!skillMatches(items, picked, mains.get(group) || new Set())) return false;
     }
     if (f.willingness.length && !f.willingness.every(w => t.willingness.includes(w))) return false;
     if (f.cities.length && !f.cities.some(c => t.work_cities.includes(c))) return false;
@@ -104,7 +121,6 @@ export function activeCount(f: TalentFilter): number {
     (f.hMin || f.hMax ? 1 : 0) +
     (f.wMin || f.wMax ? 1 : 0) +
     f.schools.length +
-    f.actLevels.length +
     Object.values(f.skills).reduce((n, v) => n + v.length, 0) +
     f.willingness.length +
     f.cities.length
@@ -128,6 +144,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="border-b border-[#f0f0f2] py-5 last:border-0">
       <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{title}</p>
       {children}
+    </div>
+  );
+}
+
+/** Nhóm dạng xổ xuống: bấm vào tiêu đề mới hiện các lựa chọn (mở sẵn khi nhóm đang có lựa chọn). */
+function Dropdown({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(count > 0);
+  return (
+    <div className="border-b border-[#f0f0f2] last:border-0">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 py-4 text-left">
+        <span className="text-[15px] font-semibold">
+          {title}
+          {count > 0 && <span className="ml-2 rounded-full bg-[#1d1d1f] px-2 py-0.5 text-[12px] text-white">{count}</span>}
+        </span>
+        <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--dv-text-secondary)] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="pb-5">{children}</div>}
     </div>
   );
 }
@@ -182,19 +215,22 @@ export function TalentFilterPanel({
   }, [onClose]);
 
   const set = (patch: Partial<TalentFilter>) => onChange({ ...value, ...patch });
-  const schools = optionsOf(talents.map(t => t.trainings.map(schoolOf)));
+  // Nơi đào tạo: không tính lớp ACT (không nhắc lớp ACT ở trang này)
+  const schools = optionsOf(talents.map(t => t.trainings.map(schoolOf))).filter(s => !/^ACT Academy$/i.test(s));
   const cities = optionsOf(talents.map(t => t.work_cities));
-  const skillSections = SKILL_SECTIONS.map(s => ({ ...s, options: optionsOf(talents.map(t => t.skills.find(g => g.group === s.group)?.items || [])) })).filter(s => s.options.length);
+  const skillSections = SKILL_SECTIONS.map(s => ({ ...s, ...sectionOptions(talents, s.group, s.preset) })).filter(s => s.main.length || s.hasOther);
+  const [allSchools, setAllSchools] = useState(false);
+  const SCHOOLS_SHOWN = 8;
   const n = activeCount(value);
 
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end bg-black/40 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex justify-start bg-black/40 backdrop-blur-[2px]" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Bộ lọc diễn viên"
         onClick={e => e.stopPropagation()}
-        className="flex h-full w-full max-w-[460px] flex-col bg-white shadow-2xl"
+        className="dv-slide-in-left flex h-full w-full max-w-[460px] flex-col bg-white shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[#f0f0f2] px-5 py-4">
           <div>
@@ -238,30 +274,39 @@ export function TalentFilterPanel({
           <Section title="Cân nặng">
             <Range min={value.wMin} max={value.wMax} onMin={v => set({ wMin: v })} onMax={v => set({ wMax: v })} unit="kg" len={3} />
           </Section>
-          {schools.length > 0 && (
-            <Section title="Nơi đào tạo diễn xuất">
-              <Chips options={schools.map(s => ({ id: s, label: s }))} value={value.schools} onToggle={id => set({ schools: toggle(value.schools, id) })} />
-            </Section>
-          )}
-          <Section title="Lớp ACT đã học">
-            <Chips options={ACT_LEVELS} value={value.actLevels} onToggle={id => set({ actLevels: toggle(value.actLevels, id) })} />
-          </Section>
-          {skillSections.map(s => (
-            <Section key={s.group} title={s.title}>
-              <Chips
-                options={s.options.map(o => ({ id: o, label: o }))}
-                value={value.skills[s.group] || []}
-                onToggle={id => set({ skills: { ...value.skills, [s.group]: toggle(value.skills[s.group] || [], id) } })}
-              />
-            </Section>
-          ))}
-          <Section title="Mức độ sẵn sàng cho vai diễn">
+          {skillSections.map(sec => {
+            const picked = value.skills[sec.group] || [];
+            return (
+              <Dropdown key={sec.group} title={sec.title} count={picked.length}>
+                <Chips
+                  options={[...sec.main.map(o => ({ id: o, label: o })), ...(sec.hasOther ? [{ id: OTHER_SKILL, label: 'Khác' }] : [])]}
+                  value={picked}
+                  onToggle={id => set({ skills: { ...value.skills, [sec.group]: toggle(picked, id) } })}
+                />
+              </Dropdown>
+            );
+          })}
+          <Dropdown title="Mức độ sẵn sàng cho vai diễn" count={value.willingness.length}>
             <Chips options={WILLINGNESS} value={value.willingness} onToggle={id => set({ willingness: toggle(value.willingness, id) })} />
-          </Section>
+          </Dropdown>
           {cities.length > 0 && (
-            <Section title="Sẵn sàng quay tại tỉnh thành">
+            <Dropdown title="Sẵn sàng quay tại tỉnh thành" count={value.cities.length}>
               <Chips options={cities.map(c => ({ id: c, label: c }))} value={value.cities} onToggle={id => set({ cities: toggle(value.cities, id) })} />
-            </Section>
+            </Dropdown>
+          )}
+          {schools.length > 0 && (
+            <Dropdown title="Nơi đào tạo diễn xuất" count={value.schools.length}>
+              <Chips
+                options={(allSchools ? schools : schools.slice(0, SCHOOLS_SHOWN)).map(x => ({ id: x, label: x }))}
+                value={value.schools}
+                onToggle={id => set({ schools: toggle(value.schools, id) })}
+              />
+              {schools.length > SCHOOLS_SHOWN && (
+                <button type="button" onClick={() => setAllSchools(v => !v)} className="mt-3 text-[14px] font-semibold underline underline-offset-2">
+                  {allSchools ? 'Thu gọn' : `Xem thêm ${schools.length - SCHOOLS_SHOWN} nơi đào tạo`}
+                </button>
+              )}
+            </Dropdown>
           )}
         </div>
 

@@ -67,7 +67,7 @@ export function PartnerSignup() {
               <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
                 {done} Hãy kiểm tra hộp thư (cả mục Spam) tại <span className="font-semibold text-[var(--dv-text)]">{form.email.trim()}</span>.
               </p>
-              <Link href={next.includes('/nsx/') ? next : href('/')} className="dv-btn dv-btn-secondary mt-8">
+              <Link href={next.includes('/nsx/') ? next : `${href('/')}#nha-san-xuat`} className="dv-btn dv-btn-secondary mt-8">
                 {next.includes('/nsx/') ? 'Quay lại danh sách diễn viên' : 'Về trang chủ'}
               </Link>
             </div>

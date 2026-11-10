@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Link2, Search, SlidersHorizontal, UserRound, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, SlidersHorizontal, UserRound, Video } from 'lucide-react';
 import { EMPTY_FILTER, TalentFilter, TalentFilterPanel, activeCount, applyFilter } from './talent-filter';
 import { youtubeId } from '@/lib/dienvienvn/selftapes';
 import type { PublicTalent } from '@/lib/dienvienvn/public-talents';
@@ -10,30 +10,20 @@ import { useDvvnHref } from './base-path';
 import { GlobalNav } from './site-chrome';
 
 /* ---------------- Danh sách diễn viên ---------------- */
-const fold = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
 const projectCount = (t: PublicTalent) => t.experience.reduce((n, g) => n + g.items.length, 0);
 const isAct = (t: PublicTalent) => t.trainings.some(x => /ACT Academy/i.test(x));
 const genderLabel = (g: PublicTalent['gender']) => (g === 'female' ? 'Nữ' : g === 'male' ? 'Nam' : null);
 
 export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
   const href = useDvvnHref();
-  const [q, setQ] = useState('');
   const [filter, setFilter] = useState<TalentFilter>(EMPTY_FILTER);
   const [filterOpen, setFilterOpen] = useState(false);
   const [mode, setMode] = useState<'grid' | 'list'>('grid');
 
-  const indexed = useMemo(
-    () => talents.map(t => ({ t, text: fold([t.name, t.username, ...t.skills.flatMap(g => g.items), ...t.experience.flatMap(g => g.items)].join(' ')) })),
-    [talents]
-  );
-  const list = useMemo(() => {
-    const words = fold(q.trim()).split(/\s+/).filter(Boolean);
-    const matched = indexed.filter(({ text }) => words.every(w => text.includes(w))).map(x => x.t);
-    return applyFilter(matched, filter);
-  }, [indexed, q, filter]);
+  // Chưa có ô tìm kiếm: chỉ lọc bằng bộ lọc (sẽ thêm tìm kiếm sau khi xem nhu cầu của nhà sản xuất)
+  const list = useMemo(() => applyFilter(talents, filter), [talents, filter]);
   const nActive = activeCount(filter);
 
-  const inputCls = 'dv-input !h-11 !py-0 text-[15px]';
   const subtitle = (t: PublicTalent) =>
     [genderLabel(t.gender), t.height_cm ? `${t.height_cm} cm` : null, projectCount(t) ? `${projectCount(t)} dự án` : null, isAct(t) ? 'ACT Academy' : null]
       .filter(Boolean)
@@ -44,24 +34,12 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-10 md:pt-16">
         <div className="mx-auto max-w-[1120px]">
-          <h1 className="dv-display dv-headline">Diễn viên DienVienVN.</h1>
-          <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-            {talents.length > 0 ? `${talents.length} hồ sơ diễn viên đã được duyệt.` : 'Các hồ sơ đã duyệt sẽ sớm xuất hiện tại đây.'}
-          </p>
-          <p className="mt-3 text-[14px] text-[var(--dv-text-secondary)]">
-            Đạo diễn, nhà sản xuất?{' '}
-            <Link href={href('/doi-tac')} className="dv-link font-semibold">
-              Đăng nhập cổng đối tác <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </p>
+          <h1 className="dv-display dv-headline">Đúng người. Đúng vai.</h1>
 
           {talents.length > 0 && (
-            <div className="sticky top-11 z-20 -mx-4 mt-8 bg-[var(--dv-bg-alt)]/95 px-4 py-3 backdrop-blur">
+            <div className="sticky top-11 z-20 -mx-4 mt-6 bg-[var(--dv-bg-alt)]/95 px-4 py-3 backdrop-blur">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full min-w-[220px] md:w-auto md:flex-1">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dv-text-tertiary)]" />
-                  <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tên, kỹ năng, phim đã đóng…" className={`${inputCls} !pl-11`} aria-label="Tìm diễn viên" />
-                </div>
+                {/* Bộ lọc bên trái; bảng lọc trượt ra từ cạnh trái */}
                 <button
                   type="button"
                   onClick={() => setFilterOpen(true)}
@@ -75,7 +53,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                     Xoá lọc
                   </button>
                 )}
-                <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1">
+                <div className="ml-auto flex rounded-full border border-[#d2d2d7] bg-white p-1">
                   {(['grid', 'list'] as const).map(m => (
                     <button
                       key={m}
@@ -214,6 +192,20 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
                   </>
                 )}
               </div>
+
+              {/* Mời casting: ngay dưới ảnh. Số đo và liên hệ chỉ dành cho đối tác đã được DienVienVN duyệt */}
+              <section className="dv-card mt-4 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between md:flex-col md:items-stretch lg:flex-row lg:items-center">
+                <div>
+                  <p className="text-[17px] font-semibold">Muốn mời diễn viên này casting?</p>
+                  <p className="mt-0.5 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">Thông tin liên hệ chỉ hiển thị cho đối tác của DienVienVN.</p>
+                </div>
+                <Link
+                  href={href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/doi-tac/${talent.username}`))}`)}
+                  className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]"
+                >
+                  Liên hệ
+                </Link>
+              </section>
             </div>
 
             {/* Thông tin */}
@@ -335,23 +327,6 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
                 <p className="mt-8 text-[15px] text-[var(--dv-text-secondary)]">Diễn viên đang cập nhật thêm thông tin hồ sơ.</p>
               )}
 
-              {/* Liên hệ / hồ sơ đầy đủ (số đo, liên hệ) chỉ dành cho đối tác đã được DienVienVN duyệt */}
-              <section className="dv-card mt-4 flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-[17px] font-semibold">Muốn mời diễn viên này casting?</p>
-                  <p className="mt-0.5 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-                    Số đo và thông tin liên hệ dành cho đạo diễn, nhà sản xuất là đối tác DienVienVN.
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  <Link href={href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/doi-tac/${talent.username}`))}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-                    Liên hệ
-                  </Link>
-                  <Link href={href(`/doi-tac/${talent.username}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-                    Đối tác đăng nhập
-                  </Link>
-                </div>
-              </section>
             </div>
           </div>
         </div>

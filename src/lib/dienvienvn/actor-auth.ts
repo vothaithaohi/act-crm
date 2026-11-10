@@ -95,6 +95,22 @@ export function useActorSession(): ActorSessionState {
   return state;
 }
 
+const STORAGE_KEY = 'dvvn-actor-auth';
+
+/** Đăng xuất: chờ máy chủ tối đa 2 giây (mạng chậm không làm nút "đứng"), rồi xoá phiên trên máy. */
 export async function signOutActor() {
-  await actorClient()?.auth.signOut();
+  const c = actorClient();
+  if (!c) return;
+  await Promise.race([c.auth.signOut().catch(() => undefined), new Promise(resolve => setTimeout(resolve, 2000))]);
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* bỏ qua */
+  }
+}
+
+/** Đăng xuất rồi tải lại hẳn trang đích, để mọi dữ liệu của tài khoản cũ trên trang biến mất ngay (không cần F5). */
+export async function signOutAndGo(path: string) {
+  await signOutActor();
+  window.location.replace(path);
 }

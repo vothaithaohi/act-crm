@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2, LogOut, Mail, Phone, Plus, Printer, Search, Trash2, UserRound } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2, Mail, Phone, Plus, Printer, Search, Trash2, UserRound } from 'lucide-react';
 import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { ageFromDob, bodyMarkLabel, ROLE_WILLINGNESS_OPTIONS } from '@/lib/dienvienvn/casting-form';
 import { PARTNER_TYPE_LABELS, PartnerProjectSummary, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
@@ -19,6 +19,7 @@ import { LoginGate } from './actor-pages';
 import { CREW_JOB_STATUS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from './crew-job-fields';
 import { CrewProfileDetails } from './crew-profile-view';
+import { LogoutButton } from './logout-button';
 import type { CrewApplicantView } from '@/lib/dienvienvn/crew-server';
 import { useDvvnHref } from './base-path';
 import { GlobalNav } from './site-chrome';
@@ -85,11 +86,6 @@ function usePartnerApi<T>(url: string) {
 
 function PortalShell({ children, partner }: { children: React.ReactNode; partner?: PartnerInfo }) {
   const href = useDvvnHref();
-  const router = useRouter();
-  const logout = async () => {
-    await signOutActor();
-    router.replace(href('/doi-tac'));
-  };
   return (
     <>
       <div className="print:hidden">
@@ -103,9 +99,7 @@ function PortalShell({ children, partner }: { children: React.ReactNode; partner
                 Cổng đối tác · <span className="font-semibold text-[var(--dv-text)]">{partner.full_name}</span>
                 {partner.company ? ` · ${partner.company}` : ` · ${PARTNER_TYPE_LABELS[partner.partner_type] || 'Đối tác'}`}
               </p>
-              <button type="button" onClick={logout} className="inline-flex items-center gap-1.5 text-[14px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]">
-                <LogOut className="h-4 w-4" /> Đăng xuất
-              </button>
+              <LogoutButton to={href('/doi-tac')} className="inline-flex items-center gap-1.5 text-[14px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]" />
             </div>
           )}
           {children}

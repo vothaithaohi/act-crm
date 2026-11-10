@@ -11,6 +11,7 @@ import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
+import { LogoutButton } from './logout-button';
 import { GlobalNav } from './site-chrome';
 import { SelftapeLibrary } from './selftape-library';
 import type { SelfTape } from '@/lib/dienvienvn/selftapes';
@@ -495,19 +496,13 @@ export function ActorAccount() {
 
   if (session.status === 'unavailable') return <Unavailable />;
 
-  const logout = async () => {
-    await signOutActor();
-    router.replace(href('/'));
-  };
 
   if (problem) {
     return (
       <Shell>
         <div className="dv-card p-8 text-center">
           <p className="text-[15px] leading-[1.47]">{problem}</p>
-          <button type="button" onClick={logout} className="dv-btn dv-btn-secondary mt-6">
-            <LogOut className="h-4 w-4" /> Đăng xuất
-          </button>
+          <LogoutButton to={href('/')} className="dv-btn dv-btn-secondary mt-6" />
         </div>
       </Shell>
     );
@@ -558,9 +553,7 @@ export function ActorAccount() {
             <Link href={href('/tao-mat-khau')} className="dv-btn dv-btn-secondary flex-1">
               Đổi mật khẩu
             </Link>
-            <button type="button" onClick={logout} className="dv-btn dv-btn-secondary flex-1">
-              Đăng xuất
-            </button>
+            <LogoutButton to={href('/')} icon={false} className="dv-btn dv-btn-secondary flex-1" />
           </div>
         </div>
       </section>
