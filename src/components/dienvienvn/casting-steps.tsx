@@ -28,7 +28,9 @@ import {
   isPiercing,
   TrainingEntry,
   ageFromDob,
-  newId
+  newId,
+  isValidEmail,
+  phoneTooLong
 } from '@/lib/dienvienvn/casting-form';
 import { ACT_ACADEMY_SCHOOL, ART_SCHOOLS, OTHER_SCHOOL, SCHOOL_REGION_LABELS, SchoolRegion } from '@/lib/dienvienvn/schools';
 import { ABROAD, ALL_PROVINCES, VN_CITIES, VN_PROVINCES, provinceLabel } from '@/lib/dienvienvn/provinces';
@@ -79,6 +81,7 @@ const Divider = () => <div className="h-px bg-[#e8e8ed]" />;
 
 /* ---------------- Bước 1 ---------------- */
 export function StepPersonal({ draft, update, errors, emailLocked, namePlaceholder = 'Võ Thái Thảo' }: StepProps) {
+  const [emailTouched, setEmailTouched] = useState(false);
   const age = ageFromDob(draft.dob);
   const today = new Date().toISOString().slice(0, 10);
   return (
@@ -143,7 +146,12 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Field label="Số điện thoại di động" required htmlFor="phone" error={errors.phone}>
+        <Field
+          label="Số điện thoại di động"
+          required
+          htmlFor="phone"
+          error={errors.phone || (phoneTooLong(draft.phone) ? 'Số điện thoại bị dư số — chỉ gồm 10 số, bắt đầu bằng 0' : undefined)}
+        >
           <TextInput
             id="phone"
             type="tel"
@@ -151,7 +159,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             autoComplete="tel"
             placeholder="0912 345 678"
             value={draft.phone}
-            invalid={!!errors.phone}
+            invalid={!!errors.phone || phoneTooLong(draft.phone)}
             onChange={e => update({ phone: e.target.value })}
           />
         </Field>
@@ -159,7 +167,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
           label="Email"
           required
           htmlFor="email"
-          error={errors.email}
+          error={errors.email || (emailTouched && draft.email.trim() && !isValidEmail(draft.email) ? 'Email không đúng định dạng (VD: ten@gmail.com)' : undefined)}
           hint={emailLocked ? 'Email đăng nhập — không thể thay đổi.' : 'Đội ngũ casting sẽ liên hệ qua email này.'}
         >
           <TextInput
@@ -170,7 +178,8 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             autoComplete="email"
             placeholder="ban@email.com"
             value={draft.email}
-            invalid={!!errors.email}
+            invalid={!!errors.email || (emailTouched && !!draft.email.trim() && !isValidEmail(draft.email))}
+            onBlur={() => setEmailTouched(true)}
             onChange={e => update({ email: e.target.value })}
           />
         </Field>

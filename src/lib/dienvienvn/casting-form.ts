@@ -260,7 +260,17 @@ export function isValidVnPhone(phone: string): boolean {
 }
 
 export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const v = email.trim();
+  const [local, domain, ...rest] = v.split('@');
+  if (rest.length || !local || !domain) return false;
+  // Không cho dấu chấm ở đầu / cuối / liền nhau (VD: gmail..com, gmail.com.)
+  if (!/^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/.test(local)) return false;
+  return /^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/.test(domain);
+}
+
+/** Cảnh báo ngay khi đang gõ: SĐT nhập dư số (quá 10 số). */
+export function phoneTooLong(phone: string): boolean {
+  return normalizePhone(phone).length > 10;
 }
 
 export function ageFromDob(dob: string): number | null {
