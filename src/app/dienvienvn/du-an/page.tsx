@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ProjectsSection } from '@/components/dienvienvn/projects-section';
+import { CastingCalls } from '@/components/dienvienvn/casting-calls';
 import { GlobalNav, SiteFooter } from '@/components/dienvienvn/site-chrome';
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export default function ProjectsPage() {
     <>
       <GlobalNav />
       <main className="min-h-[70vh]">
-        <ProjectsSection page />
+        <CastingCalls />
       </main>
       <SiteFooter />
     </>

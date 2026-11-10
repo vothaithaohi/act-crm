@@ -8,7 +8,6 @@ import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Reveal } from './site-chrome';
-import { ProjectCard } from './project-slider';
 
 export function formatVnDate(iso?: string | null): string {
   if (!iso) return '';
@@ -34,28 +33,6 @@ export function ProjectsSection({ page = false }: { page?: boolean } = {}) {
       <section className="dv-tile dv-tile-light px-4 py-16 md:py-24">
         <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
         <p className="dv-subhead mx-auto mt-3 max-w-[640px] text-[var(--dv-text-secondary)]">Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.</p>
-      </section>
-    );
-  }
-  if (page) {
-    // Trang /du-an: lưới thẻ dự án cùng kiểu trang chủ mới
-    return (
-      <section className="bg-white px-4 py-16 md:py-20">
-        <div className="mx-auto max-w-[1100px]">
-          <Reveal>
-            <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
-            <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-              {projects.length} dự án đang nhận hồ sơ. Chọn vai phù hợp và ứng tuyển ngay hôm nay.
-            </p>
-          </Reveal>
-          <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map(p => (
-              <li key={p.id}>
-                <ProjectCard project={p} href={href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`)} />
-              </li>
-            ))}
-          </ul>
-        </div>
       </section>
     );
   }
