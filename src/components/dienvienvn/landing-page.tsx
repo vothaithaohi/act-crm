@@ -214,7 +214,8 @@ export function Hero({
   onAudience,
   headline,
   headlineLabel,
-  eyebrow
+  eyebrow,
+  hideCounts = false
 }: {
   stats: HomeStats;
   audience: Audience;
@@ -222,6 +223,8 @@ export function Hero({
   headline?: React.ReactNode;
   headlineLabel?: string;
   eyebrow?: React.ReactNode;
+  /** Trang chủ mới 02: bỏ dòng tổng số vai diễn / số diễn viên dưới tiêu đề */
+  hideCounts?: boolean;
 }) {
   const href = useDvvnHref();
   const talent = audience === 'talent';
@@ -267,6 +270,7 @@ export function Hero({
                 </>
               )}
             </h1>
+            {!hideCounts && (
             <p className="mt-5 max-w-[540px] text-[21px] leading-[1.33] text-[#a1a1a6] md:text-[26px]">
               {talent ? (
                 stats.roles > 0 ? (
@@ -284,6 +288,7 @@ export function Hero({
                 'Những diễn viên tài năng đang sẵn sàng tỏa sáng.'
               )}
             </p>
+            )}
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">

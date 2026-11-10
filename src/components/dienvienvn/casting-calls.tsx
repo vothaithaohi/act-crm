@@ -86,8 +86,6 @@ export function CastingCalls() {
   const shown = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const current = shown.find(c => c.key === selected) || shown[0];
   const nFilters = (gender !== 'all' ? 1 : 0) + (age ? 1 : 0) + (place ? 1 : 0);
-  const now = new Date();
-  const month = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
   const goPage = (n: number) => {
     setPage(n);
@@ -109,12 +107,8 @@ export function CastingCalls() {
 
       <div id="casting-calls" className="mx-auto max-w-[1200px] scroll-mt-16 px-4 pt-10 md:px-6 md:pt-14">
         <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
-        <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">Đừng bỏ lỡ. Tìm vai diễn tiếp theo của bạn ngay hôm nay.</p>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[15px] text-[var(--dv-text-secondary)]">
-            {projects ? `${list.length} vai đang tuyển · Cập nhật tháng ${month}` : 'Đang tải…'}
-          </p>
+        <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
           <button type="button" onClick={() => setFilterOpen(true)} className={`dv-btn !h-10 !py-0 text-[14px] ${nFilters ? 'dv-btn-primary' : 'dv-btn-secondary'}`}>
             <SlidersHorizontal className="h-4 w-4" /> Bộ lọc ({nFilters})
           </button>
