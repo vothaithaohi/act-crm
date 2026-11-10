@@ -204,7 +204,18 @@ function FaceMosaic({ faces }: { faces: HomeStats['faces'] }) {
 }
 
 /* ---------------- Màn hình đầu ---------------- */
-function Hero({ stats, audience, onAudience }: { stats: HomeStats; audience: Audience; onAudience: (a: Audience) => void }) {
+/** headline: thay tiêu đề lớn (trang chủ mới 02 dùng câu định vị); không truyền thì giữ tiêu đề cũ. */
+export function Hero({
+  stats,
+  audience,
+  onAudience,
+  headline
+}: {
+  stats: HomeStats;
+  audience: Audience;
+  onAudience: (a: Audience) => void;
+  headline?: React.ReactNode;
+}) {
   const href = useDvvnHref();
   const talent = audience === 'talent';
   return (
@@ -233,7 +244,9 @@ function Hero({ stats, audience, onAudience }: { stats: HomeStats; audience: Aud
 
           <div key={audience} className="dv-pop">
             <h1 className="dv-display mt-7 text-[40px] font-semibold leading-[1.08] tracking-[-0.01em] md:text-[60px] md:leading-[1.04]">
-              {talent ? (
+              {headline ? (
+                headline
+              ) : talent ? (
                 <>
                   Vào vai.<span className="text-[#86868b]"> Vào việc. Vào nghề.</span>
                 </>
@@ -339,7 +352,7 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
 }
 
 /* ---------------- Khối lợi ích của từng luồng ---------------- */
-function AudienceTile({ audience }: { audience: Audience }) {
+export function AudienceTile({ audience }: { audience: Audience }) {
   const href = useDvvnHref();
   const t =
     audience === 'talent'
@@ -403,7 +416,7 @@ const PARTNER_STEPS = [
   { id: 4, title: 'Nhận shortlist ứng viên', desc: 'Xem ảnh, self-tape, chiều cao, kinh nghiệm theo từng vai' }
 ];
 
-function Process({ audience }: { audience: Audience }) {
+export function Process({ audience }: { audience: Audience }) {
   const href = useDvvnHref();
   const talent = audience === 'talent';
   const steps = talent ? CASTING_STEPS : PARTNER_STEPS;
@@ -444,7 +457,7 @@ function Process({ audience }: { audience: Audience }) {
 }
 
 /* ---------------- Kết: đếm ngược ra mắt (trước 11.11) ---------------- */
-function Closing({ audience }: { audience: Audience }) {
+export function Closing({ audience }: { audience: Audience }) {
   const href = useDvvnHref();
   const launched = useLaunched();
   const talent = audience === 'talent';

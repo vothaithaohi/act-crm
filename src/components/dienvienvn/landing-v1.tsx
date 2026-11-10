@@ -127,7 +127,7 @@ function LightUp({ children, className = '' }: { children: React.ReactNode; clas
   );
 }
 
-function Story() {
+export function Story() {
   return (
     <section className="bg-[#111111] px-4 py-20 md:py-28">
       <div className="mx-auto grid max-w-[1100px] gap-10 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] md:gap-16">
@@ -183,7 +183,7 @@ function useDragScroll() {
   return ref;
 }
 
-function Ecosystem({ audience, stats }: { audience: Audience; stats: HomeStats }) {
+export function Ecosystem({ audience, stats }: { audience: Audience; stats: HomeStats }) {
   const href = useDvvnHref();
   const talent = audience === 'talent';
   const [projects, setProjects] = useState<PublicProject[] | null>(null);
@@ -243,7 +243,7 @@ function Ecosystem({ audience, stats }: { audience: Audience; stats: HomeStats }
 }
 
 /* ---------- 4. Dịch vụ hỗ trợ diễn viên (trang diễn viên) ---------- */
-function Services({ photo }: { photo?: string }) {
+export function Services({ photo }: { photo?: string }) {
   return (
     <section className="bg-[#111111] px-4 pb-20 md:pb-28">
       <div className="mx-auto grid max-w-[1100px] items-center gap-10 border-t border-white/15 pt-14 md:grid-cols-2 md:gap-16">
@@ -284,7 +284,7 @@ function Services({ photo }: { photo?: string }) {
 }
 
 /* ---------- 5. Mạng lưới đối tác: logo tự trượt chậm, kéo / vuốt tay để xem nhanh ---------- */
-function Partners() {
+export function Partners() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -414,7 +414,7 @@ function Partners() {
 }
 
 /* ---------- 6. Chỉ trang đối tác: tìm ekip / đăng tuyển ---------- */
-function CrewCta({ photo }: { photo?: string }) {
+export function CrewCta({ photo }: { photo?: string }) {
   const href = useDvvnHref();
   return (
     <section className="relative overflow-hidden bg-[#111111] px-4 py-28 text-center text-[#f5f5f7] md:py-40">
