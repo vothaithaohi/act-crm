@@ -27,6 +27,30 @@ function backdropOf(id: string) {
   return BACKDROPS[h % BACKDROPS.length];
 }
 
+/** Thẻ dự án (ảnh nền + loại dự án, tên, số vai, nút Ứng tuyển) — dùng chung cho trang chủ mới và /du-an. */
+export function ProjectCard({ project: p, href }: { project: PublicProject; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[22px] p-5 text-white md:p-6"
+      style={{ background: backdropOf(p.id) }}
+    >
+      <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <span className="relative">
+        <span className="block text-[12px] font-semibold uppercase tracking-[0.06em] text-white/70">
+          {projectTypeLabel(p.project_type)}
+          {p.deadline ? ` · Hạn ${formatVnDate(p.deadline)}` : ''}
+        </span>
+        <span className="dv-display mt-1.5 line-clamp-2 block text-[22px] font-semibold leading-[1.2] md:text-[24px]">{p.display_name}</span>
+        <span className="mt-1 block text-[14px] text-white/75">{p.roles.length} vai đang tuyển</span>
+        <span className="mt-5 flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-white text-[14px] font-semibold text-[#1d1d1f] transition-colors group-hover:bg-[#f0f0f2]">
+          Ứng tuyển <ArrowUpRight className="h-4 w-4" />
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 /** Trang chủ mới: "Dự án đang casting" dạng thẻ trượt ngang, tối đa 6 dự án, nhiều hơn thì có nút xem tất cả. */
 export function ProjectSlider() {
   const href = useDvvnHref();
@@ -81,24 +105,7 @@ export function ProjectSlider() {
           const path = href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`);
           return (
             <li key={p.id} className="w-[78%] shrink-0 snap-start sm:w-[46%] lg:w-[calc((100%-32px)/3)]">
-              <Link
-                href={path}
-                className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[22px] p-5 text-white md:p-6"
-                style={{ background: backdropOf(p.id) }}
-              >
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <span className="relative">
-                  <span className="block text-[12px] font-semibold uppercase tracking-[0.06em] text-white/70">
-                    {projectTypeLabel(p.project_type)}
-                    {p.deadline ? ` · Hạn ${formatVnDate(p.deadline)}` : ''}
-                  </span>
-                  <span className="dv-display mt-1.5 line-clamp-2 block text-[22px] font-semibold leading-[1.2] md:text-[24px]">{p.display_name}</span>
-                  <span className="mt-1 block text-[14px] text-white/75">{p.roles.length} vai đang tuyển</span>
-                  <span className="mt-5 flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-white text-[14px] font-semibold text-[#1d1d1f] transition-colors group-hover:bg-[#f0f0f2]">
-                    Ứng tuyển <ArrowUpRight className="h-4 w-4" />
-                  </span>
-                </span>
-              </Link>
+              <ProjectCard project={p} href={path} />
             </li>
           );
         })}
