@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { createPasswordAccount, isStaffEmail } from '@/lib/dienvienvn/actor-server';
+import { isStaffEmail } from '@/lib/dienvienvn/actor-server';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 
 // Đối tác tự đăng ký: tạo tài khoản ở trạng thái "Chờ duyệt". Chưa có mật khẩu, chưa đăng nhập được.
@@ -18,7 +18,6 @@ const schema = z.object({
   partner_type: z.enum(['director', 'producer', 'casting', 'agency', 'brand', 'other']).default('producer'),
   note: z.string().trim().max(1000).optional().default(''),
   // Mật khẩu đặt ngay khi đăng ký: được duyệt là đăng nhập được, không cần mở email
-  password: z.string().min(8, 'Mật khẩu cần ít nhất 8 ký tự').max(72).optional(),
   // Ô ẩn chống bot: người thật không bao giờ điền
   website: z.string().optional()
 });
@@ -50,16 +49,7 @@ export async function POST(req: NextRequest) {
   const { data: dup } = await db.from('partner_accounts').select('id').ilike('email', input.email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
   if (dup?.length) return NextResponse.json(OK);
 
-  // Tạo tài khoản bằng mật khẩu vừa đặt; email đã có tài khoản (VD: cũng là diễn viên) thì không đổi mật khẩu —
-  // khi được duyệt, hệ thống gửi email để chủ hộp thư tự đặt / dùng mật khẩu hiện có
-  let authUserId: string | null = null;
-  let existingAccount = false;
-  if (input.password) {
-    const created = await createPasswordAccount(db, { email: input.email, password: input.password, kind: 'dienvienvn_partner', full_name: input.full_name });
-    if ('user' in created) authUserId = created.user.id;
-    else if ('exists' in created) existingAccount = true;
-  }
-
+  // Không tạo tài khoản lúc đăng ký: khi DienVienVN duyệt, đối tác nhận email xác thực và tự tạo mật khẩu qua link
   const { error } = await db.from('partner_accounts').insert({
     email: input.email,
     full_name: input.full_name,
@@ -68,13 +58,11 @@ export async function POST(req: NextRequest) {
     partner_type: input.partner_type,
     note: input.note || null,
     status: 'pending',
-    auth_user_id: authUserId,
+    auth_user_id: null,
     project_ids: [],
     created_by: 'Tự đăng ký'
   });
   if (error) {
-    // Không lưu được đăng ký → xoá tài khoản vừa tạo để không còn tài khoản mồ côi
-    if (authUserId) await db.auth.admin.deleteUser(authUserId);
     // Email đã có tài khoản / đã đăng ký: trả cùng thông báo để không lộ email nào đã là đối tác
     if (error.code === '23505') return NextResponse.json(OK);
     const missing = /phone|status_check|pending/.test(error.message);
@@ -84,13 +72,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-  return NextResponse.json({
-    ...OK,
-    passwordSet: !!authUserId,
-    message: authUserId
-      ? 'Đã nhận đăng ký. Khi DienVienVN duyệt, bạn đăng nhập ngay bằng email và mật khẩu vừa tạo.'
-      : existingAccount
-        ? 'Đã nhận đăng ký. Email này đã có tài khoản DienVienVN — khi được duyệt, bạn đăng nhập bằng mật khẩu hiện có (hoặc dùng “Quên mật khẩu”).'
-        : OK.message
-  });
+  return NextResponse.json(OK);
 }

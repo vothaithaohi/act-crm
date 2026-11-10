@@ -32,7 +32,7 @@ const REASONS = [
 ];
 
 const STEPS = [
-  { title: 'Đăng ký tài khoản đối tác', desc: 'Điền thông tin đơn vị và đặt mật khẩu. DienVienVN duyệt tài khoản trước khi kích hoạt.' },
+  { title: 'Đăng ký tài khoản đối tác', desc: 'Điền thông tin đơn vị. Khi DienVienVN duyệt, bạn nhận email để xác nhận và tạo mật khẩu.' },
   { title: 'Đăng casting call', desc: 'Thông tin dự án, các vai cần tuyển, độ tuổi, yêu cầu self-tape. Có thể ẩn tên thật của dự án với diễn viên.' },
   { title: 'DienVienVN duyệt & mở nhận hồ sơ', desc: 'Dự án được đăng trên dienvienvn.com. Diễn viên phù hợp ứng tuyển trực tiếp, kèm self-tape.' },
   { title: 'Nhận link danh sách ứng viên', desc: 'Mỗi dự án có một link riêng, tự cập nhật khi có người ứng tuyển, sắp xếp theo từng vai và không hết hạn.' },
@@ -196,7 +196,7 @@ export function WhyDienVienVN({ stats }: { stats: HomeStats }) {
         <section className="bg-black px-4 py-16 text-center text-[#f5f5f7] md:py-24">
           <Reveal>
             <h2 className="dv-display dv-headline">Bắt đầu tìm diễn viên cho dự án tiếp theo.</h2>
-            <p className="dv-subhead mx-auto mt-3 max-w-[600px] text-[#a1a1a6]">Đăng ký tài khoản đối tác miễn phí. Tài khoản dùng được ngay sau khi DienVienVN duyệt.</p>
+            <p className="dv-subhead mx-auto mt-3 max-w-[600px] text-[#a1a1a6]">Đăng ký tài khoản đối tác miễn phí. Khi được duyệt, bạn nhận email để tạo mật khẩu và đăng nhập.</p>
           </Reveal>
           <Reveal delay={120} className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link href={href('/doi-tac/dang-ky')} className="dv-btn dv-btn-light">

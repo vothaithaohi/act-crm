@@ -4,7 +4,7 @@ import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { createPasswordAccount, findTalentByEmail, isStaffEmail, sendAccountEmail, writeTalent } from '@/lib/dienvienvn/actor-server';
+import { findTalentByEmail, sendAccountEmail, writeTalent } from '@/lib/dienvienvn/actor-server';
 import { TalentProfile } from '@/lib/types/crm';
 import { CastingProject, NEW_APPLICATION_STATUS, checkApplication } from '@/lib/projects/types';
 
@@ -64,11 +64,6 @@ export async function POST(req: NextRequest) {
   const application = appParsed.data;
 
   // Mật khẩu đặt ngay ở bước cuối (không cần mở email). Không có → luồng cũ: gửi email tạo mật khẩu.
-  const rawPassword = (body as Record<string, unknown>)?.password;
-  const password = typeof rawPassword === 'string' ? rawPassword : '';
-  if (password && (password.length < 8 || password.length > 72)) {
-    return NextResponse.json({ error: 'Mật khẩu cần từ 8 đến 72 ký tự.', passwordError: true }, { status: 400 });
-  }
 
   const now = new Date().toISOString();
   const record = {
@@ -125,22 +120,9 @@ export async function POST(req: NextRequest) {
 
   // Tài khoản đăng nhập: có mật khẩu → tạo ngay, đăng nhập luôn; email đã có tài khoản / không có mật khẩu
   // → gửi email (chỉ chủ hộp thư mới vào được tài khoản đó)
-  let accountCreated = false;
-  let account: Awaited<ReturnType<typeof sendAccountEmail>> | null = null;
-  if (password && !(await isStaffEmail(supabase, draft.email))) {
-    const created = await createPasswordAccount(supabase, {
-      email: draft.email.trim().toLowerCase(),
-      password,
-      kind: 'dienvienvn_actor',
-      full_name: record.full_name
-    });
-    if ('user' in created) {
-      const { error: linkError } = await supabase.from('talent_profiles').update({ auth_user_id: created.user.id }).eq('id', record.id);
-      if (linkError) console.error('[dienvienvn] Không gắn được tài khoản vào hồ sơ:', linkError.message);
-      else accountCreated = true;
-    }
-  }
-  if (!accountCreated) account = await sendAccountEmail(supabase, record as unknown as TalentProfile, req.headers);
+  // Diễn viên nhận email xác thực và tự tạo mật khẩu qua link (không đặt mật khẩu khi nộp hồ sơ)
+  const accountCreated = false; // giữ trường trả về cho giao diện cũ
+  const account = await sendAccountEmail(supabase, record as unknown as TalentProfile, req.headers);
   const emailSent = account === 'invited' || account === 'reset';
 
   if (application) {
