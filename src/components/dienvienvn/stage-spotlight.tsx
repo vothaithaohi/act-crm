@@ -15,6 +15,8 @@ const ON_LEFT = 0;
 const TO_RIGHT = 6.5;
 const BACK_LEFT = 14;
 const FADE_OUT = 58.6;
+// Độ sáng thêm khi chiếu vào dải ảnh hồ sơ (0.5 = sáng hơn 50%)
+const PHOTO_BOOST = 0.5;
 
 type Pt = { x: number; y: number };
 
@@ -96,6 +98,23 @@ export function StageSpotlight({ targetRef }: { targetRef: React.RefObject<HTMLE
       ctx.closePath();
       ctx.filter = 'blur(18px)';
       ctx.fill();
+
+      // Xoá phần chùm sáng nằm trong vùng chiếu (mép mềm) để vệt tròn sáng đều, không bị chia đôi đậm / nhạt
+      ctx.filter = 'none';
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.scale(1, ry / rx);
+      const cut = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 1.05);
+      cut.addColorStop(0, 'rgba(0,0,0,1)');
+      cut.addColorStop(0.7, 'rgba(0,0,0,1)');
+      cut.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = cut;
+      ctx.beginPath();
+      ctx.arc(0, 0, rx * 1.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.globalCompositeOperation = 'lighter';
 
       // Quầng sáng rộng
       ctx.filter = 'blur(30px)';
@@ -189,7 +208,10 @@ export function StageSpotlight({ targetRef }: { targetRef: React.RefObject<HTMLE
       pos.y += vel.y * dt;
       pos.r += vel.r * dt;
 
-      draw({ x: pos.x + shake.x, y: pos.y + shake.y, r: Math.max(80, pos.r) }, power);
+      // Sáng hơn khi chiếu vào dải ảnh diễn viên (tăng dần theo vị trí đèn)
+      const span = Math.hypot(right.x - left.x, right.y - left.y) || 1;
+      const toward = Math.min(1, Math.max(0, ((pos.x - left.x) * (right.x - left.x) + (pos.y - left.y) * (right.y - left.y)) / (span * span)));
+      draw({ x: pos.x + shake.x, y: pos.y + shake.y, r: Math.max(80, pos.r) }, power * (1 + PHOTO_BOOST * toward));
       raf = requestAnimationFrame(tick);
     };
 
