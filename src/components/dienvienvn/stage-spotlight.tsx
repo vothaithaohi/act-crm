@@ -5,16 +5,17 @@ import { useEffect, useRef } from 'react';
 /**
  * Ánh đèn sân khấu tông vàng ACT phủ lên phần mở đầu (trang chủ mới 02).
  * Đèn treo phía trên góc trái: bật lên chiếu cụm chữ bên trái → vài giây sau lia sang dải ảnh diễn viên bên phải
- * → quay lại cụm chữ; lặp lại mỗi 60 giây. Chuyển động theo kiểu lò xo (trễ, hơi lố rồi dừng) cộng rung nhẹ
+ * → quay lại cụm chữ: lần đầu chiếu trái 3 giây, sau đó lặp liên tục phải 5 giây ↔ trái 5 giây. Chuyển động theo kiểu lò xo (trễ, hơi lố rồi dừng) cộng rung nhẹ
  * và chỉnh góc ngẫu nhiên để giống người điều khiển đèn bằng tay, độ sáng chập chờn nhẹ như đèn thật.
  */
 const GOLD = '212, 174, 106'; // #d4ae6a
-const CYCLE = 60; // giây
+// Lịch chiếu (giây): lần đầu chiếu cụm trái 3s, sau đó lặp liên tục phải 5s ↔ trái 5s
+const FIRST_LEFT = 3;
+const HOLD_RIGHT = 5;
+const HOLD_LEFT = 5;
+const CYCLE = HOLD_RIGHT + HOLD_LEFT;
 // Lịch chiếu trong 1 chu kỳ (giây): bên trái → bên phải → bên trái
-const ON_LEFT = 0;
-const TO_RIGHT = 6.5;
-const BACK_LEFT = 14;
-const FADE_OUT = 58.6;
+const LAMP_ON = 1.4; // chỉ lần đầu vào trang: đèn bật sáng dần
 // Độ sáng thêm khi chiếu vào dải ảnh hồ sơ (0.5 = sáng hơn 50%)
 const PHOTO_BOOST = 0.5;
 
@@ -65,9 +66,12 @@ export function StageSpotlight({ targetRef }: { targetRef: React.RefObject<HTMLE
     const pos = { x: left.x, y: left.y, r: left.r };
     const vel = { x: 0, y: 0, r: 0 };
     // Chỉnh góc tay: mỗi vài giây lệch nhẹ một chút
+    // Mỗi lần lia tới: đáp hơi lệch → rung nhẹ → chỉnh lại cho trúng chỗ (như người chỉnh đèn bằng tay)
     let nudge = { x: 0, y: 0 };
-    let nextNudge = 2;
-    let start = performance.now();
+    let lastGoal: 'left' | 'right' = 'left';
+    let correctAt = 0;
+    const firstStart = performance.now();
+    const start = performance.now();
     let last = start;
     let raf = 0;
 
@@ -164,32 +168,32 @@ export function StageSpotlight({ targetRef }: { targetRef: React.RefObject<HTMLE
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      let t = (now - start) / 1000;
-      if (t >= CYCLE) {
-        start = now;
-        t = 0;
-      }
+      const t = (now - start) / 1000;
 
       // Đích theo lịch chiếu
-      const goal = t >= TO_RIGHT && t < BACK_LEFT ? right : left;
+      const side: 'left' | 'right' = t < FIRST_LEFT ? 'left' : (t - FIRST_LEFT) % CYCLE < HOLD_RIGHT ? 'right' : 'left';
+      const goal = side === 'right' ? right : left;
+      if (side !== lastGoal) {
+        lastGoal = side;
+        // Ngắm lệch một chút khi lia tới, khoảng 0,7–1 giây sau thì chỉnh về đúng giữa
+        const a = Math.random() * Math.PI * 2;
+        nudge = { x: Math.cos(a) * goal.r * 0.22, y: Math.sin(a) * goal.r * 0.16 };
+        correctAt = now + 700 + Math.random() * 300;
+      } else if (correctAt && now >= correctAt) {
+        nudge = { x: (Math.random() - 0.5) * goal.r * 0.04, y: (Math.random() - 0.5) * goal.r * 0.04 };
+        correctAt = 0;
+      }
 
-      // Độ sáng: bật đèn (lóe nhẹ vài nhịp) → sáng ổn định → tắt dần cuối chu kỳ
+      // Độ sáng: chỉ lần đầu vào trang mới bật đèn (lóe nhẹ vài nhịp), các vòng sau sáng liên tục
       let power = 1;
-      if (t < ON_LEFT + 1.4) {
-        const k = (t - ON_LEFT) / 1.4;
+      const sinceOn = (now - firstStart) / 1000;
+      if (sinceOn < LAMP_ON) {
+        const k = sinceOn / LAMP_ON;
         power = Math.min(1, k * k) * (k < 0.5 ? 0.6 + 0.4 * Math.sin(k * 40) : 1);
-      } else if (t > FADE_OUT) {
-        power = Math.max(0, 1 - (t - FADE_OUT) / (CYCLE - FADE_OUT));
       }
       // Chập chờn nhẹ như dây tóc đèn thật
       power *= 0.93 + 0.04 * Math.sin(now / 173) + 0.03 * Math.sin(now / 61 + 1.3);
 
-      // Chỉnh góc tay khi đang đứng yên
-      nextNudge -= dt;
-      if (nextNudge <= 0) {
-        nudge = { x: (Math.random() - 0.5) * goal.r * 0.18, y: (Math.random() - 0.5) * goal.r * 0.14 };
-        nextNudge = 2.2 + Math.random() * 2.8;
-      }
       // Rung tay rất nhẹ (tổng các sóng lệch pha, không đều như máy)
       const shake = {
         x: Math.sin(now / 410) * 3 + Math.sin(now / 157 + 2) * 1.6,
