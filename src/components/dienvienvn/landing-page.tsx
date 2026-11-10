@@ -204,17 +204,24 @@ function FaceMosaic({ faces }: { faces: HomeStats['faces'] }) {
 }
 
 /* ---------------- Màn hình đầu ---------------- */
-/** headline: thay tiêu đề lớn (trang chủ mới 02 dùng câu định vị); không truyền thì giữ tiêu đề cũ. */
+/**
+ * headline: thay tiêu đề lớn (trang chủ mới 02 dùng câu định vị); không truyền thì giữ tiêu đề cũ.
+ * eyebrow: dòng tiêu đề nhỏ (heading 2) phía trên tiêu đề lớn; headlineLabel: nội dung đọc cho trình đọc màn hình.
+ */
 export function Hero({
   stats,
   audience,
   onAudience,
-  headline
+  headline,
+  headlineLabel,
+  eyebrow
 }: {
   stats: HomeStats;
   audience: Audience;
   onAudience: (a: Audience) => void;
   headline?: React.ReactNode;
+  headlineLabel?: string;
+  eyebrow?: React.ReactNode;
 }) {
   const href = useDvvnHref();
   const talent = audience === 'talent';
@@ -243,7 +250,11 @@ export function Hero({
           </div>
 
           <div key={audience} className="dv-pop">
-            <h1 className="dv-display mt-7 text-[40px] font-semibold leading-[1.08] tracking-[-0.01em] md:text-[60px] md:leading-[1.04]">
+            {eyebrow && <h2 className="mt-7 text-[20px] font-semibold leading-[1.2] text-[#a1a1a6] md:text-[24px]">{eyebrow}</h2>}
+            <h1
+              aria-label={headlineLabel}
+              className={`dv-display ${eyebrow ? 'mt-2' : 'mt-7'} text-[40px] font-semibold leading-[1.08] tracking-[-0.01em] md:text-[60px] md:leading-[1.04]`}
+            >
               {headline ? (
                 headline
               ) : talent ? (

@@ -663,3 +663,31 @@ input[type='date'].dv-input {
     animation: none;
   }
 }
+
+/* Tiêu đề chữ chạy (trang chủ mới 02): từ cũ trượt lên biến mất, từ mới trượt từ dưới lên */
+.dv-rotate-in {
+  animation: dv-rotate-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dv-rotate-out {
+  animation: dv-rotate-out 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes dv-rotate-in {
+  from {
+    transform: translateY(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes dv-rotate-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-110%);
+    opacity: 0;
+  }
+}

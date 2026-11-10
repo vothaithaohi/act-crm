@@ -7,6 +7,7 @@ import { Audience, AudienceTile, Closing, Hero, LandingNav, Process } from './la
 import { CrewCta, Ecosystem, Partners, Services, Story } from './landing-v1';
 import { SiteFooter } from './site-chrome';
 import { StageSpotlight } from './stage-spotlight';
+import { RotatingWords } from './rotating-words';
 
 /**
  * Trang chủ mới 02 (bản xem trước): gộp phần tốt nhất của trang chủ mới 00 (/trang-chu-moi) và 01 (/trang-chu-moi-01).
@@ -40,11 +41,9 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
           stats={stats}
           audience={audience}
           onAudience={setAudience}
-          headline={
-            <>
-              Cộng đồng diễn viên<span className="text-[#86868b]"> trung thực – minh bạch – hết mình.</span>
-            </>
-          }
+          eyebrow="Cộng đồng diễn viên"
+          headlineLabel="Cộng đồng diễn viên trung thực – minh bạch – hết mình."
+          headline={<RotatingWords words={['trung thực.', 'minh bạch.', 'hết mình.']} still="trung thực – minh bạch – hết mình." className="text-[#d4ae6a]" />}
         />
         </div>
         <Story />
