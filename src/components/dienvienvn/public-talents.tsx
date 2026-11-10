@@ -179,11 +179,7 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-6 md:pt-10">
         <div className="mx-auto max-w-[1040px]">
-          <Link href={href('/dien-vien')} className="dv-link text-[14px]">
-            <ChevronLeft className="h-4 w-4" /> Tất cả diễn viên
-          </Link>
-
-          <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,400px)_minmax(0,1fr)] md:gap-10">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,400px)_minmax(0,1fr)] md:gap-10">
             {/* Ảnh */}
             <div>
               <div className="relative aspect-[3/4] overflow-hidden rounded-[22px] bg-[#e8e8ed]">
