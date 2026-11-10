@@ -9,7 +9,7 @@ export const PARTNER_MANAGER_ROLES = ['super_admin', 'admin', 'casting'];
 
 export const EMAIL_RESULT_MESSAGE: Record<string, string> = {
   invited: 'Đã gửi email mời tạo mật khẩu.',
-  reset: 'Email này đã có tài khoản — đã gửi email đặt mật khẩu.',
+  reset: 'Đã gửi email cấp lại mật khẩu — đối tác bấm link trong email để tạo mật khẩu mới.',
   ready: 'Đối tác đã đặt mật khẩu khi đăng ký — đăng nhập được ngay, không cần email.',
   staff: 'Email thuộc nhân sự CRM nên không gửi email đặt mật khẩu. Hãy dùng email khác cho tài khoản đối tác.',
   failed: 'Chưa gửi được email. Kiểm tra cấu hình SMTP trong Supabase rồi bấm "Gửi lại email".',

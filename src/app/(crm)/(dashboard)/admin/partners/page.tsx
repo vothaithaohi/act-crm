@@ -222,12 +222,12 @@ export default function AdminPartnersPage() {
                           <FolderKanban className="w-4 h-4" />
                         </button>
                         <button
-                          title="Gửi lại email mời / đặt mật khẩu"
+                          title="Gửi email để đối tác tự tạo mật khẩu mới (dùng khi đối tác quên mật khẩu hoặc chưa nhận được email mời)"
                           disabled={busyId === p.id || p.status !== 'active'}
-                          onClick={() => patch(p, { resend: true })}
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted disabled:opacity-40"
+                          onClick={() => window.confirm(`Gửi email cấp lại mật khẩu cho "${p.full_name}" (${p.email})?`) && patch(p, { resend: true })}
+                          className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold whitespace-nowrap hover:bg-muted disabled:opacity-40"
                         >
-                          <Mail className="w-4 h-4" />
+                          <Mail className="w-3.5 h-3.5" /> Cấp lại mật khẩu
                         </button>
                         <button
                           title={p.status === 'active' ? 'Khoá tài khoản' : 'Mở khoá tài khoản'}
