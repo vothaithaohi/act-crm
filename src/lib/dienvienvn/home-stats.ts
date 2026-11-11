@@ -47,11 +47,9 @@ export async function getHomeStats(): Promise<HomeStats> {
       projects: open.length,
       talents: talentsRes.count || 0,
       companies,
-      // Ưu tiên gương mặt học viên ACT Academy
+      // Toàn bộ hồ sơ có ảnh (không ưu tiên ai); trang chủ tự bốc ngẫu nhiên xoay vòng cho công bằng
       faces: faces
         .filter(t => t.photos[0]?.url)
-        .sort((a, b) => Number(isActStudent(b)) - Number(isActStudent(a)))
-        .slice(0, 12)
         .map(t => ({ username: t.username, name: displayName(t.name), photo: t.photos[0].url, act: isActStudent(t) }))
     };
   } catch (e) {

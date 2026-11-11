@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { useDvvnHref } from './base-path';
-import { Audience, AudienceTile, Closing, Hero, LandingNav, Process } from './landing-page';
+import { Audience, AudienceTile, Closing, Hero, LandingNav, MOSAIC_FACES, Process } from './landing-page';
+import { pickRotatingFaces } from '@/lib/dienvienvn/face-rotation';
 import { CrewCta, Partners, Services, Story } from './landing-v1';
 import { CastingRail } from './casting-rail';
 import { SiteFooter } from './site-chrome';
@@ -15,9 +16,27 @@ import { RotatingWords } from './rotating-words';
  * Thứ tự: mở đầu nền tối (00, câu định vị của 01) → câu chuyện (01) → trượt ngang (01) → quy trình (00)
  * → dịch vụ diễn viên (01) / lợi ích NSX (00) → mạng lưới đối tác (01) → tìm ekip (01, trang NSX) → kết (00).
  */
+/** Số gương mặt trên hàng trượt dành cho nhà sản xuất (thêm 1 ảnh cho thẻ Xem tất cả). */
+const RAIL_FACES = 10;
+
 export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   const href = useDvvnHref();
   const [audience, setAudience] = useState<Audience>('talent');
+  // Gương mặt bốc ngẫu nhiên mỗi lần vào trang / F5, xoay vòng không lặp cho tới khi đi hết hồ sơ.
+  // Phần đầu trang (12) và hàng "Gương mặt sẵn sàng…" (10 + ảnh thẻ cuối) không trùng nhau.
+  // Chỉ tính là "đã hiện" những gương mặt người xem thật sự thấy: hàng của nhà sản xuất bốc khi chuyển sang mục đó.
+  const [faces, setFaces] = useState<HomeStats['faces'] | null>(null);
+  const [hiringFaces, setHiringFaces] = useState<HomeStats['faces']>([]);
+  useEffect(() => {
+    setFaces(pickRotatingFaces(stats.faces, MOSAIC_FACES));
+  }, [stats.faces]);
+  useEffect(() => {
+    if (audience !== 'hiring' || !faces || hiringFaces.length) return;
+    setHiringFaces(pickRotatingFaces(stats.faces, RAIL_FACES + 2, faces.map(f => f.username)));
+  }, [audience, faces, hiringFaces.length, stats.faces]);
+  const heroStats = { ...stats, faces: faces || [] };
+  const railStats = { ...stats, faces: hiringFaces.slice(0, RAIL_FACES + 1) };
+  const crewPhoto = hiringFaces[RAIL_FACES + 1]?.photo || faces?.[0]?.photo;
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,7 +58,8 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
         <div ref={heroRef} className="relative overflow-hidden">
         <StageSpotlight targetRef={heroRef} />
         <Hero
-          stats={stats}
+          stats={heroStats}
+          facesPending={faces === null}
           audience={audience}
           onAudience={setAudience}
           hideCounts
@@ -49,11 +69,11 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
         />
         </div>
         <Story />
-        <CastingRail audience={audience} stats={stats} />
+        <CastingRail audience={audience} stats={railStats} />
         <Process audience={audience} />
         {talent ? <Services photo="/dienvienvn/home/dich-vu-headshot.jpg" /> : <AudienceTile audience={audience} />}
         <Partners />
-        {!talent && <CrewCta photo={stats.faces[1]?.photo || stats.faces[0]?.photo} />}
+        {!talent && <CrewCta photo={crewPhoto} />}
         <Closing audience={audience} />
       </main>
       <SiteFooter />

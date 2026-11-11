@@ -169,8 +169,13 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
 }
 
 /* ---------------- Cột ảnh gương mặt tự chạy lên (diễn viên đã đồng ý công khai) ---------------- */
-function FaceMosaic({ faces }: { faces: HomeStats['faces'] }) {
+/** Số gương mặt trong khối ảnh chạy ở phần đầu trang chủ. */
+export const MOSAIC_FACES = 12;
+
+function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pending?: boolean }) {
   const href = useDvvnHref();
+  // Đang bốc ngẫu nhiên gương mặt (trên trình duyệt): giữ đúng khung để trang không bị nhảy
+  if (pending) return <div className="h-[340px] sm:h-[420px] md:h-[560px]" aria-hidden="true" />;
   if (faces.length < 3) {
     return (
       <div className="flex aspect-[4/5] w-full items-center justify-center rounded-[28px] bg-[#1d1d1f]">
@@ -230,7 +235,8 @@ export function Hero({
   headline,
   headlineLabel,
   eyebrow,
-  hideCounts = false
+  hideCounts = false,
+  facesPending = false
 }: {
   stats: HomeStats;
   audience: Audience;
@@ -240,6 +246,8 @@ export function Hero({
   eyebrow?: React.ReactNode;
   /** Trang chủ mới 02: bỏ dòng tổng số vai diễn / số diễn viên dưới tiêu đề */
   hideCounts?: boolean;
+  /** Trang chủ mới 02: gương mặt đang được bốc ngẫu nhiên trên trình duyệt */
+  facesPending?: boolean;
 }) {
   const href = useDvvnHref();
   const talent = audience === 'talent';
@@ -329,7 +337,7 @@ export function Hero({
           </div>
         </div>
 
-        <FaceMosaic faces={stats.faces} />
+        <FaceMosaic faces={stats.faces.slice(0, MOSAIC_FACES)} pending={facesPending} />
       </div>
     </section>
   );
