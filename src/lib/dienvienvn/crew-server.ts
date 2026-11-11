@@ -1,7 +1,7 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { findAuthUserByEmail, isSelfSignup, isStaffEmail, reclaimSelfSignup, SET_PASSWORD_PATH } from './actor-server';
+import { findAuthUserByEmail, isSelfSignup, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
 import { CRM_HOST, publicSiteUrl } from './hosts';
 import { CrewJob, crewJobActive } from './crew-jobs';
 import { CrewApplication, CrewProfile, crewPrimaryRoleText } from './crew-profiles';
@@ -42,34 +42,60 @@ export async function getCrewUser(req: NextRequest, db: SupabaseClient): Promise
   return { user, crew: null };
 }
 
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
 export type CrewSignupResult = 'invited' | 'exists' | 'staff' | 'failed';
 
+/** Email xác nhận tài khoản ekip (gửi qua Brevo, nội dung riêng cho ứng viên ekip — không dùng mẫu email mời chung của Supabase). */
+function crewConfirmEmail(name: string, link: string) {
+  const hello = name ? `Xin chào ${escapeHtml(name)},` : 'Xin chào,';
+  const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1d1d1f">
+  <p style="font-size:20px;font-weight:600;margin:0 0 24px">🎬 DienVienVN</p>
+  <h2 style="font-size:22px;margin:0 0 12px">Xác nhận tài khoản ứng viên ekip.</h2>
+  <p style="font-size:15px;line-height:1.5;color:#424245;margin:0 0 24px">${hello} bấm nút bên dưới để xác nhận email và tạo mật khẩu. Sau đó bạn hoàn thiện hồ sơ ekip, lưu CV và ứng tuyển việc làm ekip trên DienVienVN.</p>
+  <a href="${link}" style="display:inline-block;background:#1d1d1f;color:#ffffff;text-decoration:none;font-size:15px;padding:12px 24px;border-radius:980px">Xác nhận &amp; tạo mật khẩu</a>
+  <p style="font-size:12px;line-height:1.5;color:#86868b;margin:28px 0 0">Nếu bạn không đăng ký tài khoản ekip trên DienVienVN, hãy bỏ qua email này.</p>
+</div>`;
+  const text = `${name ? `Xin chào ${name},` : 'Xin chào,'} bấm link sau để xác nhận email và tạo mật khẩu tài khoản ứng viên ekip DienVienVN: ${link}\n\nNếu bạn không đăng ký tài khoản ekip trên DienVienVN, hãy bỏ qua email này.`;
+  return { subject: 'DienVienVN – Xác nhận tài khoản ứng viên ekip', html, text };
+}
+
 /**
- * Đăng ký tài khoản ứng viên ekip: gửi email xác nhận & tạo mật khẩu (chỉ chủ hộp thư mới vào được).
+ * Đăng ký tài khoản ứng viên ekip: tạo link xác nhận (chỉ chủ hộp thư mới vào được) và tự gửi email nội dung ekip.
  * Email đã có tài khoản DienVienVN (VD: cũng là diễn viên) → báo đăng nhập bằng tài khoản đó.
  */
 export async function inviteCrewAccount(db: SupabaseClient, input: { email: string; full_name: string }, headers: Headers): Promise<CrewSignupResult> {
   const email = input.email.trim().toLowerCase();
   if (await isStaffEmail(db, email)) return 'staff';
-  const redirectTo = `${publicSiteUrl(headers)}${SET_PASSWORD_PATH}`;
-  const { error } = await db.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    data: { kind: 'dienvienvn_crew', full_name: input.full_name }
+  const site = publicSiteUrl(headers);
+  const redirectTo = `${site}${SET_PASSWORD_PATH}`;
+  const send = async (type: 'invite' | 'recovery', hashed: string) => {
+    const link = `${redirectTo}?token_hash=${encodeURIComponent(hashed)}&type=${type}&for=ekip`;
+    return sendMail({ to: email, ...crewConfirmEmail(input.full_name, link) });
+  };
+
+  const { data, error } = await db.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo, data: { kind: 'dienvienvn_crew', full_name: input.full_name } }
   });
-  if (!error) return 'invited';
-  if (!/already|registered|exists/i.test(error.message)) {
-    console.error('[dienvienvn] Không gửi được email đăng ký ekip:', error.message);
+  if (!error && data?.properties?.hashed_token) return (await send('invite', data.properties.hashed_token)) ? 'invited' : 'failed';
+  if (error && !/already|registered|exists/i.test(error.message)) {
+    console.error('[dienvienvn] Không tạo được link xác nhận ekip:', error.message);
     return 'failed';
   }
   const existing = await findAuthUserByEmail(db, email);
-  // Tài khoản tự đặt mật khẩu (chưa chứng minh email): mời lại qua email
-  if (existing && isSelfSignup(existing)) return (await reclaimSelfSignup(db, existing, redirectTo)) ? 'invited' : 'failed';
-  // Đã mời nhưng chưa tạo mật khẩu: gửi lại email mời
-  if (existing && !existing.last_sign_in_at && !existing.email_confirmed_at) {
-    const { error: again } = await db.auth.resetPasswordForEmail(email, { redirectTo });
-    return again ? 'failed' : 'invited';
+  if (!existing) return 'failed';
+  // Đã đăng ký ekip nhưng chưa bấm link / chưa tạo mật khẩu: gửi lại link xác nhận.
+  // Tài khoản khác (diễn viên, đối tác…) → đăng nhập bằng tài khoản đó rồi tạo hồ sơ ekip.
+  const pendingCrew = existing.user_metadata?.kind === 'dienvienvn_crew' && !isSelfSignup(existing) && !existing.last_sign_in_at;
+  if (!pendingCrew) return 'exists';
+  const { data: again, error: againErr } = await db.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } });
+  if (againErr || !again?.properties?.hashed_token) {
+    console.error('[dienvienvn] Không tạo được link xác nhận ekip:', againErr?.message);
+    return 'failed';
   }
-  return 'exists';
+  return (await send('recovery', again.properties.hashed_token)) ? 'invited' : 'failed';
 }
 
 /** Tin còn nhận ứng tuyển (đã duyệt, còn hạn). */
@@ -99,8 +125,6 @@ export async function applyCrewToJob(
   if (crew.review_status === 'approved') await notifyApplications(db, [data as CrewApplication], headers);
   return 'applied';
 }
-
-const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
 /** Email báo NSX (người đăng tin) có ứng viên mới. Chỉ gửi một lần cho mỗi lượt ứng tuyển. */
 export async function notifyApplications(db: SupabaseClient, apps: CrewApplication[], headers: Headers) {

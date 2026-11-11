@@ -278,6 +278,8 @@ export function SetPassword() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reason, setReason] = useState('');
+  // Link trong email tài khoản ekip có "&for=ekip": lời nhắn dành cho ứng viên ekip thay vì diễn viên
+  const [forCrew, setForCrew] = useState(false);
   // Mã xác minh trong link email: chỉ dùng khi người dùng bấm lưu mật khẩu, không dùng lúc mở trang,
   // để trình quét link của Gmail/Outlook (tự mở link trước) không làm link hết hiệu lực.
   const pending = useRef<{ tokenHash: string; type: LinkType } | null>(null);
@@ -292,7 +294,10 @@ export function SetPassword() {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const clearUrl = () => window.history.replaceState(null, '', window.location.pathname);
     const type = (query.get('type') || hash.get('type') || '') as LinkType;
-    setKind(type === 'recovery' ? 'recovery' : 'invite');
+    // Link gửi lại cho tài khoản ekip chưa tạo mật khẩu là link khôi phục: vẫn hiện như xác nhận tài khoản
+    const crewLink = query.get('for') === 'ekip';
+    setKind(type === 'recovery' && !crewLink ? 'recovery' : 'invite');
+    setForCrew(crewLink);
 
     (async () => {
       // 1) Mẫu email dùng token_hash (khuyến nghị)
@@ -404,7 +409,9 @@ export function SetPassword() {
             <div>
               <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{title}</h1>
               <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                {kind === 'invite'
+                {kind === 'invite' && forCrew
+                  ? 'Tạo mật khẩu để đăng nhập, hoàn thiện hồ sơ ekip và ứng tuyển việc làm ekip.'
+                  : kind === 'invite'
                   ? 'Email của bạn đã được xác nhận. Tạo mật khẩu để đăng nhập, chỉnh sửa hồ sơ và ứng tuyển các dự án đang casting.'
                   : `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`}
               </p>
