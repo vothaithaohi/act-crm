@@ -7,7 +7,7 @@ const FACES_KEY = 'dvvn-faces-seen';
 /** Khoá lưu vòng xoay của vai diễn trên trang chủ. */
 export const ROLES_KEY = 'dvvn-roles-seen';
 
-function shuffle<T>(list: T[]): T[] {
+export function shuffle<T>(list: T[]): T[] {
   const a = [...list];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

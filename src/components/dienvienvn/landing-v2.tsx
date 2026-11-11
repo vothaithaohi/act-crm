@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { useDvvnHref } from './base-path';
 import { Audience, AudienceTile, Closing, Hero, LandingNav, MOSAIC_FACES, Process } from './landing-page';
-import { pickRotatingFaces } from '@/lib/dienvienvn/face-rotation';
+import { pickRotatingFaces, shuffle } from '@/lib/dienvienvn/face-rotation';
 import { CrewCta, Partners, Services, Story } from './landing-v1';
 import { CastingRail } from './casting-rail';
 import { SiteFooter } from './site-chrome';
@@ -18,6 +18,11 @@ import { RotatingWords } from './rotating-words';
  */
 /** Số gương mặt trên hàng trượt dành cho nhà sản xuất (thêm 1 ảnh cho thẻ Xem tất cả). */
 const RAIL_FACES = 10;
+/**
+ * Hồ sơ luôn có mặt trong khối ảnh phần đầu trang chủ (vị trí / thứ tự đổi ngẫu nhiên mỗi lần vào trang / F5).
+ * Các ô còn lại bốc ngẫu nhiên xoay vòng như bình thường. Sửa danh sách bằng username của hồ sơ.
+ */
+const PINNED_HERO = ['phamthaikhuongthaikhuongpham', 'jakelee', 'truongquochau'];
 
 export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   const href = useDvvnHref();
@@ -28,7 +33,9 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   const [faces, setFaces] = useState<HomeStats['faces'] | null>(null);
   const [hiringFaces, setHiringFaces] = useState<HomeStats['faces']>([]);
   useEffect(() => {
-    setFaces(pickRotatingFaces(stats.faces, MOSAIC_FACES));
+    const pinned = stats.faces.filter(f => PINNED_HERO.includes(f.username));
+    const others = stats.faces.filter(f => !PINNED_HERO.includes(f.username));
+    setFaces(shuffle([...pinned, ...pickRotatingFaces(others, MOSAIC_FACES - pinned.length)]));
   }, [stats.faces]);
   useEffect(() => {
     if (audience !== 'hiring' || !faces || hiringFaces.length) return;
