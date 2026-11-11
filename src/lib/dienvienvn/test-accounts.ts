@@ -15,11 +15,15 @@ function compact(value: string): string {
 }
 
 /** Ngoại lệ: hồ sơ vẫn hiện công khai dù khớp quy tắc test (theo username). */
-const ALWAYS_PUBLIC = ['tienle'];
+const ALWAYS_PUBLIC: string[] = [];
+/** Tài khoản test không có chữ "test" trong tên / username / email: liệt kê username ở đây để ẩn. */
+const ALWAYS_HIDDEN = ['tienle'];
 
 /** Hồ sơ là tài khoản test nếu tên, username hoặc email có chữ "test" (viết kiểu nào cũng nhận ra). */
 export function isTestAccount(t: { full_name?: string | null; name?: string | null; username?: string | null; email?: string | null }): boolean {
-  if (t.username && ALWAYS_PUBLIC.includes(t.username.trim().toLowerCase())) return false;
+  const user = (t.username || '').trim().toLowerCase();
+  if (user && ALWAYS_HIDDEN.includes(user)) return true;
+  if (user && ALWAYS_PUBLIC.includes(user)) return false;
   // Email chỉ xét phần trước @ (tên miền như "contest.vn" không tính)
   const emailLocal = t.email ? t.email.split('@')[0] : null;
   return [t.full_name, t.name, t.username, emailLocal].some(v => !!v && compact(v).includes('test'));
