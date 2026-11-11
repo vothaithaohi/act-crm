@@ -477,6 +477,8 @@ export function Closing({ audience }: { audience: Audience }) {
   const href = useDvvnHref();
   const launched = useLaunched();
   const talent = audience === 'talent';
+  // Hết giờ đếm ngược (11:00 ngày 11/11/2026, giờ VN): section ra mắt tự biến mất (kể cả khi trang đang mở)
+  if (launched) return null;
   return (
     <section id="ra-mat" className="dv-tile dv-tile-dark scroll-mt-16 px-4 py-16 md:py-24">
       <Reveal>
