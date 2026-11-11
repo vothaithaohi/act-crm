@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Camera, ChevronRight, Clapperboard, GraduationCap, Video } from 'lucide-react';
+import { Camera, ChevronRight, Clapperboard, GraduationCap, Video } from 'lucide-react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { PublicProject, isDeadlinePassed, projectPathName } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
@@ -48,7 +48,7 @@ const SERVICES = [
   { icon: Video, title: 'Dịch vụ self-tape', desc: 'Quay self-tape đúng chuẩn casting: khung hình, ánh sáng, âm thanh.' },
   { icon: Camera, title: 'Dịch vụ headshot', desc: 'Ảnh chân dung, toàn thân, góc nghiêng theo chuẩn hồ sơ casting.' }
 ];
-const SERVICES_URL = 'https://actacademy.edu.vn/';
+// Link dịch vụ khi mở lại nút "Khám phá dịch vụ": https://actacademy.edu.vn/
 
 /* ---------- 1. Mở đầu ---------- */
 function Hero({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
@@ -274,9 +274,10 @@ export function Services({ photo }: { photo?: string }) {
               </li>
             ))}
           </ul>
-          <a href={SERVICES_URL} target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex h-10 items-center gap-1.5 rounded-full border border-white/50 px-5 text-[14px] text-[#f5f5f7] hover:bg-white/10">
-            Khám phá dịch vụ <ArrowRight className="h-4 w-4" />
-          </a>
+          {/* Dịch vụ chưa mở: nút chỉ báo "Sắp ra mắt", không bấm được */}
+          <span aria-disabled="true" className="mt-8 inline-flex h-10 cursor-default items-center rounded-full border border-white/30 px-5 text-[14px] text-[#a1a1a6]">
+            Sắp ra mắt
+          </span>
         </Reveal>
       </div>
     </section>
