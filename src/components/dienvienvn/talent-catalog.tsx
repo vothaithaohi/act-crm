@@ -89,7 +89,7 @@ export function TalentCatalog({ token }: { token: string }) {
   if (data === undefined) {
     return (
       <>
-        <GlobalNav />
+        <GlobalNav minimal />
         <main className="flex min-h-[60vh] items-center justify-center bg-[var(--dv-bg-alt)]">
           <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
         </main>
@@ -99,7 +99,7 @@ export function TalentCatalog({ token }: { token: string }) {
   if (!data) {
     return (
       <>
-        <GlobalNav />
+        <GlobalNav minimal />
         <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
           <h1 className="dv-display dv-headline">Link không khả dụng.</h1>
           <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{error}</p>
@@ -116,7 +116,7 @@ export function TalentCatalog({ token }: { token: string }) {
   return (
     <>
       <div className="print:hidden">
-        <GlobalNav />
+        <GlobalNav minimal />
       </div>
       <main className="min-h-screen bg-[var(--dv-bg-alt)] pb-20">
         <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6 lg:pt-12">

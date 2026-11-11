@@ -24,7 +24,8 @@ const backdropOf = (id: string) => {
   return BACKDROPS[h % BACKDROPS.length];
 };
 
-const NAV_H = 44;
+/** Chiều cao menu trang chủ (LandingNav). */
+const NAV_H = 52;
 /** Số vai tiêu biểu hiện trên trang chủ; xem hết ở trang Dự án. */
 const FEATURED_ROLES = 9;
 const SET_PHOTO = '/dienvienvn/home/set-quay.jpg';

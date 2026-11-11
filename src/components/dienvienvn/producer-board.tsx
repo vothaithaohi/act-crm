@@ -52,7 +52,7 @@ export function ProducerBoard({ token }: { token: string }) {
   if (view === undefined) {
     return (
       <>
-        <GlobalNav />
+        <GlobalNav minimal />
         <main className="flex min-h-[60vh] items-center justify-center bg-[var(--dv-bg-alt)]">
           <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
         </main>
@@ -63,7 +63,7 @@ export function ProducerBoard({ token }: { token: string }) {
   if (!view) {
     return (
       <>
-        <GlobalNav />
+        <GlobalNav minimal />
         <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
           <h1 className="dv-display dv-headline">Link không khả dụng.</h1>
           <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{error || 'Link đã bị thu hồi hoặc không đúng. Vui lòng liên hệ DienVienVN.'}</p>
@@ -75,7 +75,7 @@ export function ProducerBoard({ token }: { token: string }) {
   return (
     <>
       <div className="print:hidden">
-        <GlobalNav />
+        <GlobalNav minimal />
       </div>
       <main className="min-h-screen bg-[var(--dv-bg-alt)] pb-20 print:bg-white print:pb-0">
         <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6 lg:pt-12">

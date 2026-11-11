@@ -67,7 +67,8 @@ function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active
   );
 }
 
-export function LandingNav({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
+/** compact: cao 44px như thanh đầu trang cũ (các trang bên trong có thanh công cụ dính ngay dưới menu). */
+export function LandingNav({ audience, onAudience, compact = false }: { audience: Audience; onAudience: (a: Audience) => void; compact?: boolean }) {
   const href = useDvvnHref();
   const session = useActorSession();
   const [open, setOpen] = useState(false);
@@ -81,7 +82,7 @@ export function LandingNav({ audience, onAudience }: { audience: Audience; onAud
   const mobileCls = 'block w-full border-b border-[#f0f0f2] py-3.5 text-left text-[17px] font-semibold';
   return (
     <nav className="sticky top-0 z-50 border-b border-black/[0.08] bg-[rgba(250,250,252,0.85)] backdrop-blur-xl backdrop-saturate-150" aria-label="DienVienVN">
-      <div className="mx-auto flex h-[52px] max-w-[1200px] items-center justify-between gap-4 px-4 md:px-6">
+      <div className={`mx-auto flex ${compact ? 'h-11' : 'h-[52px]'} max-w-[1200px] items-center justify-between gap-4 px-4 md:px-6`}>
         <Link href={href('/')} className="text-[17px] text-[#1d1d1f]" aria-label="DienVienVN — Trang chủ">
           <DvLogo />
         </Link>

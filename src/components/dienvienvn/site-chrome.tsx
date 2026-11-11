@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { Clapperboard } from 'lucide-react';
 import { useDvvnHref } from './base-path';
+import { SiteMenu } from './site-menu';
 
 export function DvLogo({ className = '' }: { className?: string }) {
   return (
@@ -16,9 +17,13 @@ export function DvLogo({ className = '' }: { className?: string }) {
   );
 }
 
-/** Header tối giản: chỉ logo + tên DienVienVN ở giữa. */
-export function GlobalNav() {
+/**
+ * Đầu trang của các trang bên trong: cùng menu với trang chủ.
+ * minimal: chỉ logo ở giữa (trang gửi riêng cho nhà sản xuất: /nsx, /kho).
+ */
+export function GlobalNav({ minimal = false }: { minimal?: boolean }) {
   const href = useDvvnHref();
+  if (!minimal) return <SiteMenu />;
   return (
     <nav className="dv-nav" aria-label="DienVienVN">
       <div className="mx-auto flex h-full max-w-[1024px] items-center justify-center px-4 md:px-[22px]">
