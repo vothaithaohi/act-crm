@@ -18,20 +18,28 @@ import {
   roleLabel
 } from '@/lib/dienvienvn/crew-taxonomy';
 import { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { useDvvnHref } from './base-path';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
 
-/** Trang công khai: tin tuyển ekip đang mở. Người xem liên hệ trực tiếp với bên đăng tin. */
-export function CrewJobBoard({ jobs }: { jobs: PublicCrewJob[] }) {
+/**
+ * Trang công khai: tin tuyển ekip đang mở.
+ * partner (/tuyen-dung): khung đăng tin cho đối tác. crew (/ekip): khung đăng ký / hồ sơ cho ứng viên ekip.
+ */
+export function CrewJobBoard({ jobs, variant = 'partner' }: { jobs: PublicCrewJob[]; variant?: 'partner' | 'crew' }) {
   const href = useDvvnHref();
+  const crew = variant === 'crew';
   return (
     <>
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-10 md:pt-16">
         <div className="mx-auto max-w-[980px]">
-          <h1 className="dv-display dv-headline">Tuyển dụng ekip.</h1>
+          <h1 className="dv-display dv-headline">{crew ? 'Việc làm ekip.' : 'Tuyển dụng ekip.'}</h1>
 
+          {crew ? (
+            <CrewSignupBox />
+          ) : (
           <section className="mt-8 flex flex-col gap-4 rounded-[18px] bg-[#1d1d1f] p-6 text-white sm:flex-row sm:items-center sm:justify-between md:p-7">
             <div>
               <p className="text-[19px] font-semibold">Bạn cần tuyển ekip?</p>
@@ -52,6 +60,7 @@ export function CrewJobBoard({ jobs }: { jobs: PublicCrewJob[] }) {
               </Link>
             </div>
           </section>
+          )}
 
           {jobs.length === 0 ? (
             <div className="dv-card mt-6 p-10 text-center">
@@ -62,7 +71,7 @@ export function CrewJobBoard({ jobs }: { jobs: PublicCrewJob[] }) {
           ) : (
             <ul className="mt-6 space-y-3">
               {jobs.map(j => (
-                <CrewJobCard key={j.id} job={j} />
+                <CrewJobCard key={j.id} job={j} crew={crew} />
               ))}
             </ul>
           )}
@@ -85,7 +94,45 @@ function salaryText(job: PublicCrewJob): string {
   return range ? `${range} ${unit}` : labelOf(SALARY_TYPES, job.salary_type);
 }
 
-function CrewJobCard({ job }: { job: PublicCrewJob }) {
+/** Khung cho ứng viên ekip: chưa đăng nhập → đăng ký / đăng nhập; đã đăng nhập → hồ sơ ekip. */
+function CrewSignupBox() {
+  const href = useDvvnHref();
+  const session = useActorSession();
+  const signedIn = session.status === 'signed-in';
+  return (
+    <section className="mt-8 flex flex-col gap-4 rounded-[18px] bg-[#1d1d1f] p-6 text-white sm:flex-row sm:items-center sm:justify-between md:p-7">
+      <div>
+        <p className="text-[19px] font-semibold">{signedIn ? 'Hồ sơ ekip của bạn' : 'Bạn đang tìm việc ekip?'}</p>
+        <p className="mt-1 text-[14px] leading-[1.45] text-white/70">
+          {signedIn
+            ? 'Cập nhật hồ sơ, quản lý CV và xem các tin đã ứng tuyển.'
+            : 'Tạo tài khoản ekip một lần, lưu CV và ứng tuyển nhiều vị trí.'}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {signedIn ? (
+          <Link href={href('/tai-khoan/ekip')} className="dv-btn dv-btn-light !h-10 !py-0 text-[14px]">
+            Hồ sơ ekip của tôi
+          </Link>
+        ) : (
+          <>
+            <Link href={href('/ekip/dang-ky')} className="dv-btn dv-btn-light !h-10 !py-0 text-[14px]">
+              Đăng ký tài khoản ekip
+            </Link>
+            <Link
+              href={href(`/dang-nhap?next=${encodeURIComponent(href('/tai-khoan/ekip'))}`)}
+              className="dv-btn !h-10 border border-white/40 !py-0 text-[14px] text-white hover:bg-white/10"
+            >
+              Đăng nhập
+            </Link>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean }) {
   const href = useDvvnHref();
   const [open, setOpen] = useState(false);
   const formA = !!job.role_title;
@@ -151,9 +198,9 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
         <div className="flex shrink-0 flex-col gap-2 md:items-end">
           {job.deadline && <p className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</p>}
           <Link href={href(`/tuyen-dung/ung-tuyen/${job.id}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-            Ứng tuyển
+            {crew ? 'Ứng tuyển vị trí này' : 'Ứng tuyển'}
           </Link>
-          {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm portfolio/CV</p>}
+          {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm CV</p>}
         </div>
       </div>
 

@@ -59,12 +59,43 @@ export interface CrewApplication {
   crew_profile_id: string;
   notified_at: string | null;
   created_at: string;
+  /** CV + cover letter gửi kèm (bản chụp lúc nộp) */
+  cv_title?: string | null;
+  cv_path?: string | null;
+  cv_link?: string | null;
+  cover_letter?: string | null;
+  cover_letter_path?: string | null;
 }
+
+/** 1 CV trong kho CV của ứng viên ekip: file PDF (kho riêng tư) hoặc link ngoài. */
+export interface CrewCv {
+  id: string;
+  crew_profile_id: string;
+  title: string;
+  file_path: string | null;
+  file_name: string | null;
+  file_size: number | null;
+  link_url: string | null;
+  is_default: boolean;
+  created_at: string;
+}
+
+/** CV / cover letter đã nộp, kèm link xem (link tạm có hạn cho file PDF). */
+export interface CrewAttachments {
+  cv: { title: string; url: string } | null;
+  cover_letter: string | null;
+  cover_letter_url: string | null;
+}
+
+export const CREW_MAX_CVS = 5;
+// Vercel giới hạn mỗi request ~4,5MB → file tối đa 4MB
+export const CREW_FILE_MAX_BYTES = 4 * 1024 * 1024;
+export const COVER_LETTER_MAX = 4000;
 
 export const CREW_REVIEW_STATUS: Record<CrewReviewStatus, { label: string; badge: string }> = {
   pending: { label: 'Chờ duyệt', badge: 'bg-amber-50 text-amber-800 border-amber-300' },
-  approved: { label: 'Đã duyệt', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  rejected: { label: 'Từ chối', badge: 'bg-muted text-muted-foreground border-border' }
+  approved: { label: 'Đang hoạt động', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  rejected: { label: 'Đã khoá', badge: 'bg-muted text-muted-foreground border-border' }
 };
 
 export const BASE_CITIES: Option[] = [
@@ -266,5 +297,4 @@ export const crewPrimaryRoleText = (p: Pick<CrewProfile, 'primary_department' | 
   crewRoleText({ department: p.primary_department, role_title: p.primary_role, role_other: p.primary_role_other });
 
 /** Hồ sơ đã có CV hoặc portfolio (dùng khi tin tuyển yêu cầu gửi kèm portfolio/CV). */
-export const crewHasCv = (p: { cv_url?: string | null; portfolio_url?: string | null }) => !!(p.cv_url || p.portfolio_url);
-export const CV_REQUIRED_MESSAGE = 'Tin này yêu cầu gửi kèm portfolio/CV. Vui lòng thêm link CV hoặc portfolio vào hồ sơ ekip rồi ứng tuyển lại.';
+export const CV_REQUIRED_MESSAGE = 'Tin này yêu cầu gửi kèm CV. Vui lòng chọn hoặc tải lên 1 CV.';

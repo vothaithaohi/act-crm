@@ -87,7 +87,7 @@ export function Sidebar() {
       visible: can('talents:write')
     },
     {
-      title: 'Hồ sơ ekip',
+      title: 'Ứng viên ekip',
       href: '/crew-profiles',
       icon: UsersRound,
       badge: null,

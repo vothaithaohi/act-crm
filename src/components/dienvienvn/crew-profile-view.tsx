@@ -1,10 +1,12 @@
 'use client';
 
-import { ExternalLink, Mail, Phone } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, FileText, Mail, Phone } from 'lucide-react';
 import {
   AVAILABILITY_STATUSES,
   BASE_CITIES,
   CREDIT_TYPES,
+  CrewAttachments,
   CrewProfile,
   crewPrimaryRoleText,
   crewRoleText
@@ -35,7 +37,6 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
   const links = [
     p.primary_showreel_url ? { label: 'Showreel', url: p.primary_showreel_url } : null,
     p.portfolio_url ? { label: 'Portfolio', url: p.portfolio_url } : null,
-    p.cv_url ? { label: 'CV', url: p.cv_url } : null,
     p.social_link ? { label: 'Mạng xã hội', url: p.social_link } : null
   ].filter(Boolean) as { label: string; url: string }[];
   const row = 'text-[14px] leading-[1.5]';
@@ -124,6 +125,43 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
           </a>
         )}
       </div>
+    </div>
+  );
+}
+
+/** CV + cover letter gửi kèm 1 lượt ứng tuyển (link file PDF là link xem tạm có hạn: tải lại trang để lấy link mới). */
+export function CrewAttachmentsBlock({ a }: { a: CrewAttachments | null | undefined }) {
+  const [open, setOpen] = useState(false);
+  if (!a || (!a.cv && !a.cover_letter && !a.cover_letter_url)) {
+    return <p className="text-[13px] opacity-70">Không gửi kèm CV / cover letter.</p>;
+  }
+  const btn = 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium hover:bg-black/5';
+  const long = (a.cover_letter || '').length > 220;
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {a.cv && (
+          <a href={a.cv.url} target="_blank" rel="noopener noreferrer" className={`${btn} border-[#1d1d1f] bg-[#1d1d1f] text-white hover:bg-black`}>
+            <FileText className="h-3.5 w-3.5" /> CV: {a.cv.title}
+          </a>
+        )}
+        {a.cover_letter_url && (
+          <a href={a.cover_letter_url} target="_blank" rel="noopener noreferrer" className={btn}>
+            <FileText className="h-3.5 w-3.5" /> Cover letter (PDF)
+          </a>
+        )}
+      </div>
+      {a.cover_letter && (
+        <div className="rounded-[12px] bg-black/[0.03] p-3">
+          <p className="text-[12px] font-semibold uppercase tracking-wider opacity-70">Cover letter</p>
+          <p className={`mt-1 whitespace-pre-line text-[14px] leading-[1.5] ${long && !open ? 'line-clamp-4' : ''}`}>{a.cover_letter}</p>
+          {long && (
+            <button type="button" onClick={() => setOpen(v => !v)} className="mt-1 text-[13px] font-semibold underline underline-offset-2">
+              {open ? 'Thu gọn' : 'Xem đầy đủ'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { getServiceDb } from '@/lib/projects/server';
 import { CrewJob, crewJobActive, toPublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Ứng tuyển — Tuyển dụng ekip DienVienVN', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'Ứng tuyển — Việc làm ekip DienVienVN', robots: { index: false, follow: false } };
 
 export default async function CrewApplyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

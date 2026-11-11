@@ -1,21 +1,22 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, ChevronDown, Loader2, UsersRound, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, FileText, Link2, Loader2, Lock, LockOpen, UsersRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
-import { CREW_REVIEW_STATUS, CrewProfile, CrewReviewStatus, crewPrimaryRoleText } from '@/lib/dienvienvn/crew-profiles';
-import { CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
+import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile, CrewReviewStatus, crewPrimaryRoleText } from '@/lib/dienvienvn/crew-profiles';
+import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
 
 const MIGRATION_HINT = 'Hãy chạy migration 20261115_crew_profiles.sql trong Supabase.';
 
-/** Hồ sơ ekip (Form B) do ekip tự tạo khi ứng tuyển: ACT duyệt trước khi nhà tuyển dụng thấy hồ sơ. */
+/** Ứng viên ekip: tài khoản tự đăng ký trên dienvienvn.com/ekip, hoạt động ngay; ACT khoá / mở khoá, xem kho CV và các lượt ứng tuyển. */
 export default function CrewProfilesPage() {
   const [list, setList] = useState<(CrewProfile & { app_count: number })[] | null>(null);
   const [problem, setProblem] = useState('');
-  const [filter, setFilter] = useState<'all' | CrewReviewStatus>('pending');
+  const [filter, setFilter] = useState<'all' | CrewReviewStatus>('all');
+  const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -51,30 +52,31 @@ export default function CrewProfilesPage() {
       toast.success(
         review_status === 'approved'
           ? body.notified
-            ? `Đã duyệt — đã gửi email báo ${body.notified} nhà tuyển dụng.`
-            : 'Đã duyệt hồ sơ.'
-          : review_status === 'rejected'
-          ? 'Đã từ chối hồ sơ.'
-          : 'Đã chuyển về chờ duyệt.'
+            ? `Đã mở khoá — đã gửi email báo ${body.notified} nhà tuyển dụng.`
+            : 'Đã mở khoá tài khoản.'
+          : 'Đã khoá tài khoản.'
       );
     } finally {
       setBusyId(null);
     }
   };
 
-  const shown = (list || []).filter(p => filter === 'all' || p.review_status === filter);
+  const needle = q.trim().toLowerCase();
+  const shown = (list || []).filter(
+    p =>
+      (filter === 'all' || p.review_status === filter) &&
+      (!needle || [p.full_name, p.display_name, p.public_email, p.public_phone].some(v => (v || '').toLowerCase().includes(needle)))
+  );
+  // "Chờ duyệt" chỉ còn ở hồ sơ tạo trước khi bỏ bước duyệt
+  const tabs = (['all', 'approved', 'rejected', 'pending'] as const).filter(k => k !== 'pending' || (list || []).some(p => p.review_status === 'pending'));
 
   return (
-    <PermissionGuard permission="talents:write" customTitle="Hồ sơ ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý hồ sơ ekip.">
+    <PermissionGuard permission="talents:write" customTitle="Ứng viên ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý ứng viên ekip.">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
-            <UsersRound className="w-6 h-6" /> Hồ sơ ekip
+            <UsersRound className="w-6 h-6" /> Ứng viên ekip
           </h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Ekip tạo hồ sơ khi bấm &ldquo;Ứng tuyển&rdquo; tin tuyển dụng. Nhà tuyển dụng chỉ thấy hồ sơ đã duyệt; duyệt xong hệ thống gửi email báo nhà tuyển dụng của
-            các tin hồ sơ đã ứng tuyển.
-          </p>
         </div>
 
         {problem ? (
@@ -85,8 +87,14 @@ export default function CrewProfilesPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2">
-              {(['pending', 'approved', 'rejected', 'all'] as const).map(k => (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="Tìm tên, email, SĐT…"
+                className="h-8 w-56 px-3 rounded-full border bg-background text-xs outline-none focus:border-foreground"
+              />
+              {tabs.map(k => (
                 <button
                   key={k}
                   onClick={() => setFilter(k)}
@@ -123,19 +131,24 @@ export default function CrewProfilesPage() {
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         {p.review_status !== 'approved' && (
                           <button onClick={() => review(p, 'approved')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
-                            <Check className="w-3.5 h-3.5" /> Duyệt
+                            <LockOpen className="w-3.5 h-3.5" /> {p.review_status === 'pending' ? 'Kích hoạt' : 'Mở khoá'}
                           </button>
                         )}
                         {p.review_status !== 'rejected' && (
-                          <button onClick={() => review(p, 'rejected')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
-                            <X className="w-3.5 h-3.5" /> Từ chối
+                          <button
+                            onClick={() => window.confirm(`Khoá tài khoản ekip của ${p.full_name}? Nhà tuyển dụng sẽ không thấy hồ sơ này và tài khoản không ứng tuyển được.`) && review(p, 'rejected')}
+                            disabled={busyId === p.id}
+                            className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted"
+                          >
+                            <Lock className="w-3.5 h-3.5" /> Khoá
                           </button>
                         )}
                       </div>
                     </div>
                     {open === p.id && (
-                      <div className="mt-4 rounded-xl border bg-background p-4">
+                      <div className="mt-4 rounded-xl border bg-background p-4 space-y-4">
                         <CrewProfileDetails p={p} />
+                        <CrewFiles id={p.id} />
                       </div>
                     )}
                   </div>
@@ -146,5 +159,73 @@ export default function CrewProfilesPage() {
         )}
       </div>
     </PermissionGuard>
+  );
+}
+
+type CvRow = { id: string; title: string; kind: 'file' | 'link'; url: string | null; is_default: boolean; created_at: string };
+type AppRow = { id: string; created_at: string; title: string; company: string; attachments: CrewAttachments | null };
+
+/** Kho CV + các lượt ứng tuyển (kèm CV / cover letter đã nộp) của 1 ứng viên ekip. */
+function CrewFiles({ id }: { id: string }) {
+  const [data, setData] = useState<{ cvs: CvRow[]; applications: AppRow[] } | null>(null);
+  const [problem, setProblem] = useState('');
+  useEffect(() => {
+    authedFetch(`/api/admin/crew-profiles/${id}`)
+      .then(async r => {
+        const b = await r.json().catch(() => ({}));
+        if (!r.ok) return setProblem(b.error || 'Không tải được CV.');
+        setData({ cvs: b.cvs || [], applications: b.applications || [] });
+      })
+      .catch(() => setProblem('Mất kết nối mạng.'));
+  }, [id]);
+  if (problem) return <p className="text-xs text-destructive">{problem}</p>;
+  if (!data) return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />;
+  const head = 'text-[11px] font-semibold uppercase tracking-wider text-muted-foreground';
+  return (
+    <div className="grid gap-4 md:grid-cols-2 border-t pt-4">
+      <div>
+        <p className={head}>Kho CV · {data.cvs.length}</p>
+        {data.cvs.length === 0 ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">Chưa có CV.</p>
+        ) : (
+          <ul className="mt-1.5 space-y-1.5">
+            {data.cvs.map(c => (
+              <li key={c.id} className="flex items-center gap-2 text-sm">
+                {c.kind === 'file' ? <FileText className="w-4 h-4 shrink-0" /> : <Link2 className="w-4 h-4 shrink-0" />}
+                {c.url ? (
+                  <a href={c.url} target="_blank" rel="noopener noreferrer" className="truncate font-medium hover:underline inline-flex items-center gap-1">
+                    {c.title} <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
+                ) : (
+                  <span className="truncate">{c.title}</span>
+                )}
+                {c.is_default && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#1d1d1f] text-white">Mặc định</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className={head}>Đã ứng tuyển · {data.applications.length}</p>
+        {data.applications.length === 0 ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">Chưa ứng tuyển tin nào.</p>
+        ) : (
+          <ul className="mt-1.5 space-y-3">
+            {data.applications.map(a => (
+              <li key={a.id} className="space-y-1.5">
+                <p className="text-sm font-semibold">
+                  {a.title}
+                  <span className="font-normal text-muted-foreground">
+                    {' '}
+                    · {[a.company, new Date(a.created_at).toLocaleDateString('vi-VN')].filter(Boolean).join(' · ')}
+                  </span>
+                </p>
+                <CrewAttachmentsBlock a={a.attachments} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }

@@ -3,10 +3,11 @@ import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { getPartner } from '@/lib/dienvienvn/partner-server';
 import { CrewApplication, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
 import { toApplicantView } from '@/lib/dienvienvn/crew-server';
+import { attachmentsFor } from '@/lib/dienvienvn/crew-files';
 
 const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
-// Đối tác xem ứng viên của tin mình đăng (chỉ hồ sơ ekip đã được DienVienVN duyệt).
+// Đối tác xem ứng viên của tin mình đăng (hồ sơ ekip đang hoạt động) kèm CV / cover letter đã nộp (link xem tạm 1 giờ).
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { mode, db } = getServiceDb();
   if (mode === 'demo') return NextResponse.json({ mode: 'demo', job: null, applicants: [] });
@@ -24,6 +25,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? await db.from('crew_profiles').select('*').in('id', list.map(a => a.crew_profile_id)).eq('review_status', 'approved')
     : { data: [] };
   const byId = new Map(((profiles || []) as CrewProfile[]).map(p => [p.id, p]));
-  const applicants = list.filter(a => byId.has(a.crew_profile_id)).map(a => toApplicantView(byId.get(a.crew_profile_id) as CrewProfile, a.created_at));
+  const shown = list.filter(a => byId.has(a.crew_profile_id));
+  const files = await attachmentsFor(db, shown).catch(() => new Map());
+  const applicants = shown.map(a => ({ ...toApplicantView(byId.get(a.crew_profile_id) as CrewProfile, a.created_at), attachments: files.get(a.id) || null }));
   return NextResponse.json({ mode: 'live', job, applicants }, { headers: { 'Cache-Control': 'no-store' } });
 }

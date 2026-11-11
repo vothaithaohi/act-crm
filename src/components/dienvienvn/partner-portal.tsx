@@ -18,7 +18,8 @@ import { experienceGroups, foldVi, skillGroups, trainingList } from '@/lib/dienv
 import { LoginGate } from './actor-pages';
 import { CREW_JOB_STATUS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from './crew-job-fields';
-import { CrewProfileDetails } from './crew-profile-view';
+import { CrewAttachmentsBlock, CrewProfileDetails } from './crew-profile-view';
+import type { CrewAttachments } from '@/lib/dienvienvn/crew-profiles';
 import { LogoutButton } from './logout-button';
 import type { CrewApplicantView } from '@/lib/dienvienvn/crew-server';
 import { useDvvnHref } from './base-path';
@@ -955,10 +956,10 @@ function PartnerCrewJobsSection() {
   );
 }
 
-/** Ứng viên ekip của một tin tuyển (chỉ hồ sơ đã được DienVienVN duyệt). */
+/** Ứng viên ekip của một tin tuyển, kèm CV / cover letter đã nộp. */
 export function PartnerCrewApplicants({ jobId }: { jobId: string }) {
   const href = useDvvnHref();
-  const api = usePartnerApi<{ job: { id: string; title: string; company: string | null } | null; applicants: CrewApplicantView[] }>(
+  const api = usePartnerApi<{ job: { id: string; title: string; company: string | null } | null; applicants: (CrewApplicantView & { attachments?: CrewAttachments | null })[] }>(
     `/api/dienvienvn/partner/crew-jobs/${encodeURIComponent(jobId)}/applicants`
   );
   if (!api.data) return <Gate {...api} next={href(`/doi-tac/tuyen-dung/${jobId}/ung-vien`)} />;
@@ -974,13 +975,16 @@ export function PartnerCrewApplicants({ jobId }: { jobId: string }) {
         {applicants.length === 0 ? (
           <div className="dv-card mt-8 p-10 text-center">
             <p className="text-[19px] font-semibold">Chưa có ứng viên.</p>
-            <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">Hồ sơ ứng viên hiện tại đây sau khi DienVienVN duyệt. Bạn sẽ nhận email khi có ứng viên mới.</p>
+            <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">Bạn sẽ nhận email khi có ứng viên mới.</p>
           </div>
         ) : (
           <ul className="mt-8 space-y-3">
             {applicants.map(a => (
               <li key={a.id} className="dv-card p-6">
                 <CrewProfileDetails p={a} />
+                <div className="mt-4 border-t border-[#f0f0f2] pt-4">
+                  <CrewAttachmentsBlock a={a.attachments} />
+                </div>
               </li>
             ))}
           </ul>

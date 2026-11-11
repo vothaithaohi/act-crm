@@ -3,10 +3,33 @@ import { z } from 'zod';
 import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 import { CrewApplication } from '@/lib/dienvienvn/crew-profiles';
 import { notifyApplications } from '@/lib/dienvienvn/crew-server';
+import { attachmentsFor, listCvs } from '@/lib/dienvienvn/crew-files';
+import { CrewJob } from '@/lib/dienvienvn/crew-jobs';
 
 const schema = z.object({ review_status: z.enum(['pending', 'approved', 'rejected']) });
 
-// ACT duyệt / từ chối hồ sơ ekip. Duyệt xong: gửi email báo NSX cho các tin hồ sơ này đã ứng tuyển.
+// ACT xem kho CV + các lượt ứng tuyển (kèm CV / cover letter, link xem tạm 1 giờ) của 1 ứng viên ekip.
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const g = await guardPartnerAdmin(req);
+  if ('res' in g) return g.res;
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'Không tìm thấy hồ sơ.' }, { status: 404 });
+  const { data: apps } = await g.db.from('crew_applications').select('*').eq('crew_profile_id', id).order('created_at', { ascending: false });
+  const list = (apps || []) as CrewApplication[];
+  const { data: jobs } = list.length ? await g.db.from('crew_jobs').select('id,title,company').in('id', list.map(a => a.job_id)) : { data: [] };
+  const jobById = new Map(((jobs || []) as Pick<CrewJob, 'id' | 'title' | 'company'>[]).map(j => [j.id, j]));
+  const [cvs, files] = await Promise.all([listCvs(g.db, id).catch(() => []), attachmentsFor(g.db, list).catch(() => new Map())]);
+  const applications = list.map(a => ({
+    id: a.id,
+    created_at: a.created_at,
+    title: jobById.get(a.job_id)?.title || 'Tin đã xoá',
+    company: jobById.get(a.job_id)?.company || '',
+    attachments: files.get(a.id) || null
+  }));
+  return NextResponse.json({ cvs, applications }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+// ACT khoá / mở khoá tài khoản ekip (hồ sơ cũ "Chờ duyệt" mở khoá = duyệt). Mở khoá: gửi email báo NSX các lượt ứng tuyển chưa báo.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guardPartnerAdmin(req);
   if ('res' in g) return g.res;

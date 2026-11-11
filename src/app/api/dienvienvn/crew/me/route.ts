@@ -3,8 +3,9 @@ import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CrewApplication, crewProfileSchema, toCrewProfileColumns } from '@/lib/dienvienvn/crew-profiles';
 import { CREW_MISSING, getCrewUser, isMissingTable } from '@/lib/dienvienvn/crew-server';
 import { CrewJob, crewJobActive } from '@/lib/dienvienvn/crew-jobs';
+import { attachmentsFor, listCvs } from '@/lib/dienvienvn/crew-files';
 
-// Tài khoản ekip: xem hồ sơ + các tin đã ứng tuyển; sửa hồ sơ.
+// Tài khoản ekip: hồ sơ, kho CV, các tin đã ứng tuyển (kèm CV / cover letter đã nộp); sửa hồ sơ.
 export async function GET(req: NextRequest) {
   const { mode, db } = getServiceDb();
   if (mode === 'demo') return NextResponse.json({ mode: 'demo', crew: null });
@@ -18,11 +19,21 @@ export async function GET(req: NextRequest) {
   const list = (apps || []) as CrewApplication[];
   const { data: jobs } = list.length ? await db.from('crew_jobs').select('*').in('id', list.map(a => a.job_id)) : { data: [] };
   const byId = new Map(((jobs || []) as CrewJob[]).map(j => [j.id, j]));
+  // Bảng kho CV có thể chưa có (chưa chạy migration 20261118) → vẫn trả hồ sơ
+  const [cvs, files] = await Promise.all([listCvs(db, who.crew.id).catch(() => []), attachmentsFor(db, list).catch(() => new Map())]);
   const applications = list.map(a => {
     const j = byId.get(a.job_id);
-    return { id: a.id, job_id: a.job_id, created_at: a.created_at, title: j?.title || 'Tin đã xoá', company: j?.company || '', open: !!j && crewJobActive(j) };
+    return {
+      id: a.id,
+      job_id: a.job_id,
+      created_at: a.created_at,
+      title: j?.title || 'Tin đã xoá',
+      company: j?.company || '',
+      open: !!j && crewJobActive(j),
+      ...(files.get(a.id) || { cv: null, cover_letter: null, cover_letter_url: null })
+    };
   });
-  return NextResponse.json({ mode: 'live', crew: who.crew, applications }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ mode: 'live', crew: who.crew, cvs, applications }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -38,11 +49,10 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Thông tin hồ sơ chưa hợp lệ.' }, { status: 400 });
   const { public_email: _e, ...cols } = toCrewProfileColumns(parsed.data);
   void _e;
-  // Hồ sơ bị từ chối được sửa lại thì chờ ACT duyệt lại
-  const review = who.crew.review_status === 'rejected' ? { review_status: 'pending', reviewed_at: null } : {};
+  if (who.crew.review_status === 'rejected') return NextResponse.json({ error: 'Tài khoản ekip đang bị khoá. Vui lòng liên hệ DienVienVN.' }, { status: 403 });
   const { data, error } = await db
     .from('crew_profiles')
-    .update({ ...cols, ...review, updated_at: new Date().toISOString() })
+    .update({ ...cols, updated_at: new Date().toISOString() })
     .eq('id', who.crew.id)
     .select('*')
     .single();

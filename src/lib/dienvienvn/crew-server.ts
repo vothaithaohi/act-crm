@@ -42,45 +42,34 @@ export async function getCrewUser(req: NextRequest, db: SupabaseClient): Promise
   return { user, crew: null };
 }
 
-export type CrewEmailResult = 'invited' | 'reset' | 'staff' | 'failed';
+export type CrewSignupResult = 'invited' | 'exists' | 'staff' | 'failed';
 
 /**
- * Email tài khoản cho hồ sơ ekip mới (giống diễn viên): chưa có tài khoản → email xác thực & tạo mật khẩu;
- * email đã có tài khoản DienVienVN (VD: cũng là diễn viên) → gắn hồ sơ vào tài khoản đó và gửi email đặt mật khẩu.
+ * Đăng ký tài khoản ứng viên ekip: gửi email xác nhận & tạo mật khẩu (chỉ chủ hộp thư mới vào được).
+ * Email đã có tài khoản DienVienVN (VD: cũng là diễn viên) → báo đăng nhập bằng tài khoản đó.
  */
-export async function sendCrewAccountEmail(db: SupabaseClient, crew: CrewProfile, headers: Headers): Promise<CrewEmailResult> {
-  const email = crew.public_email.trim().toLowerCase();
+export async function inviteCrewAccount(db: SupabaseClient, input: { email: string; full_name: string }, headers: Headers): Promise<CrewSignupResult> {
+  const email = input.email.trim().toLowerCase();
   if (await isStaffEmail(db, email)) return 'staff';
   const redirectTo = `${publicSiteUrl(headers)}${SET_PASSWORD_PATH}`;
-  const link = (userId: string) => db.from('crew_profiles').update({ auth_user_id: userId }).eq('id', crew.id);
-  const reset = async () => {
-    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) console.error('[dienvienvn] Không gửi được email đặt mật khẩu cho ekip:', error.message);
-    return error ? 'failed' : 'reset';
-  };
-
-  const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
+  const { error } = await db.auth.admin.inviteUserByEmail(email, {
     redirectTo,
-    data: { kind: 'dienvienvn_crew', full_name: crew.full_name }
+    data: { kind: 'dienvienvn_crew', full_name: input.full_name }
   });
-  if (error) {
-    if (!/already|registered|exists/i.test(error.message)) {
-      console.error('[dienvienvn] Không gửi được email mời ekip:', error.message);
-      return 'failed';
-    }
-    const existing = await findAuthUserByEmail(db, email);
-    if (!existing) return 'failed';
-    if (isSelfSignup(existing)) {
-      const newId = await reclaimSelfSignup(db, existing, redirectTo);
-      if (!newId) return 'failed';
-      await link(newId);
-      return 'invited';
-    }
-    await link(existing.id);
-    return reset();
+  if (!error) return 'invited';
+  if (!/already|registered|exists/i.test(error.message)) {
+    console.error('[dienvienvn] Không gửi được email đăng ký ekip:', error.message);
+    return 'failed';
   }
-  if (data?.user?.id) await link(data.user.id);
-  return 'invited';
+  const existing = await findAuthUserByEmail(db, email);
+  // Tài khoản tự đặt mật khẩu (chưa chứng minh email): mời lại qua email
+  if (existing && isSelfSignup(existing)) return (await reclaimSelfSignup(db, existing, redirectTo)) ? 'invited' : 'failed';
+  // Đã mời nhưng chưa tạo mật khẩu: gửi lại email mời
+  if (existing && !existing.last_sign_in_at && !existing.email_confirmed_at) {
+    const { error: again } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+    return again ? 'failed' : 'invited';
+  }
+  return 'exists';
 }
 
 /** Tin còn nhận ứng tuyển (đã duyệt, còn hạn). */
@@ -92,13 +81,16 @@ export async function openJob(db: SupabaseClient, jobId: string): Promise<CrewJo
 }
 
 /** Ứng tuyển một tin. Hồ sơ đã duyệt thì báo NSX ngay; chưa duyệt thì báo khi ACT duyệt hồ sơ. */
+export type CrewApplyExtras = Pick<CrewApplication, 'cv_title' | 'cv_path' | 'cv_link' | 'cover_letter' | 'cover_letter_path'>;
+
 export async function applyCrewToJob(
   db: SupabaseClient,
   crew: CrewProfile,
   job: CrewJob,
-  headers: Headers
+  headers: Headers,
+  extras: Partial<CrewApplyExtras> = {}
 ): Promise<'applied' | 'already' | 'failed'> {
-  const { data, error } = await db.from('crew_applications').insert({ job_id: job.id, crew_profile_id: crew.id }).select('*').single();
+  const { data, error } = await db.from('crew_applications').insert({ job_id: job.id, crew_profile_id: crew.id, ...extras }).select('*').single();
   if (error) {
     if (error.code === '23505') return 'already';
     console.error('[dienvienvn] Ứng tuyển ekip lỗi:', error.message);
@@ -143,7 +135,7 @@ export async function notifyApplications(db: SupabaseClient, apps: CrewApplicati
   <p style="font-size:15px;line-height:1.5;color:#424245;margin:0 0 8px">Tin: <b>${escapeHtml(job.title)}</b></p>
   <p style="font-size:15px;line-height:1.5;color:#424245;margin:0 0 24px">Ứng viên: <b>${escapeHtml(name)}</b>${role ? ` · ${escapeHtml(role)}` : ''}${level ? ` · ${escapeHtml(level)}` : ''}</p>
   <a href="${link}" style="display:inline-block;background:#1d1d1f;color:#ffffff;text-decoration:none;font-size:15px;padding:12px 24px;border-radius:980px">Xem hồ sơ ứng viên</a>
-  <p style="font-size:12px;color:#86868b;margin:28px 0 0">Hồ sơ ứng viên đã được DienVienVN duyệt. Thông tin liên hệ của ứng viên có trong trang xem hồ sơ.</p>
+  <p style="font-size:12px;color:#86868b;margin:28px 0 0">CV, cover letter và thông tin liên hệ của ứng viên có trong trang xem hồ sơ.</p>
 </div>`;
     const text = `Có ứng viên mới cho tin "${job.title}": ${name}${role ? ` · ${role}` : ''}. Xem hồ sơ: ${link}`;
     const ok = await sendMail({ to, subject: `DienVienVN – Ứng viên mới cho tin "${job.title}"`, html, text });

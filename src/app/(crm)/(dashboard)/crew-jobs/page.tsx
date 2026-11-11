@@ -8,8 +8,9 @@ import { createClient } from '@/lib/supabase/client';
 import { useCRM } from '@/lib/store/crm-context';
 import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, parseCrewJobBatch, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
-import { CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
-import { CREW_REVIEW_STATUS, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
+import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
+import { authedFetch } from '@/lib/supabase/authed-fetch';
+import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
 
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
 const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql, 20261113_crew_jobs_form_a.sql và 20261114_crew_jobs_multi_role.sql trong Supabase.';
@@ -26,7 +27,7 @@ export default function CrewJobsPage() {
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Ứng viên ekip theo tin (bảng crew_applications có sau migration 20261115_crew_profiles.sql)
-  const [applicants, setApplicants] = useState<Map<string, { profile: CrewProfile; applied_at: string }[]>>(new Map());
+  const [applicants, setApplicants] = useState<Map<string, { id: string; profile: CrewProfile; applied_at: string }[]>>(new Map());
   const [viewing, setViewing] = useState<CrewJob | null>(null);
 
   const load = useCallback(async () => {
@@ -43,11 +44,11 @@ export default function CrewJobsPage() {
       db.from('crew_profiles').select('*')
     ]);
     const byId = new Map(((profiles || []) as CrewProfile[]).map(p => [p.id, p]));
-    const grouped = new Map<string, { profile: CrewProfile; applied_at: string }[]>();
-    for (const a of (apps || []) as { job_id: string; crew_profile_id: string; created_at: string }[]) {
+    const grouped = new Map<string, { id: string; profile: CrewProfile; applied_at: string }[]>();
+    for (const a of (apps || []) as { id: string; job_id: string; crew_profile_id: string; created_at: string }[]) {
       const profile = byId.get(a.crew_profile_id);
       if (!profile) continue;
-      grouped.set(a.job_id, [...(grouped.get(a.job_id) || []), { profile, applied_at: a.created_at }]);
+      grouped.set(a.job_id, [...(grouped.get(a.job_id) || []), { id: a.id, profile, applied_at: a.created_at }]);
     }
     setApplicants(grouped);
   }, []);
@@ -211,7 +212,15 @@ export default function CrewJobsPage() {
   );
 }
 
-function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { profile: CrewProfile; applied_at: string }[]; onClose: () => void }) {
+function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { id: string; profile: CrewProfile; applied_at: string }[]; onClose: () => void }) {
+  // CV / cover letter đã nộp (link xem tạm do máy chủ tạo)
+  const [files, setFiles] = useState<Record<string, CrewAttachments> | null>(null);
+  useEffect(() => {
+    authedFetch(`/api/admin/crew-applications?job_id=${encodeURIComponent(job.id)}`)
+      .then(r => r.json())
+      .then(b => setFiles(b.attachments || {}))
+      .catch(() => setFiles({}));
+  }, [job.id]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
@@ -224,17 +233,20 @@ function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { profile
             <X className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">Nhà tuyển dụng chỉ thấy ứng viên có hồ sơ đã duyệt. Duyệt hồ sơ tại mục &ldquo;Hồ sơ ekip&rdquo;.</p>
+        <p className="text-xs text-muted-foreground">Nhà tuyển dụng thấy ứng viên có tài khoản đang hoạt động. Khoá / mở khoá tại mục &ldquo;Ứng viên ekip&rdquo;.</p>
         {list.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Chưa có ứng viên.</p>
         ) : (
           <div className="space-y-3">
-            {list.map(({ profile, applied_at }) => (
-              <div key={profile.id} className="rounded-xl border p-4 space-y-2">
+            {list.map(({ id, profile, applied_at }) => (
+              <div key={id} className="rounded-xl border p-4 space-y-2">
                 <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${CREW_REVIEW_STATUS[profile.review_status].badge}`}>
-                  Hồ sơ: {CREW_REVIEW_STATUS[profile.review_status].label}
+                  Tài khoản: {CREW_REVIEW_STATUS[profile.review_status].label}
                 </span>
                 <CrewProfileDetails p={{ ...profile, applied_at }} compact />
+                <div className="border-t pt-2">
+                  {files ? <CrewAttachmentsBlock a={files[id]} /> : <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                </div>
               </div>
             ))}
           </div>

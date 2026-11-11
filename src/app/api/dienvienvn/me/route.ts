@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     if (await isSuperAdminUser(db, user)) return NextResponse.json({ mode: 'live', partner: true });
     // Tài khoản ekip (Form B): chuyển sang trang tài khoản ekip
     const { data: crew } = await db.from('crew_profiles').select('id').eq('auth_user_id', user.id).limit(1).then(r => r, () => ({ data: null }));
-    if (crew?.length) return NextResponse.json({ mode: 'live', crew: true });
+    if (crew?.length || user.user_metadata?.kind === 'dienvienvn_crew') return NextResponse.json({ mode: 'live', crew: true });
     return NextResponse.json({ error: NO_PROFILE, noProfile: true, email: user.email }, { status: 404 });
   }
 

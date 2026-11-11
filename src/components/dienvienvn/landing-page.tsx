@@ -14,6 +14,8 @@ import { DvLogo, Reveal, SiteFooter } from './site-chrome';
 
 /** Trang chủ chia 2 luồng: diễn viên và người tìm diễn viên. Mỗi luồng chỉ hiện phần dành cho mình. */
 export type Audience = 'talent' | 'hiring';
+/** Thanh menu có thêm mục "Dành cho ekip" (trang việc làm ekip, không phải một tab của trang chủ). */
+export type NavAudience = Audience | 'crew';
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 
@@ -77,7 +79,7 @@ function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active
 }
 
 /** compact: cao 44px như thanh đầu trang cũ (các trang bên trong có thanh công cụ dính ngay dưới menu). */
-export function LandingNav({ audience, onAudience, compact = false }: { audience: Audience; onAudience: (a: Audience) => void; compact?: boolean }) {
+export function LandingNav({ audience, onAudience, compact = false }: { audience: NavAudience; onAudience: (a: Audience) => void; compact?: boolean }) {
   const href = useDvvnHref();
   const session = useActorSession();
   const [open, setOpen] = useState(false);
@@ -100,6 +102,9 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
             Dành cho diễn viên
           </button>
           <HiringDropdown linkCls={linkCls} active={audience === 'hiring'} onSelect={() => go('hiring')} />
+          <Link href={href('/ekip')} className={`${linkCls} ${audience === 'crew' ? '!text-black font-semibold' : ''}`}>
+            Dành cho ekip
+          </Link>
           {!HIDDEN_MENU.talents && (
             <Link href={href('/dien-vien')} className={linkCls}>
               Diễn viên
@@ -118,6 +123,10 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
           {audience === 'talent' ? (
             <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
               Nộp hồ sơ
+            </Link>
+          ) : audience === 'crew' ? (
+            <Link href={href(signedIn ? '/tai-khoan/ekip' : '/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
+              {signedIn ? 'Hồ sơ ekip' : 'Đăng ký ekip'}
             </Link>
           ) : (
             <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
@@ -152,6 +161,9 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
               ))}
             </div>
           </div>
+          <Link href={href('/ekip')} onClick={() => setOpen(false)} className={mobileCls}>
+            Dành cho ekip
+          </Link>
           {!HIDDEN_MENU.talents && (
             <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>
               Diễn viên

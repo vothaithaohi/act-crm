@@ -243,9 +243,6 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
         <Field label="Portfolio / Trang cá nhân" htmlFor="cb-portfolio" hint="Website riêng, ArtStation…">
           <TextInput id="cb-portfolio" type="url" inputMode="url" value={value.portfolio_url} onChange={e => set({ portfolio_url: e.target.value })} placeholder="https://" />
         </Field>
-        <Field label="Link CV" htmlFor="cb-cv" hint="Google Drive, Dropbox… (để chế độ ai có link đều xem được). Một số tin tuyển yêu cầu gửi kèm CV hoặc portfolio.">
-          <TextInput id="cb-cv" type="url" inputMode="url" value={value.cv_url} onChange={e => set({ cv_url: e.target.value })} placeholder="https://" />
-        </Field>
 
         <div className="space-y-3">
           <p className="dv-field-label">Dự án tiêu biểu</p>
