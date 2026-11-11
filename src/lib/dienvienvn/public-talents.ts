@@ -1,4 +1,5 @@
 import 'server-only';
+import { isTestAccount } from './test-accounts';
 import { getServiceDb } from '@/lib/projects/server';
 import { TalentProfile } from '@/lib/types/crm';
 import { ageOf } from '@/lib/projects/producer';
@@ -36,7 +37,7 @@ export interface PublicTalent {
 }
 
 const PUBLIC_COLUMNS =
-  'username, full_name, dob, gender, height_cm, weight_kg, role_willingness, willing_work_cities, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
+  'username, full_name, email, dob, gender, height_cm, weight_kg, role_willingness, willing_work_cities, headshot_url, fullbody_url, compcard_url, acting_experience, vietnamese_accents, languages, instruments, sports, dancing, martial_arts, singing, academic_profile';
 
 export function toPublicTalent(t: TalentProfile): PublicTalent {
   return {
@@ -94,7 +95,8 @@ export async function listPublicTalents(): Promise<PublicTalent[]> {
     console.error('[dienvienvn] Không tải được danh sách diễn viên công khai:', error.message);
     return [];
   }
-  return ((data || []) as unknown as TalentProfile[]).map(toPublicTalent);
+  // Tài khoản test của team dev không hiện ở danh sách công khai / trang chủ / sitemap
+  return ((data || []) as unknown as TalentProfile[]).filter(t => !isTestAccount(t)).map(toPublicTalent);
 }
 
 export async function getPublicTalent(username: string): Promise<PublicTalent | null> {
@@ -102,5 +104,7 @@ export async function getPublicTalent(username: string): Promise<PublicTalent | 
   if (!/^[a-z0-9][a-z0-9_-]{2,39}$/.test(clean)) return null;
   const { data, error } = await withGalleryFallback(q => q.eq('username', clean).maybeSingle());
   if (error || !data) return null;
+  // Tài khoản test: trang hồ sơ công khai không hiện (như chưa có hồ sơ)
+  if (isTestAccount(data as unknown as TalentProfile)) return null;
   return toPublicTalent(data as unknown as TalentProfile);
 }
