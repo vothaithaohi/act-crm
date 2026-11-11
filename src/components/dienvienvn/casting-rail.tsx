@@ -6,6 +6,7 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { PublicProject, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
+import { TalentLink } from './talent-drawer';
 import { useDvvnHref } from './base-path';
 import type { Audience } from './landing-page';
 import { formatVnDate } from './projects-section';
@@ -214,14 +215,14 @@ export function CastingRail({ audience, stats }: { audience: Audience; stats: Ho
   return (
     <ScrollRail title="Gương mặt sẵn sàng cho vai diễn tiếp theo.">
       {stats.faces.slice(0, 10).map(f => (
-        <Link key={f.username} href={href(`/${f.username}`)} className={`${CARD} group !p-0 bg-[#1d1d1f]`}>
+        <TalentLink key={f.username} username={f.username} className={`${CARD} group !p-0 bg-[#1d1d1f]`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={f.photo} alt={f.name} loading="lazy" draggable={false} className="absolute inset-0 h-full w-full object-cover object-[50%_18%] transition duration-500 group-hover:scale-[1.04]" />
           <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-5 pb-5 pt-16 text-white">
             {f.act && <span className="mb-1.5 inline-flex rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1d1d1f]">ACT Academy</span>}
             <span className="block text-[17px] font-semibold">{f.name}</span>
           </span>
-        </Link>
+        </TalentLink>
       ))}
       <SeeAllCard href={href('/dien-vien')} label="Xem tất cả diễn viên" photo={stats.faces[10]?.photo || seeAllPhoto} />
     </ScrollRail>

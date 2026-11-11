@@ -130,6 +130,17 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                       <a href={`https://www.dienvienvn.com/${talent.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#8c5f2a] hover:underline">
                         Trang công khai ↗
                       </a>
+                      {' • '}
+                      {/* Mở trang Hồ sơ diễn viên công khai với cửa sổ hồ sơ này: đúng những gì nhà sản xuất chưa đăng nhập nhìn thấy */}
+                      <a
+                        href={`https://www.dienvienvn.com/dien-vien?ho-so=${encodeURIComponent(talent.username)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-[#8c5f2a] hover:underline"
+                        title="Xem hồ sơ như nhà sản xuất nhìn thấy trên dienvienvn.com (không có liên hệ, địa chỉ, ngày sinh, cân nặng, số đo, size giày)"
+                      >
+                        Xem như nhà sản xuất ↗
+                      </a>
                     </>
                   ) : (
                     <>

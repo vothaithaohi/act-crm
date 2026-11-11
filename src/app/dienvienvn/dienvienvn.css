@@ -709,3 +709,21 @@ input[type='date'].dv-input {
     animation: none;
   }
 }
+
+/* Cửa sổ hồ sơ diễn viên trượt từ bên phải sang */
+.dv-slide-in-right {
+  animation: dv-slide-in-right 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes dv-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dv-slide-in-right {
+    animation: none;
+  }
+}

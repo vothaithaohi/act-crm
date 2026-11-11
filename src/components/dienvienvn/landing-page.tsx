@@ -6,6 +6,7 @@ import { ArrowRight, Check, ChevronDown, ChevronRight, Clapperboard, Menu, X } f
 import { CASTING_STEPS } from '@/lib/dienvienvn/casting-form';
 import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
+import { TalentLink } from './talent-drawer';
 import { useDvvnHref } from './base-path';
 import { FlipCountdown, useLaunched } from './flip-countdown';
 import { ProjectSlider } from './project-slider';
@@ -201,9 +202,9 @@ function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pen
         <div key={c} className={c === 1 ? '-mt-24' : c === 2 ? '-mt-10' : ''}>
           <div className="dv-marquee-up" style={{ ['--dv-marquee-dur' as string]: durations[c] }}>
             {[...col, ...col].map((f, i) => (
-              <Link
+              <TalentLink
                 key={`${f.username}-${i}`}
-                href={href(`/${f.username}`)}
+                username={f.username}
                 tabIndex={i >= col.length ? -1 : undefined}
                 aria-hidden={i >= col.length || undefined}
                 className="group relative mb-2 block aspect-[3/4] overflow-hidden rounded-[18px] bg-[#1d1d1f] sm:mb-3"
@@ -213,7 +214,7 @@ function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pen
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2.5 pt-8 text-left text-[13px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
                   {f.name}
                 </span>
-              </Link>
+              </TalentLink>
             ))}
           </div>
         </div>
@@ -362,8 +363,8 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
           {faces.slice(0, 6).map((f, i) => (
             <li key={f.username} className="w-[46%] shrink-0 snap-start sm:w-[31%] lg:w-auto">
               <Reveal delay={i * 50}>
-                <Link
-                  href={href(`/${f.username}`)}
+                <TalentLink
+                  username={f.username}
                   className="group relative block aspect-[4/5] overflow-hidden rounded-[20px] bg-[#1d1d1f] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -381,7 +382,7 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
                     )}
                     <span className="line-clamp-2 block text-[15px] font-semibold leading-[1.25] text-white">{f.name}</span>
                   </span>
-                </Link>
+                </TalentLink>
               </Reveal>
             </li>
           ))}

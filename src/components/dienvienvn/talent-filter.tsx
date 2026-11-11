@@ -40,7 +40,7 @@ export const EMPTY_FILTER: TalentFilter = {
 };
 
 
-const WILLINGNESS = [
+export const WILLINGNESS = [
   { id: 'kissing_scene', label: 'Sẵn sàng cảnh hôn' },
   { id: 'swimsuit', label: 'Mặc đồ bơi / Bikini' },
   { id: 'lingerie', label: 'Trang phục nội y' },

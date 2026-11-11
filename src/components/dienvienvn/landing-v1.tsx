@@ -6,6 +6,7 @@ import { Camera, ChevronRight, Clapperboard, GraduationCap, Video } from 'lucide
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { PublicProject, isDeadlinePassed, projectPathName } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
+import { TalentLink } from './talent-drawer';
 import { useDvvnHref } from './base-path';
 import { Audience, LandingNav } from './landing-page';
 import { ProjectCard } from './project-slider';
@@ -227,14 +228,14 @@ export function Ecosystem({ audience, stats }: { audience: Audience; stats: Home
               </div>
             ))
           : stats.faces.slice(0, 10).map(f => (
-              <Link key={f.username} href={href(`/${f.username}`)} className={`${card} group relative block aspect-[4/5] overflow-hidden rounded-[22px] bg-[#1d1d1f]`}>
+              <TalentLink key={f.username} username={f.username} draggable={false} className={`${card} group relative block aspect-[4/5] overflow-hidden rounded-[22px] bg-[#1d1d1f]`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={f.photo} alt={f.name} loading="lazy" draggable={false} className="absolute inset-0 h-full w-full object-cover object-[50%_18%] transition duration-500 group-hover:scale-[1.04]" />
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-5 pb-5 pt-16 text-white">
                   {f.act && <span className="mb-1.5 inline-flex rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1d1d1f]">ACT Academy</span>}
                   <span className="block text-[17px] font-semibold">{f.name}</span>
                 </span>
-              </Link>
+              </TalentLink>
             ))}
         {talent && projects === null && <div className={`${card} aspect-[4/5] animate-pulse rounded-[22px] bg-white/5`} />}
       </div>
