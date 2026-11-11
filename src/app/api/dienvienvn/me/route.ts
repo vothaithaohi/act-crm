@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, talentToDraft, validateStep } from '@/lib/dienvienvn/casting-form';
-import { getActor, writeTalent } from '@/lib/dienvienvn/actor-server';
+import { getActor, isSuperAdminUser, writeTalent } from '@/lib/dienvienvn/actor-server';
 import { findPartnerForUser } from '@/lib/dienvienvn/partner-server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, ProjectApplication, toPublicProject } from '@/lib/projects/types';
@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
     // Tài khoản đối tác (đạo diễn, NSX…) đăng nhập cùng trang: chuyển sang cổng đối tác
     const partner = await findPartnerForUser(db, user).catch(() => null);
     if (partner?.status === 'active') return NextResponse.json({ mode: 'live', partner: true });
+    // Super Admin chưa có hồ sơ diễn viên: chuyển sang cổng đối tác để test
+    if (await isSuperAdminUser(db, user)) return NextResponse.json({ mode: 'live', partner: true });
     // Tài khoản ekip (Form B): chuyển sang trang tài khoản ekip
     const { data: crew } = await db.from('crew_profiles').select('id').eq('auth_user_id', user.id).limit(1).then(r => r, () => ({ data: null }));
     if (crew?.length) return NextResponse.json({ mode: 'live', crew: true });

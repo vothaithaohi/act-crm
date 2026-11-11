@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { isStaffEmail } from '@/lib/dienvienvn/actor-server';
+import { isStaffEmail, isSuperAdminUser } from '@/lib/dienvienvn/actor-server';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
-import { CrewProfile, crewProfileSchema, toCrewProfileColumns } from '@/lib/dienvienvn/crew-profiles';
+import { CV_REQUIRED_MESSAGE, CrewProfile, crewHasCv, crewProfileSchema, toCrewProfileColumns } from '@/lib/dienvienvn/crew-profiles';
 import {
   CREW_MISSING,
   applyCrewToJob,
@@ -31,23 +31,30 @@ export async function POST(req: NextRequest) {
 
   // Đang đăng nhập (VD: diễn viên đã có tài khoản): gắn hồ sơ vào tài khoản này, không cần email
   let userId: string | null = null;
+  let superAdmin = false;
   if (req.headers.get('authorization')) {
     const who = await getCrewUser(req, db);
     if (who instanceof NextResponse) return who;
     if (who.crew) return NextResponse.json({ error: 'Tài khoản này đã có hồ sơ ekip.', exists: true }, { status: 409 });
     userId = who.user.id;
+    superAdmin = await isSuperAdminUser(db, who.user);
   }
 
-  if (await isStaffEmail(db, input.public_email)) {
+  // Super Admin đang đăng nhập được dùng email nhân sự để test (hồ sơ tự duyệt)
+  if (!superAdmin && (await isStaffEmail(db, input.public_email))) {
     return NextResponse.json({ error: 'Email này thuộc nhân sự DienVienVN. Vui lòng dùng email khác.' }, { status: 400 });
   }
+  // Tin yêu cầu CV / portfolio: kiểm tra trước khi tạo hồ sơ
+  const jobForCv = body?.job_id ? await openJob(db, body.job_id) : null;
+  if (jobForCv?.requires_cv && !crewHasCv(input)) return NextResponse.json({ error: CV_REQUIRED_MESSAGE, field: 'cv_url' }, { status: 400 });
+
   if (await findCrewByEmail(db, input.public_email)) {
     return NextResponse.json({ error: 'Email này đã có hồ sơ ekip. Vui lòng đăng nhập để ứng tuyển.', exists: true }, { status: 409 });
   }
 
   const { data, error } = await db
     .from('crew_profiles')
-    .insert({ ...toCrewProfileColumns(input), auth_user_id: userId, review_status: 'pending' })
+    .insert({ ...toCrewProfileColumns(input), auth_user_id: userId, review_status: superAdmin ? 'approved' : 'pending' })
     .select('*')
     .single();
   if (error || !data) {

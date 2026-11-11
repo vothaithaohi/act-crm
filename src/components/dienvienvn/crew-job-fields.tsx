@@ -23,6 +23,7 @@ export interface CrewPositionForm {
   department: string;
   role_title: string;
   role_other: string;
+  description: string;
   seniority_level: string;
   salary_type: string;
   salary_min: string;
@@ -54,6 +55,7 @@ export const emptyCrewPosition = (): CrewPositionForm => ({
   department: '',
   role_title: '',
   role_other: '',
+  description: '',
   seniority_level: '',
   salary_type: '',
   salary_min: '',
@@ -83,6 +85,7 @@ export function crewFormFrom(j?: Partial<CrewJob> | null, fallbackCompany = ''):
         department: s(j?.department),
         role_title: s(j?.role_title),
         role_other: s(j?.role_other),
+        description: s(j?.description),
         seniority_level: s(j?.seniority_level),
         salary_type: s(j?.salary_type),
         salary_min: s(j?.salary_min),
@@ -219,6 +222,18 @@ function PositionCard({
       <div className={field}>
         <FieldLabel cls={ui.label} required htmlFor={id('senior')}>Cấp độ kinh nghiệm kỳ vọng</FieldLabel>
         <SelectBox cls={ui.input} id={id('senior')} list={SENIORITY_LEVELS} v={value.seniority_level} onPick={x => set({ seniority_level: x })} placeholder="Chọn cấp độ" />
+      </div>
+      <div className={field}>
+        <FieldLabel cls={ui.label} htmlFor={id('jd')}>Mô tả công việc (JD)</FieldLabel>
+        <textarea
+          id={id('jd')}
+          rows={4}
+          maxLength={3000}
+          className={`${ui.input} !h-auto min-h-[110px] py-2.5`}
+          value={value.description}
+          onChange={e => set({ description: e.target.value })}
+          placeholder="Công việc cụ thể, yêu cầu, quyền lợi…"
+        />
       </div>
       <div className={field}>
         <FieldLabel cls={ui.label} required htmlFor={id('stype')}>Cách tính thù lao</FieldLabel>

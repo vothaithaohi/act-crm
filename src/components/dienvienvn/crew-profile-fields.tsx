@@ -41,6 +41,7 @@ export interface CrewFormB {
   years_of_experience: string;
   primary_showreel_url: string;
   portfolio_url: string;
+  cv_url: string;
   filmography_credits: CreditForm[];
   software_skills: string[];
   owned_gear: string;
@@ -70,6 +71,7 @@ export function crewFormBFrom(p?: Partial<CrewProfile> | null, email = ''): Crew
     years_of_experience: s(p?.years_of_experience),
     primary_showreel_url: s(p?.primary_showreel_url),
     portfolio_url: s(p?.portfolio_url),
+    cv_url: s(p?.cv_url),
     filmography_credits: (p?.filmography_credits || []).map(c => ({
       project_name: s(c.project_name),
       year: s(c.year),
@@ -240,6 +242,9 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
         </Field>
         <Field label="Portfolio / Trang cá nhân" htmlFor="cb-portfolio" hint="Website riêng, ArtStation…">
           <TextInput id="cb-portfolio" type="url" inputMode="url" value={value.portfolio_url} onChange={e => set({ portfolio_url: e.target.value })} placeholder="https://" />
+        </Field>
+        <Field label="Link CV" htmlFor="cb-cv" hint="Google Drive, Dropbox… (để chế độ ai có link đều xem được). Một số tin tuyển yêu cầu gửi kèm CV hoặc portfolio.">
+          <TextInput id="cb-cv" type="url" inputMode="url" value={value.cv_url} onChange={e => set({ cv_url: e.target.value })} placeholder="https://" />
         </Field>
 
         <div className="space-y-3">

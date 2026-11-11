@@ -33,6 +33,8 @@ export interface CrewProfile {
   years_of_experience: string;
   primary_showreel_url: string | null;
   portfolio_url: string | null;
+  /** Link CV (Google Drive, PDF…) */
+  cv_url?: string | null;
   filmography_credits: CrewCredit[];
   software_skills: string[];
   owned_gear: string | null;
@@ -165,6 +167,7 @@ export const crewProfileSchema = z
     // 3. Năng lực & showreel
     primary_showreel_url: url,
     portfolio_url: url,
+    cv_url: url,
     filmography_credits: z.array(credit).max(CREW_MAX_CREDITS).optional().default([]),
     software_skills: z.array(z.string().trim().min(1).max(60)).max(30).optional().default([]),
     owned_gear: text(2000),
@@ -232,6 +235,7 @@ export function toCrewProfileColumns(v: CrewProfileInput) {
     years_of_experience: v.years_of_experience,
     primary_showreel_url: orNull(v.primary_showreel_url),
     portfolio_url: orNull(v.portfolio_url),
+    cv_url: orNull(v.cv_url),
     filmography_credits: v.filmography_credits.map(c => ({
       project_name: c.project_name.trim(),
       year: num(c.year),
@@ -260,3 +264,7 @@ export function crewRoleText(r: { department?: string | null; role_title?: strin
 
 export const crewPrimaryRoleText = (p: Pick<CrewProfile, 'primary_department' | 'primary_role' | 'primary_role_other'>) =>
   crewRoleText({ department: p.primary_department, role_title: p.primary_role, role_other: p.primary_role_other });
+
+/** Hồ sơ đã có CV hoặc portfolio (dùng khi tin tuyển yêu cầu gửi kèm portfolio/CV). */
+export const crewHasCv = (p: { cv_url?: string | null; portfolio_url?: string | null }) => !!(p.cv_url || p.portfolio_url);
+export const CV_REQUIRED_MESSAGE = 'Tin này yêu cầu gửi kèm portfolio/CV. Vui lòng thêm link CV hoặc portfolio vào hồ sơ ekip rồi ứng tuyển lại.';

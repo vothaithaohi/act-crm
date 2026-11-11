@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { SHORTLIST_STATUSES, buildProducerView, toProducerTalent } from '@/lib/projects/producer';
 import { TalentProfile } from '@/lib/types/crm';
-import { findAuthUserByEmail, isSelfSignup, isStaffEmail, reclaimSelfSignup, SET_PASSWORD_PATH } from './actor-server';
+import { findAuthUserByEmail, isSelfSignup, isStaffEmail, isSuperAdminUser, reclaimSelfSignup, SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
 import { PartnerAccount, PartnerProjectSummary, PartnerTalent } from './partners';
 import { CastingProject, ProjectApplication, newShareToken, nextProjectCode, partnerProjectPath, projectSlugScore, slugifyVi } from '@/lib/projects/types';
@@ -25,7 +25,11 @@ export async function getPartner(req: NextRequest, db: SupabaseClient): Promise<
   if (error || !data?.user) {
     return NextResponse.json({ error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', authRequired: true }, { status: 401 });
   }
-  const partner = await findPartnerForUser(db, data.user);
+  let partner = await findPartnerForUser(db, data.user);
+  // Super Admin: vào thẳng cổng đối tác (không cần đăng ký / chờ duyệt / bị khoá) để test luồng
+  if ((!partner || partner.status !== 'active') && (await isSuperAdminUser(db, data.user))) {
+    partner = partner ? { ...partner, status: 'active' } : await ensureSuperAdminPartner(db, data.user);
+  }
   if (!partner) {
     return NextResponse.json({ error: 'Tài khoản này chưa được cấp quyền đối tác.', notPartner: true }, { status: 403 });
   }
@@ -37,6 +41,28 @@ export async function getPartner(req: NextRequest, db: SupabaseClient): Promise<
   }
   void db.from('partner_accounts').update({ last_seen_at: new Date().toISOString() }).eq('id', partner.id).then(() => undefined);
   return partner;
+}
+
+/** Tài khoản đối tác dùng để Super Admin test (tạo một lần, ghi rõ là tài khoản test). */
+async function ensureSuperAdminPartner(db: SupabaseClient, user: User): Promise<PartnerAccount | null> {
+  const email = (user.email || '').trim().toLowerCase();
+  if (!email) return null;
+  const { data: existing } = await db.from('partner_accounts').select('*').ilike('email', likeExact(email)).limit(1);
+  if (existing?.[0]) return { ...(existing[0] as PartnerAccount), status: 'active' };
+  const { data } = await db
+    .from('partner_accounts')
+    .insert({
+      email,
+      full_name: (user.user_metadata?.full_name as string) || email.split('@')[0],
+      company: 'DienVienVN (Super Admin – test)',
+      partner_type: 'producer',
+      status: 'active',
+      auth_user_id: user.id,
+      created_by: 'Super Admin (test)'
+    })
+    .select('*')
+    .single();
+  return (data as PartnerAccount) || null;
 }
 
 /**

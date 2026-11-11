@@ -80,7 +80,10 @@ export async function getActor(req: NextRequest, db: SupabaseClient): Promise<Ac
     .eq('auth_user_id', data.user.id)
     .order('created_at', { ascending: false })
     .limit(1);
-  return { user: data.user, talent: (rows?.[0] as TalentProfile) || null };
+  let talent: TalentProfile | null = (rows?.[0] as TalentProfile) || null;
+  // Super Admin test luồng diễn viên: dùng hồ sơ nộp bằng chính email của mình (email nhân sự không được gắn tài khoản)
+  if (!talent && data.user.email && (await isSuperAdminUser(db, data.user))) talent = await findTalentByEmail(db, data.user.email);
+  return { user: data.user, talent };
 }
 
 /** Tìm hồ sơ theo email (không phân biệt hoa thường, so khớp chính xác). */
@@ -204,4 +207,15 @@ export async function writeTalent(
     ({ error } = await run(row));
   }
   return { error };
+}
+
+/**
+ * Tài khoản Super Admin của CRM (bảng profiles, role super_admin, đang hoạt động):
+ * được vào mọi trang cần đăng nhập trên DienVienVN và bỏ qua các bước khoá / chờ duyệt để test luồng.
+ */
+export async function isSuperAdminUser(db: SupabaseClient, user: Pick<User, 'email'> | null | undefined): Promise<boolean> {
+  const email = (user?.email || '').trim().toLowerCase();
+  if (!email) return false;
+  const { data } = await db.from('profiles').select('role, status').ilike('email', email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
+  return data?.[0]?.role === 'super_admin' && data?.[0]?.status === 'active';
 }

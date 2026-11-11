@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, CalendarClock, ChevronLeft, ChevronRight, Clapperboard, Loader2, MapPin, SlidersHorizontal, UserRound, X } from 'lucide-react';
+import { Banknote, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Loader2, MapPin, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { PROJECT_TYPES, ProjectRole, PublicProject, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
@@ -52,6 +52,9 @@ export function CastingCalls() {
   const [age, setAge] = useState('');
   const [place, setPlace] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
+  // Xem theo vai (sổ hết các vai) hoặc theo dự án (thu gọn, bấm vào xem các vai của dự án đó)
+  const [view, setView] = useState<'role' | 'project'>('role');
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState('');
 
@@ -81,10 +84,25 @@ export function CastingCalls() {
     });
   }, [calls, type, gender, age, place]);
 
-  useEffect(() => setPage(1), [type, gender, age, place]);
-  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const groups = useMemo(() => {
+    const map = new Map<string, { project: PublicProject; path: string; calls: Call[] }>();
+    for (const c of list) {
+      const g = map.get(c.project.id) || { project: c.project, path: c.path, calls: [] };
+      g.calls.push(c);
+      map.set(c.project.id, g);
+    }
+    return Array.from(map.values());
+  }, [list]);
+
+  useEffect(() => setPage(1), [type, gender, age, place, view]);
+  const total = view === 'role' ? list.length : groups.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const shown = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const current = shown.find(c => c.key === selected) || shown[0];
+  const shownGroups = groups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const current =
+    list.find(c => c.key === selected) ||
+    (view === 'role' ? shown[0] : shownGroups.find(g => openProjects.includes(g.project.id))?.calls[0] || shownGroups[0]?.calls[0]);
+  const toggleProject = (id: string) => setOpenProjects(o => (o.includes(id) ? o.filter(x => x !== id) : [...o, id]));
   const nFilters = (gender !== 'all' ? 1 : 0) + (age ? 1 : 0) + (place ? 1 : 0);
 
   const goPage = (n: number) => {
@@ -92,41 +110,8 @@ export function CastingCalls() {
     document.getElementById('casting-calls')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  return (
-    <div className="bg-white pb-16">
-      {/* Loại dự án */}
-      <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
-        <div className="dv-scroll-x -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:justify-center md:px-0">
-          {[{ id: 'all', label: 'Tất cả vai' }, ...PROJECT_TYPES].map(t => (
-            <button key={t.id} type="button" className="dv-chip shrink-0" aria-pressed={type === t.id} onClick={() => setType(t.id)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div id="casting-calls" className="mx-auto max-w-[1200px] scroll-mt-16 px-4 pt-10 md:px-6 md:pt-14">
-        <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
-
-        <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
-          <button type="button" onClick={() => setFilterOpen(true)} className={`dv-btn !h-10 !py-0 text-[14px] ${nFilters ? 'dv-btn-primary' : 'dv-btn-secondary'}`}>
-            <SlidersHorizontal className="h-4 w-4" /> Bộ lọc ({nFilters})
-          </button>
-        </div>
-
-        {!projects ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
-          </div>
-        ) : list.length === 0 ? (
-          <p className="py-16 text-center text-[17px] text-[var(--dv-text-secondary)]">
-            {calls.length ? 'Không có vai phù hợp bộ lọc.' : 'Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.'}
-          </p>
-        ) : (
-          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
-            {/* Danh sách vai */}
-            <ul className="space-y-4">
-              {shown.map(c => {
+  /** Một vai trong danh sách (compact: hiện trong dự án đang mở rộng, không lặp tên dự án). */
+  const roleItem = (c: Call, compact = false) => {
                 const active = current?.key === c.key;
                 const body = (
                   <>
@@ -134,7 +119,7 @@ export function CastingCalls() {
                       <Clapperboard className="h-4 w-4" /> {projectTypeLabel(c.project.project_type)}
                     </p>
                     <p className="dv-display mt-1.5 text-[24px] font-semibold leading-[1.2]">{c.role.name}</p>
-                    <p className="mt-1 text-[16px]">{c.project.display_name}</p>
+                    {!compact && <p className="mt-1 text-[16px]">{c.project.display_name}</p>}
                     <div className="mt-4">
                       <CallTags c={c} />
                     </div>
@@ -155,8 +140,84 @@ export function CastingCalls() {
                     </button>
                   </li>
                 );
-              })}
-            </ul>
+                };
+
+  return (
+    <div className="bg-white pb-16">
+      {/* Loại dự án */}
+      <div className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
+        <div className="dv-scroll-x -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:justify-center md:px-0">
+          {[{ id: 'all', label: 'Tất cả vai' }, ...PROJECT_TYPES].map(t => (
+            <button key={t.id} type="button" className="dv-chip shrink-0" aria-pressed={type === t.id} onClick={() => setType(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div id="casting-calls" className="mx-auto max-w-[1200px] scroll-mt-16 px-4 pt-10 md:px-6 md:pt-14">
+        <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
+
+        <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+          <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1" role="group" aria-label="Cách xem">
+            {(
+              [
+                ['role', 'Theo vai'],
+                ['project', 'Theo dự án']
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={view === k}
+                onClick={() => setView(k)}
+                className={`h-8 whitespace-nowrap rounded-full px-4 text-[14px] ${view === k ? 'bg-[#1d1d1f] text-white' : 'text-[var(--dv-text-secondary)]'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setFilterOpen(true)} className={`dv-btn !h-10 !py-0 text-[14px] ${nFilters ? 'dv-btn-primary' : 'dv-btn-secondary'}`}>
+            <SlidersHorizontal className="h-4 w-4" /> Bộ lọc ({nFilters})
+          </button>
+        </div>
+
+        {!projects ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
+          </div>
+        ) : list.length === 0 ? (
+          <p className="py-16 text-center text-[17px] text-[var(--dv-text-secondary)]">
+            {calls.length ? 'Không có vai phù hợp bộ lọc.' : 'Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.'}
+          </p>
+        ) : (
+          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
+            {/* Danh sách vai */}
+            {view === 'role' ? (
+              <ul className="space-y-4">{shown.map(c => roleItem(c))}</ul>
+            ) : (
+              <ul className="space-y-4">
+                {shownGroups.map(g => {
+                  const open = openProjects.includes(g.project.id);
+                  return (
+                    <li key={g.project.id} className="rounded-[16px] border border-[#e0e0e5]">
+                      <button type="button" onClick={() => toggleProject(g.project.id)} aria-expanded={open} className="flex w-full items-start justify-between gap-4 p-5 text-left md:p-6">
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
+                            <Clapperboard className="h-4 w-4" /> {projectTypeLabel(g.project.project_type)}
+                            {g.project.deadline ? ` · Hạn ${formatVnDate(g.project.deadline)}` : ''}
+                          </span>
+                          <span className="dv-display mt-1.5 block text-[24px] font-semibold leading-[1.2]">{g.project.display_name}</span>
+                          <span className="mt-1 block text-[15px] text-[var(--dv-text-secondary)]">{g.calls.length} vai đang tuyển</span>
+                        </span>
+                        <ChevronDown className={`mt-1 h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                      </button>
+                      {open && <ul className="space-y-3 border-t border-[#e0e0e5] p-4 md:p-5">{g.calls.map(c => roleItem(c, true))}</ul>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
 
             {/* Chi tiết vai đang chọn */}
             {current && (

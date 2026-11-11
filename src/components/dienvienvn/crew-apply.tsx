@@ -65,6 +65,7 @@ function JobSummary({ job }: { job: PublicCrewJob }) {
       {job.company && <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{job.company}</p>}
       <p className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2]">{role?.vi || job.title}</p>
       {project && <p className="mt-1 text-[14px]">{project}</p>}
+      {job.description && <p className="mt-3 whitespace-pre-line text-[14px] leading-[1.55] text-[var(--dv-text-secondary)]">{job.description}</p>}
       {job.requires_cv && <p className="mt-2 text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm portfolio/CV</p>}
     </div>
   );

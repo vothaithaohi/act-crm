@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { applyCrewToJob, getCrewUser, openJob } from '@/lib/dienvienvn/crew-server';
+import { CV_REQUIRED_MESSAGE, crewHasCv } from '@/lib/dienvienvn/crew-profiles';
 
 // Ekip đã có hồ sơ và đang đăng nhập: ứng tuyển một tin tuyển ekip.
 export async function POST(req: NextRequest) {
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { job_id?: string } | null;
   const job = await openJob(db, body?.job_id || '');
   if (!job) return NextResponse.json({ error: 'Tin tuyển dụng đã đóng hoặc không còn nhận hồ sơ.' }, { status: 404 });
+  if (job.requires_cv && !crewHasCv(who.crew)) return NextResponse.json({ error: CV_REQUIRED_MESSAGE, needCv: true }, { status: 400 });
   const applied = await applyCrewToJob(db, who.crew, job, req.headers);
   if (applied === 'failed') return NextResponse.json({ error: 'Không gửi được ứng tuyển. Vui lòng thử lại.' }, { status: 500 });
   return NextResponse.json({ applied, review_status: who.crew.review_status });

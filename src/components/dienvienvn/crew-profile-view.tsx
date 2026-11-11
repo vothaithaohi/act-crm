@@ -35,6 +35,7 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
   const links = [
     p.primary_showreel_url ? { label: 'Showreel', url: p.primary_showreel_url } : null,
     p.portfolio_url ? { label: 'Portfolio', url: p.portfolio_url } : null,
+    p.cv_url ? { label: 'CV', url: p.cv_url } : null,
     p.social_link ? { label: 'Mạng xã hội', url: p.social_link } : null
   ].filter(Boolean) as { label: string; url: string }[];
   const row = 'text-[14px] leading-[1.5]';

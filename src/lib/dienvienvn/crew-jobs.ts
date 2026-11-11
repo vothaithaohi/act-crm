@@ -114,6 +114,8 @@ export const crewJobSchema = z
     department: enumOf([...DEPARTMENTS, { id: OTHER_ID }], 'Vui lòng chọn phân nhóm chuyên môn'),
     role_title: z.string().trim().min(1, 'Vui lòng chọn vị trí cụ thể'),
     role_other: text(120),
+    // Mô tả công việc (JD) của vị trí
+    description: text(3000),
     requires_cv: z.boolean().optional().default(false),
     seniority_level: enumOf(SENIORITY_LEVELS, 'Vui lòng chọn cấp độ kinh nghiệm'),
     // 4. Thời gian & hình thức làm việc
@@ -165,6 +167,7 @@ export function toCrewJobColumns(input: CrewJobInput) {
     department: input.department,
     role_title: input.role_title,
     role_other: input.role_title === OTHER_ID ? input.role_other.trim() : null,
+    description: orNull(input.description),
     requires_cv: !!input.requires_cv,
     seniority_level: input.seniority_level,
     employment_type: input.employment_type,
@@ -185,7 +188,7 @@ export function toCrewJobColumns(input: CrewJobInput) {
 export const CREW_MAX_POSITIONS = 10;
 
 /** Các trường riêng của từng vị trí (phần còn lại của Form A dùng chung cho cả dự án). */
-export const CREW_POSITION_KEYS = ['department', 'role_title', 'role_other', 'seniority_level', 'salary_type', 'salary_min', 'salary_max'] as const;
+export const CREW_POSITION_KEYS = ['department', 'role_title', 'role_other', 'description', 'seniority_level', 'salary_type', 'salary_min', 'salary_max'] as const;
 
 /**
  * Một lần đăng nhiều vị trí: { ...thông tin chung, positions: [{ department, role_title, … }] } → mỗi vị trí là một tin.

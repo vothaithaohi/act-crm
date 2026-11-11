@@ -157,7 +157,7 @@ function CrewJobCard({ job }: { job: PublicCrewJob }) {
         </div>
       </div>
 
-      {!formA && job.description && (
+      {job.description && (
         <div className="mt-4 border-t border-[#f0f0f2] pt-4">
           {job.description && (
             <>
