@@ -45,16 +45,23 @@ export function pickRotatingFaces<T extends { username: string }>(pool: T[], cou
   // Bỏ các hồ sơ không còn trong kho (đã gỡ / ẩn)
   seen = new Set(Array.from(seen).filter(u => pool.some(f => f.username === u)));
 
-  const fresh = shuffle(unique.filter(f => !seen.has(f.username)));
+  // Những gì vừa hiện ở lần trước xếp xuống cuối, để đầu vòng mới không lặp liền lần trước
+  const last = readSeen(`${key}:last`);
+  const freshAll = shuffle(unique.filter(f => !seen.has(f.username)));
+  const fresh = [...freshAll.filter(f => !last.has(f.username)), ...freshAll.filter(f => last.has(f.username))];
   let picked = fresh.slice(0, n);
   if (picked.length < n) {
-    // Đã đi hết vòng: bắt đầu vòng mới, bù phần còn thiếu (không trùng với phần vừa bốc)
+    // Đã đi hết vòng: bắt đầu vòng mới, bù phần còn thiếu (không trùng với phần vừa bốc,
+    // và tránh lặp liền những gì vừa hiện ở lần trước nếu còn lựa chọn khác)
     seen = new Set();
     const taken = new Set(picked.map(f => f.username));
-    picked = [...picked, ...shuffle(unique.filter(f => !taken.has(f.username))).slice(0, n - picked.length)];
+    const rest = shuffle(unique.filter(f => !taken.has(f.username)));
+    const preferred = [...rest.filter(f => !last.has(f.username)), ...rest.filter(f => last.has(f.username))];
+    picked = [...picked, ...preferred.slice(0, n - picked.length)];
   }
   picked.forEach(f => seen.add(f.username));
   if (seen.size >= new Set(pool.map(f => f.username)).size) seen = new Set();
   writeSeen(key, seen);
+  writeSeen(`${key}:last`, new Set(picked.map(f => f.username)));
   return picked;
 }

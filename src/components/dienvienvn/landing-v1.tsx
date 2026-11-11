@@ -10,6 +10,7 @@ import { useDvvnHref } from './base-path';
 import { Audience, LandingNav } from './landing-page';
 import { ProjectCard } from './project-slider';
 import { Reveal, SiteFooter } from './site-chrome';
+import { pickRotatingFaces } from '@/lib/dienvienvn/face-rotation';
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 
@@ -243,16 +244,26 @@ export function Ecosystem({ audience, stats }: { audience: Audience; stats: Home
 }
 
 /* ---------- 4. Dịch vụ hỗ trợ diễn viên (trang diễn viên) ---------- */
-export function Services({ photo }: { photo?: string }) {
+/**
+ * photos: nhiều ảnh thì mỗi lần vào trang / F5 hiện 1 ảnh ngẫu nhiên, không lặp lại cho tới khi đã hiện hết các ảnh.
+ * Ảnh hiện đủ sáng (không làm mờ) để giữ chất lượng gốc.
+ */
+export function Services({ photo, photos }: { photo?: string; photos?: string[] }) {
+  const [picked, setPicked] = useState<string | null>(null);
+  useEffect(() => {
+    if (!photos?.length) return;
+    setPicked(pickRotatingFaces(photos.map(src => ({ username: src })), 1, [], 'dvvn-service-photos-seen')[0]?.username || photos[0]);
+  }, [photos]);
+  const shown = photos?.length ? picked : photo;
   return (
     <section className="bg-[#111111] px-4 pb-20 md:pb-28">
       <div className="mx-auto grid max-w-[1100px] items-center gap-10 border-t border-white/15 pt-14 md:grid-cols-2 md:gap-16">
         <Reveal>
           <div className="relative aspect-[4/5] overflow-hidden rounded-[22px] bg-gradient-to-br from-[#2b2b30] to-[#0b0b0c]">
-            {photo ? (
+            {shown ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_20%] opacity-90" />
-            ) : (
+              <img src={shown} alt="" className={`absolute inset-0 h-full w-full object-cover object-[50%_20%] ${photos?.length ? '' : 'opacity-90'}`} />
+            ) : photos?.length ? null : (
               <Clapperboard className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 text-white/30" strokeWidth={0.8} />
             )}
           </div>

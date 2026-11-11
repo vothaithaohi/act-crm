@@ -18,6 +18,8 @@ import { RotatingWords } from './rotating-words';
  */
 /** Số gương mặt trên hàng trượt dành cho nhà sản xuất (thêm 1 ảnh cho thẻ Xem tất cả). */
 const RAIL_FACES = 10;
+/** Ảnh mục "Nâng cấp bản thân": đổi ngẫu nhiên mỗi lần vào trang / F5 (thêm ảnh: bỏ file vào public/dienvienvn/home rồi thêm tên ở đây). */
+const SERVICE_PHOTOS = ['/dienvienvn/home/dich-vu-1.jpg', '/dienvienvn/home/dich-vu-2.jpg', '/dienvienvn/home/dich-vu-3.jpg', '/dienvienvn/home/dich-vu-4.jpg'];
 /**
  * Hồ sơ luôn có mặt trong khối ảnh phần đầu trang chủ (vị trí / thứ tự đổi ngẫu nhiên mỗi lần vào trang / F5).
  * Các ô còn lại bốc ngẫu nhiên xoay vòng như bình thường. Sửa danh sách bằng username của hồ sơ.
@@ -77,7 +79,7 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
         <Story />
         <CastingRail audience={audience} stats={railStats} />
         <Process audience={audience} />
-        {talent ? <Services photo="/dienvienvn/home/dich-vu-headshot.jpg" /> : <AudienceTile audience={audience} />}
+        {talent ? <Services photos={SERVICE_PHOTOS} /> : <AudienceTile audience={audience} />}
         <Partners />
         {/* Nền đen theo style guideline (không dùng ảnh nền) */}
         {!talent && <CrewCta />}
