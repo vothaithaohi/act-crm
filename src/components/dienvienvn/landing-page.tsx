@@ -26,9 +26,9 @@ const HIDDEN_MENU = { whyDienVienVN: true, talents: true, projects: true };
 
 function hiringLinks(href: (p: string) => string) {
   return [
+    { href: href('/dien-vien'), label: 'Hồ sơ diễn viên', desc: 'Xem hồ sơ diễn viên đã được duyệt' },
     { href: href('/doi-tac/du-an/moi'), label: 'Đăng tuyển dự án', desc: 'Đăng casting call, tìm diễn viên cho các vai' },
     { href: href('/doi-tac/tuyen-dung/moi'), label: 'Đăng tuyển dụng ekip', desc: 'Tuyển ekip audition, trường quay, hậu kỳ' },
-    { href: href('/dien-vien'), label: 'Hồ sơ DienVienVN', desc: 'Xem hồ sơ diễn viên đã được duyệt' },
     { href: href('/tai-sao-chon-dienvienvn'), label: 'Tại sao chọn DienVienVN?', desc: 'Quy trình làm việc và quyền lợi của đối tác', hidden: HIDDEN_MENU.whyDienVienVN }
   ].filter(l => !l.hidden);
 }
