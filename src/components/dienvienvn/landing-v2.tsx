@@ -51,7 +51,7 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
         <Story />
         <CastingRail audience={audience} stats={stats} />
         <Process audience={audience} />
-        {talent ? <Services photo={stats.faces[0]?.photo} /> : <AudienceTile audience={audience} />}
+        {talent ? <Services photo="/dienvienvn/home/dich-vu-headshot.jpg" /> : <AudienceTile audience={audience} />}
         <Partners />
         {!talent && <CrewCta photo={stats.faces[1]?.photo || stats.faces[0]?.photo} />}
         <Closing audience={audience} />

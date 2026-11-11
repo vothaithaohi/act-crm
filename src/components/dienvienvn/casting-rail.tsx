@@ -25,6 +25,23 @@ const backdropOf = (id: string) => {
 };
 
 const NAV_H = 44;
+/** Số vai tiêu biểu hiện trên trang chủ; xem hết ở trang Dự án. */
+const FEATURED_ROLES = 9;
+const SET_PHOTO = '/dienvienvn/home/set-quay.jpg';
+
+/**
+ * 9 vai tiêu biểu: ưu tiên vai chính (tên / mô tả có "chính"), rồi vai đầu tiên của mỗi dự án,
+ * rồi các vai còn lại — giữ thứ tự dự án mới nhất trước.
+ */
+function featuredRoles(projects: PublicProject[]) {
+  const all = projects.flatMap(p => p.roles.map((r, i) => ({ p, r, i })));
+  const isLead = (x: (typeof all)[number]) => /chính/i.test(`${x.r.name} ${x.r.description || ''}`);
+  const rank = (x: (typeof all)[number]) => (isLead(x) ? 0 : x.i === 0 ? 1 : 2);
+  return all
+    .map((x, order) => ({ ...x, order }))
+    .sort((a, b) => rank(a) - rank(b) || a.order - b.order)
+    .slice(0, FEATURED_ROLES);
+}
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /**
@@ -159,7 +176,7 @@ export function CastingRail({ audience, stats }: { audience: Audience; stats: Ho
   const seeAllPhoto = stats.faces[0]?.photo;
 
   if (talent) {
-    const roles = (projects || []).flatMap(p => p.roles.map(r => ({ p, r })));
+    const roles = featuredRoles(projects || []);
     return (
       <ScrollRail title="Lịch casting đang mở cho bạn.">
         {projects === null && <div className={`${CARD} animate-pulse bg-white/5`} />}
@@ -188,7 +205,7 @@ export function CastingRail({ audience, stats }: { audience: Audience; stats: Ho
             </Link>
           );
         })}
-        {projects !== null && <SeeAllCard href={href('/du-an')} label="Xem tất cả dự án" photo={seeAllPhoto} />}
+        {projects !== null && <SeeAllCard href={href('/du-an')} label="Xem tất cả dự án" photo={SET_PHOTO} />}
       </ScrollRail>
     );
   }
