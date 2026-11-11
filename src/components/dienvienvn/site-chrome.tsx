@@ -37,10 +37,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[980px] px-4 py-5 md:px-[22px]">
         <div className="dv-small space-y-2 border-b border-[#d2d2d7] pb-4">
           <p>
-            1. Thời gian đếm ngược tính theo giờ Việt Nam (GMT+7). DienVienVN chính thức ra mắt lúc 11:00 ngày 11/11/2026.
-          </p>
-          <p>
-            2. Hồ sơ diễn viên chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa
+            Hồ sơ diễn viên chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa
             hoặc xoá hồ sơ bất kỳ lúc nào.
           </p>
         </div>
@@ -50,8 +47,6 @@ export function SiteFooter() {
             <Link href={href('/nop-ho-so')} className="hover:underline">Nộp hồ sơ diễn viên</Link>
             <span className="text-[#d2d2d7]">|</span>
             <Link href={href('/tuyen-dung')} className="hover:underline">Tuyển dụng ekip</Link>
-            <span className="text-[#d2d2d7]">|</span>
-            <Link href={`${href('/')}#ra-mat`} className="hover:underline">Ra mắt 11.11.2026</Link>
             <span className="text-[#d2d2d7]">|</span>
             <span>Việt Nam</span>
           </div>

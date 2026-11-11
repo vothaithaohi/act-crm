@@ -31,9 +31,6 @@ export function CrewJobBoard({ jobs }: { jobs: PublicCrewJob[] }) {
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-10 md:pt-16">
         <div className="mx-auto max-w-[980px]">
           <h1 className="dv-display dv-headline">Tuyển dụng ekip.</h1>
-          <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-            Ekip audition, trường quay và hậu kỳ cho các dự án trên DienVienVN. Tạo hồ sơ ekip một lần, ứng tuyển các tin phù hợp.
-          </p>
 
           <section className="mt-8 flex flex-col gap-4 rounded-[18px] bg-[#1d1d1f] p-6 text-white sm:flex-row sm:items-center sm:justify-between md:p-7">
             <div>
