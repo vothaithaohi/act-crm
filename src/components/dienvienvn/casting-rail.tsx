@@ -29,7 +29,7 @@ const backdropOf = (id: string) => {
 const NAV_H = 52;
 /** Số vai tiêu biểu hiện trên trang chủ; xem hết ở trang Dự án. */
 const FEATURED_ROLES = 9;
-const SET_PHOTO = '/dienvienvn/home/set-quay.jpg';
+const SET_PHOTO = '/dienvienvn/home/set-quay-bts.jpg';
 
 /**
  * 9 vai ngẫu nhiên trong các dự án đang mở, đổi mỗi lần vào trang / F5,
