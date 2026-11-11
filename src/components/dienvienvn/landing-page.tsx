@@ -18,12 +18,18 @@ const fmt = (n: number) => n.toLocaleString('vi-VN');
 
 /* ---------------- Thanh menu ---------------- */
 /** Menu thả xuống "Dành cho nhà sản xuất" (kiểu Find Talent của Backstage). */
+/**
+ * Mục menu đang ẩn (chỉ ẩn khỏi menu, trang vẫn còn và mở được bằng link).
+ * Muốn hiện lại: đổi giá trị tương ứng thành false.
+ */
+const HIDDEN_MENU = { whyDienVienVN: true, talents: true, projects: true };
+
 function hiringLinks(href: (p: string) => string) {
   return [
     { href: href('/doi-tac/du-an/moi'), label: 'Đăng tuyển dự án', desc: 'Đăng casting call, tìm diễn viên cho các vai' },
     { href: href('/doi-tac/tuyen-dung/moi'), label: 'Đăng tuyển dụng ekip', desc: 'Tuyển ekip audition, trường quay, hậu kỳ' },
-    { href: href('/tai-sao-chon-dienvienvn'), label: 'Tại sao chọn DienVienVN?', desc: 'Quy trình làm việc và quyền lợi của đối tác' }
-  ];
+    { href: href('/tai-sao-chon-dienvienvn'), label: 'Tại sao chọn DienVienVN?', desc: 'Quy trình làm việc và quyền lợi của đối tác', hidden: HIDDEN_MENU.whyDienVienVN }
+  ].filter(l => !l.hidden);
 }
 
 /** Rê chuột: mở menu. Bấm: chuyển trang chủ sang "Tôi tìm diễn viên". */
@@ -91,12 +97,16 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
             Dành cho diễn viên
           </button>
           <HiringDropdown linkCls={linkCls} active={audience === 'hiring'} onSelect={() => go('hiring')} />
-          <Link href={href('/dien-vien')} className={linkCls}>
-            Diễn viên
-          </Link>
-          <Link href={href('/du-an')} className={linkCls}>
-            Dự án đang casting
-          </Link>
+          {!HIDDEN_MENU.talents && (
+            <Link href={href('/dien-vien')} className={linkCls}>
+              Diễn viên
+            </Link>
+          )}
+          {!HIDDEN_MENU.projects && (
+            <Link href={href('/du-an')} className={linkCls}>
+              Dự án đang casting
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} className="hidden px-2 text-[14px] text-black/75 hover:text-black sm:inline">
@@ -139,12 +149,16 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
               ))}
             </div>
           </div>
-          <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>
-            Diễn viên
-          </Link>
-          <Link href={href('/du-an')} onClick={() => setOpen(false)} className={mobileCls}>
-            Dự án đang casting
-          </Link>
+          {!HIDDEN_MENU.talents && (
+            <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>
+              Diễn viên
+            </Link>
+          )}
+          {!HIDDEN_MENU.projects && (
+            <Link href={href('/du-an')} onClick={() => setOpen(false)} className={mobileCls}>
+              Dự án đang casting
+            </Link>
+          )}
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} onClick={() => setOpen(false)} className={`${mobileCls} border-0`}>
             {signedIn ? 'Tài khoản' : 'Đăng nhập'}
           </Link>
