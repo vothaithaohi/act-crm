@@ -32,11 +32,10 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   }, [stats.faces]);
   useEffect(() => {
     if (audience !== 'hiring' || !faces || hiringFaces.length) return;
-    setHiringFaces(pickRotatingFaces(stats.faces, RAIL_FACES + 2, faces.map(f => f.username)));
+    setHiringFaces(pickRotatingFaces(stats.faces, RAIL_FACES + 1, faces.map(f => f.username)));
   }, [audience, faces, hiringFaces.length, stats.faces]);
   const heroStats = { ...stats, faces: faces || [] };
   const railStats = { ...stats, faces: hiringFaces.slice(0, RAIL_FACES + 1) };
-  const crewPhoto = hiringFaces[RAIL_FACES + 1]?.photo || faces?.[0]?.photo;
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,7 +72,8 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
         <Process audience={audience} />
         {talent ? <Services photo="/dienvienvn/home/dich-vu-headshot.jpg" /> : <AudienceTile audience={audience} />}
         <Partners />
-        {!talent && <CrewCta photo={crewPhoto} />}
+        {/* Nền đen theo style guideline (không dùng ảnh nền) */}
+        {!talent && <CrewCta />}
         <Closing audience={audience} />
       </main>
       <SiteFooter />

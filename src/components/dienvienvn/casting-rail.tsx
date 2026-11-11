@@ -9,6 +9,7 @@ import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { useDvvnHref } from './base-path';
 import type { Audience } from './landing-page';
 import { formatVnDate } from './projects-section';
+import { ROLES_KEY, pickRotatingFaces } from '@/lib/dienvienvn/face-rotation';
 
 const BACKDROPS = [
   'linear-gradient(180deg,#4f6fb3 0%,#2b3a63 55%,#141b2e 100%)',
@@ -31,17 +32,12 @@ const FEATURED_ROLES = 9;
 const SET_PHOTO = '/dienvienvn/home/set-quay.jpg';
 
 /**
- * 9 vai tiêu biểu: ưu tiên vai chính (tên / mô tả có "chính"), rồi vai đầu tiên của mỗi dự án,
- * rồi các vai còn lại — giữ thứ tự dự án mới nhất trước.
+ * 9 vai ngẫu nhiên trong các dự án đang mở, đổi mỗi lần vào trang / F5,
+ * xoay vòng không lặp (trên máy người xem) cho tới khi đã hiện hết các vai — giống gương mặt diễn viên.
  */
-function featuredRoles(projects: PublicProject[]) {
-  const all = projects.flatMap(p => p.roles.map((r, i) => ({ p, r, i })));
-  const isLead = (x: (typeof all)[number]) => /chính/i.test(`${x.r.name} ${x.r.description || ''}`);
-  const rank = (x: (typeof all)[number]) => (isLead(x) ? 0 : x.i === 0 ? 1 : 2);
-  return all
-    .map((x, order) => ({ ...x, order }))
-    .sort((a, b) => rank(a) - rank(b) || a.order - b.order)
-    .slice(0, FEATURED_ROLES);
+function rotatingRoles(projects: PublicProject[]) {
+  const all = projects.flatMap(p => p.roles.map(r => ({ username: `${p.id}:${r.id}`, p, r })));
+  return pickRotatingFaces(all, FEATURED_ROLES, [], ROLES_KEY);
 }
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -167,6 +163,10 @@ export function CastingRail({ audience, stats }: { audience: Audience; stats: Ho
   const talent = audience === 'talent';
   const [projects, setProjects] = useState<PublicProject[] | null>(null);
 
+  const [rolesPicked, setRolesPicked] = useState<ReturnType<typeof rotatingRoles>>([]);
+  useEffect(() => {
+    if (projects) setRolesPicked(rotatingRoles(projects));
+  }, [projects]);
   useEffect(() => {
     if (!talent || projects) return;
     fetchPublicProjects()
@@ -177,7 +177,7 @@ export function CastingRail({ audience, stats }: { audience: Audience; stats: Ho
   const seeAllPhoto = stats.faces[0]?.photo;
 
   if (talent) {
-    const roles = featuredRoles(projects || []);
+    const roles = rolesPicked;
     return (
       <ScrollRail title="Lịch casting đang mở cho bạn.">
         {projects === null && <div className={`${CARD} animate-pulse bg-white/5`} />}
