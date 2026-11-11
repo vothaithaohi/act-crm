@@ -167,8 +167,8 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-6 md:pt-10">
         <div className="mx-auto max-w-[1080px]">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-            <h1 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[44px]">{talent.name}</h1>
+          <h1 className="sr-only">{talent.name}</h1>
+          <div className="mb-4 flex justify-end">
             <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-[#d2d2d7] bg-white px-3 py-1.5 text-[13px] hover:border-[#1d1d1f]">
               <Link2 className="h-3.5 w-3.5" /> {copied ? 'Đã sao chép link' : `dienvienvn.com/${talent.username}`}
             </button>

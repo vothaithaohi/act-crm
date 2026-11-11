@@ -70,19 +70,13 @@ function TalentDrawer({ username, onClose }: { username: string; onClose: () => 
         onClick={e => e.stopPropagation()}
         className="dv-slide-in-right flex h-full w-full max-w-[1080px] flex-col bg-[var(--dv-bg-alt)] shadow-2xl"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-white px-4 py-3 md:px-6">
-          <div className="min-w-0">
-            <p className="truncate text-[17px] font-semibold">{data?.talent?.name || 'Hồ sơ diễn viên'}</p>
-            {data?.talent && <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">dienvienvn.com/{data.talent.username}</p>}
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Link href={href(`/${username}`)} target="_blank" rel="noopener" className="dv-btn dv-btn-secondary !h-9 !px-3.5 !py-0 text-[14px]">
-              Xem hồ sơ ở tab mới <ExternalLink className="h-4 w-4" />
-            </Link>
-            <button type="button" onClick={onClose} aria-label="Đóng" className="rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+        <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-white/90 px-3 py-2.5 backdrop-blur md:px-5">
+          <button type="button" onClick={onClose} aria-label="Đóng" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1d1d1f] text-white hover:bg-black">
+            <X className="h-5 w-5" />
+          </button>
+          <Link href={href(`/${username}`)} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[14px] text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)] hover:text-[var(--dv-text)]">
+            Xem hồ sơ ở tab mới <ExternalLink className="h-4 w-4" />
+          </Link>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
           {!data ? (
