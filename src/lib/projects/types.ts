@@ -56,9 +56,22 @@ export interface ProjectApplication {
   selftape_urls?: string[] | null;
   note?: string | null;
   status: ApplicationStatus;
+  /** Lựa chọn của NSX trên link shortlist / cổng đối tác */
+  producer_decision?: ProducerDecision | null;
+  producer_decided_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
+
+export type ProducerDecision = 'pick' | 'maybe' | 'reject';
+
+export const PRODUCER_DECISIONS: ProducerDecision[] = ['pick', 'maybe', 'reject'];
+
+export const PRODUCER_DECISION_DETAILS: Record<ProducerDecision, { label: string; badgeClass: string }> = {
+  pick: { label: 'NSX chọn', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  maybe: { label: 'NSX cân nhắc', badgeClass: 'bg-amber-100 text-amber-800 border-amber-300' },
+  reject: { label: 'NSX loại', badgeClass: 'bg-slate-100 text-slate-600 border-slate-300' }
+};
 
 /** Thông tin dự án được phép hiển thị công khai (đã lọc tên thật khi bị ẩn). */
 export interface PublicProject {

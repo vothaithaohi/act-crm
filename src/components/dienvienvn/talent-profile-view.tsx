@@ -218,7 +218,7 @@ function splitCredit(item: string) {
 }
 
 /** Khung bên phải: nút Liên hệ (công khai) hoặc liên hệ của diễn viên (đối tác đã duyệt). */
-function ContactCard({ talent, partner }: { talent: PublicTalent; partner?: PartnerTalent | null }) {
+function ContactCard({ talent, partner, contactHref }: { talent: PublicTalent; partner?: PartnerTalent | null; contactHref?: string }) {
   const href = useDvvnHref();
   return (
     <div className="rounded-[18px] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
@@ -243,7 +243,7 @@ function ContactCard({ talent, partner }: { talent: PublicTalent; partner?: Part
         <>
           <p className="text-[17px] font-semibold">Muốn mời diễn viên này casting?</p>
           <p className="mt-1 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">Thông tin liên hệ chỉ hiển thị cho đối tác của DienVienVN.</p>
-          <Link href={href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/doi-tac/${talent.username}`))}`)} className="dv-btn dv-btn-primary mt-4 w-full !h-11 !py-0 text-[15px]">
+          <Link href={contactHref || href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/doi-tac/${talent.username}`))}`)} className="dv-btn dv-btn-primary mt-4 w-full !h-11 !py-0 text-[15px]">
             Liên hệ
           </Link>
         </>
@@ -257,7 +257,16 @@ function ContactCard({ talent, partner }: { talent: PublicTalent; partner?: Part
  * công khai: tuổi (không ngày sinh), chiều cao, cân nặng; ẩn địa chỉ, số đo 3 vòng, size giày, liên hệ.
  * partner: đối tác đã duyệt đang đăng nhập → thêm liên hệ, số đo 3 vòng, size giày.
  */
-export function TalentProfileBody({ talent, partner }: { talent: PublicTalent; partner?: PartnerTalent | null }) {
+export function TalentProfileBody({
+  talent,
+  partner,
+  contactHref
+}: {
+  talent: PublicTalent;
+  partner?: PartnerTalent | null;
+  /** Nút "Liên hệ" khi chưa đăng nhập (mặc định: đăng ký đối tác rồi quay lại hồ sơ này) */
+  contactHref?: string;
+}) {
   const willingness = talent.willingness.map(id => WILLINGNESS.find(w => w.id === id)?.label).filter(Boolean) as string[];
   const isAct = talent.trainings.some(t => /ACT Academy/i.test(t));
   const age = partner?.age ?? talent.age;
@@ -314,7 +323,7 @@ export function TalentProfileBody({ talent, partner }: { talent: PublicTalent; p
 
           {/* Khung liên hệ trên điện thoại: ngay dưới tên */}
           <div className="lg:hidden">
-            <ContactCard talent={talent} partner={partner} />
+            <ContactCard talent={talent} partner={partner} contactHref={contactHref} />
           </div>
 
           <Section title="Ngoại hình">
@@ -396,7 +405,7 @@ export function TalentProfileBody({ talent, partner }: { talent: PublicTalent; p
         {/* Cột phải (máy tính): dính khi cuộn */}
         <aside className="space-y-6 lg:sticky lg:top-4 lg:self-start">
           <div className="hidden lg:block">
-            <ContactCard talent={talent} partner={partner} />
+            <ContactCard talent={talent} partner={partner} contactHref={contactHref} />
           </div>
           {talent.trainings.length > 0 && (
             <div>

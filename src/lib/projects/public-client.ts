@@ -11,6 +11,7 @@ import {
   LOCAL_PROJECTS_KEY,
   LOCAL_TALENTS_KEYS,
   NEW_APPLICATION_STATUS,
+  ProducerDecision,
   ProjectApplication,
   PublicProject,
   checkApplication,
@@ -107,4 +108,33 @@ export async function fetchProducerView(token: string): Promise<ProducerView | n
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(data.error || 'Không tải được danh sách ứng viên.');
   return { project: data.project, applicants: data.applicants, limited: !!data.limited };
+}
+
+/**
+ * NSX đánh dấu 1 ứng viên (Chọn / Cân nhắc / Loại; null = bỏ đánh dấu).
+ * `target`: link shortlist ({ token }) hoặc dự án trong cổng đối tác ({ projectId }).
+ */
+export async function saveProducerDecision(
+  target: { token: string } | { projectId: string },
+  applicationId: string,
+  decision: ProducerDecision | null
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const url =
+    'token' in target
+      ? `/api/dienvienvn/producer/${encodeURIComponent(target.token)}/decision`
+      : `/api/dienvienvn/partner/projects/${encodeURIComponent(target.projectId)}/decision`;
+  const res = await actorFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ application_id: applicationId, decision })
+  }).catch(() => null);
+  if (!res) return { ok: false, error: 'Mất kết nối mạng. Vui lòng thử lại.' };
+  const data = await res.json().catch(() => ({}));
+  if (data.mode === 'demo') {
+    const apps = readLocal<ProjectApplication>(LOCAL_APPLICATIONS_KEY);
+    writeLocal(LOCAL_APPLICATIONS_KEY, apps.map(a => (a.id === applicationId ? { ...a, producer_decision: decision } : a)));
+    return { ok: true };
+  }
+  if (!res.ok || !data.ok) return { ok: false, error: data.error || 'Không lưu được lựa chọn. Vui lòng thử lại.' };
+  return { ok: true };
 }

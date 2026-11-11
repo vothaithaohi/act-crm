@@ -606,7 +606,7 @@ export function PartnerProjectBoard({ projectId }: { projectId: string }) {
           </p>
         </div>
       )}
-      <ProducerApplicants view={d} profileHref={id => href(`/doi-tac/${id}`)} />
+      <ProducerApplicants view={d} profileHref={id => href(`/doi-tac/${id}`)} decisionTarget={{ projectId: d.id }} />
     </PortalShell>
   );
 }

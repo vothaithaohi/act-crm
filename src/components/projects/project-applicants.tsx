@@ -11,6 +11,9 @@ import {
   APPLICATION_STATUS_DETAILS,
   ApplicationStatus,
   CastingProject,
+  PRODUCER_DECISION_DETAILS,
+  PRODUCER_DECISIONS,
+  ProducerDecision,
   ProjectApplication
 } from '@/lib/projects/types';
 import { talentPath } from '@/lib/talent-path';
@@ -29,6 +32,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
   const canEdit = can('talents:write');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
+  const [nsxFilter, setNsxFilter] = useState<'all' | 'none' | ProducerDecision>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<ApplicationStatus>('shortlisted');
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -39,7 +43,11 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
   const talentById = useMemo(() => new Map(talents.map(t => [t.id, t])), [talents]);
   const rows = applications
     .filter(
-      a => a.project_id === project.id && (roleFilter === 'all' || a.role_id === roleFilter) && (statusFilter === 'all' || a.status === statusFilter)
+      a =>
+        a.project_id === project.id &&
+        (roleFilter === 'all' || a.role_id === roleFilter) &&
+        (statusFilter === 'all' || a.status === statusFilter) &&
+        (nsxFilter === 'all' || (nsxFilter === 'none' ? !a.producer_decision : a.producer_decision === nsxFilter))
     )
     .map(a => ({ a, t: talentById.get(a.talent_id) }));
 
@@ -91,6 +99,8 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
     }
   };
   const total = applications.filter(a => a.project_id === project.id).length;
+  const nsxCount = (d: ProducerDecision) => applications.filter(a => a.project_id === project.id && a.producer_decision === d).length;
+  const nsxPicked = nsxCount('pick');
 
   const roleName = (id: string) => project.roles.find(r => r.id === id)?.name || 'Vai đã xoá';
 
@@ -112,7 +122,16 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
             và không bị &ldquo;Loại&rdquo;.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+        <select value={nsxFilter} onChange={e => setNsxFilter(e.target.value as typeof nsxFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none" aria-label="Lọc theo lựa chọn của NSX">
+          <option value="all">NSX: tất cả</option>
+          {PRODUCER_DECISIONS.map(d => (
+            <option key={d} value={d}>
+              {PRODUCER_DECISION_DETAILS[d].label} ({nsxCount(d)})
+            </option>
+          ))}
+          <option value="none">NSX chưa đánh dấu</option>
+        </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none">
           <option value="all">Mọi trạng thái</option>
           {(Object.keys(APPLICATION_STATUS_DETAILS) as ApplicationStatus[]).map(s => (
@@ -131,6 +150,17 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
         </select>
         </div>
       </div>
+
+      {nsxPicked > 0 && (
+        <button
+          type="button"
+          onClick={() => setNsxFilter(nsxFilter === 'pick' ? 'all' : 'pick')}
+          className="w-full text-left text-xs px-3 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+        >
+          NSX đã chọn <strong>{nsxPicked}</strong> diễn viên trên link shortlist.{' '}
+          <span className="underline">{nsxFilter === 'pick' ? 'Xem tất cả ứng viên' : 'Xem danh sách NSX chọn'}</span>
+        </button>
+      )}
 
       {shortlistNotApproved > 0 && (
         <p className="text-[11px] text-amber-700">
@@ -203,6 +233,11 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
                       {review && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[review].badgeClass}`}>
                           {REVIEW_STATUS_DETAILS[review].label}
+                        </span>
+                      )}
+                      {a.producer_decision && PRODUCER_DECISION_DETAILS[a.producer_decision] && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PRODUCER_DECISION_DETAILS[a.producer_decision].badgeClass}`}>
+                          {PRODUCER_DECISION_DETAILS[a.producer_decision].label}
                         </span>
                       )}
                     </div>
