@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { DienVienVNHome } from '@/components/dienvienvn/home-page';
+import { DienVienVNLandingV2 } from '@/components/dienvienvn/landing-v2';
+import { getHomeStats } from '@/lib/dienvienvn/home-stats';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
 
 export const metadata: Metadata = {
@@ -30,11 +31,15 @@ const jsonLd = {
   ]
 };
 
-export default function DienVienVNHomePage() {
+// Trang chủ chính = trang chủ mới 02 (ra mắt 11/11/2026). Bản cũ vẫn ở components/dienvienvn/home-page.tsx.
+export const revalidate = 300;
+
+export default async function DienVienVNHomePage() {
+  const stats = await getHomeStats();
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <DienVienVNHome />
+      <DienVienVNLandingV2 stats={stats} />
     </>
   );
 }
