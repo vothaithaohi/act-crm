@@ -67,15 +67,19 @@ export interface CrewApplication {
   cover_letter_path?: string | null;
 }
 
-/** 1 CV trong kho CV của ứng viên ekip: file PDF (kho riêng tư) hoặc link ngoài. */
+/** 1 file trong kho của tài khoản ekip: CV (PDF; link cũ vẫn giữ) hoặc cover letter (viết tay hoặc PDF). */
+export type CrewFileKind = 'cv' | 'cover';
 export interface CrewCv {
   id: string;
-  crew_profile_id: string;
+  crew_profile_id: string | null;
+  auth_user_id: string | null;
+  kind: CrewFileKind;
   title: string;
   file_path: string | null;
   file_name: string | null;
   file_size: number | null;
   link_url: string | null;
+  body: string | null;
   is_default: boolean;
   created_at: string;
 }
@@ -88,8 +92,11 @@ export interface CrewAttachments {
 }
 
 export const CREW_MAX_CVS = 5;
-// Vercel giới hạn mỗi request ~4,5MB → file tối đa 4MB
-export const CREW_FILE_MAX_BYTES = 4 * 1024 * 1024;
+export const CREW_MAX_COVERS = 5;
+/** Tải thẳng lên kho (không qua Vercel): tối đa 10MB */
+export const CREW_FILE_MAX_BYTES = 10 * 1024 * 1024;
+/** Đường dự phòng qua máy chủ (Vercel giới hạn mỗi request ~4,5MB) */
+export const CREW_SERVER_UPLOAD_MAX = 4 * 1024 * 1024;
 export const COVER_LETTER_MAX = 4000;
 
 export const CREW_REVIEW_STATUS: Record<CrewReviewStatus, { label: string; badge: string }> = {

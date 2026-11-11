@@ -162,19 +162,19 @@ export default function CrewProfilesPage() {
   );
 }
 
-type CvRow = { id: string; title: string; kind: 'file' | 'link'; url: string | null; is_default: boolean; created_at: string };
+type CvRow = { id: string; title: string; source: 'file' | 'link' | 'text'; url: string | null; body: string | null; is_default: boolean; created_at: string };
 type AppRow = { id: string; created_at: string; title: string; company: string; attachments: CrewAttachments | null };
 
-/** Kho CV + các lượt ứng tuyển (kèm CV / cover letter đã nộp) của 1 ứng viên ekip. */
+/** Kho CV, cover letter + các lượt ứng tuyển (kèm CV / cover letter đã nộp) của 1 ứng viên ekip. */
 function CrewFiles({ id }: { id: string }) {
-  const [data, setData] = useState<{ cvs: CvRow[]; applications: AppRow[] } | null>(null);
+  const [data, setData] = useState<{ cvs: CvRow[]; covers: CvRow[]; applications: AppRow[] } | null>(null);
   const [problem, setProblem] = useState('');
   useEffect(() => {
     authedFetch(`/api/admin/crew-profiles/${id}`)
       .then(async r => {
         const b = await r.json().catch(() => ({}));
         if (!r.ok) return setProblem(b.error || 'Không tải được CV.');
-        setData({ cvs: b.cvs || [], applications: b.applications || [] });
+        setData({ cvs: b.cvs || [], covers: b.covers || [], applications: b.applications || [] });
       })
       .catch(() => setProblem('Mất kết nối mạng.'));
   }, [id]);
@@ -183,27 +183,36 @@ function CrewFiles({ id }: { id: string }) {
   const head = 'text-[11px] font-semibold uppercase tracking-wider text-muted-foreground';
   return (
     <div className="grid gap-4 md:grid-cols-2 border-t pt-4">
-      <div>
-        <p className={head}>Kho CV · {data.cvs.length}</p>
-        {data.cvs.length === 0 ? (
-          <p className="mt-1.5 text-xs text-muted-foreground">Chưa có CV.</p>
-        ) : (
-          <ul className="mt-1.5 space-y-1.5">
-            {data.cvs.map(c => (
-              <li key={c.id} className="flex items-center gap-2 text-sm">
-                {c.kind === 'file' ? <FileText className="w-4 h-4 shrink-0" /> : <Link2 className="w-4 h-4 shrink-0" />}
-                {c.url ? (
-                  <a href={c.url} target="_blank" rel="noopener noreferrer" className="truncate font-medium hover:underline inline-flex items-center gap-1">
-                    {c.title} <ExternalLink className="w-3 h-3 shrink-0" />
-                  </a>
-                ) : (
-                  <span className="truncate">{c.title}</span>
-                )}
-                {c.is_default && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#1d1d1f] text-white">Mặc định</span>}
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="space-y-4">
+        {(['cvs', 'covers'] as const).map(k => (
+          <div key={k}>
+            <p className={head}>
+              {k === 'cvs' ? 'Kho CV' : 'Cover letter'} · {data[k].length}
+            </p>
+            {data[k].length === 0 ? (
+              <p className="mt-1.5 text-xs text-muted-foreground">Chưa có.</p>
+            ) : (
+              <ul className="mt-1.5 space-y-1.5">
+                {data[k].map(c => (
+                  <li key={c.id} className="text-sm">
+                    <div className="flex items-center gap-2">
+                      {c.source === 'link' ? <Link2 className="w-4 h-4 shrink-0" /> : <FileText className="w-4 h-4 shrink-0" />}
+                      {c.url ? (
+                        <a href={c.url} target="_blank" rel="noopener noreferrer" className="truncate font-medium hover:underline inline-flex items-center gap-1">
+                          {c.title} <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="truncate font-medium">{c.title}</span>
+                      )}
+                      {c.is_default && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#1d1d1f] text-white">Mặc định</span>}
+                    </div>
+                    {c.source === 'text' && c.body && <p className="mt-1 pl-6 text-xs text-muted-foreground whitespace-pre-line line-clamp-4">{c.body}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
       <div>
         <p className={head}>Đã ứng tuyển · {data.applications.length}</p>

@@ -2,12 +2,21 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, ChevronLeft, ExternalLink, FileText, Link2, Loader2, Lock, Star, Trash2, Upload } from 'lucide-react';
-import { actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { useRouter } from 'next/navigation';
+import { Check, ChevronLeft, ExternalLink, FileText, Link2, Loader2, Lock, PenLine, Star, Trash2, Upload } from 'lucide-react';
+import { actorClient, actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { LogoutButton } from './logout-button';
 import type { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
-import { COVER_LETTER_MAX, CREW_FILE_MAX_BYTES, CREW_MAX_CVS, CrewAttachments, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
+import {
+  COVER_LETTER_MAX,
+  CREW_FILE_MAX_BYTES,
+  CREW_MAX_COVERS,
+  CREW_MAX_CVS,
+  CREW_SERVER_UPLOAD_MAX,
+  CrewAttachments,
+  CrewFileKind,
+  CrewProfile
+} from '@/lib/dienvienvn/crew-profiles';
 import { CREW_PROJECT_TYPES, labelOf, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
 import { useDvvnHref } from './base-path';
 import { CrewFormB, CrewProfileFields, crewFormBFrom } from './crew-profile-fields';
@@ -15,37 +24,22 @@ import { CrewAttachmentsBlock, CrewProfileDetails } from './crew-profile-view';
 import { GlobalNav, SiteFooter } from './site-chrome';
 
 type MeApp = { id: string; job_id: string; created_at: string; title: string; company: string; open: boolean } & Partial<CrewAttachments>;
-export type CrewCvItem = {
+/** 1 file trong kho: CV (PDF / link cũ) hoặc cover letter (PDF / viết tay). */
+export type CrewFileItem = {
   id: string;
+  kind: CrewFileKind;
   title: string;
-  kind: 'file' | 'link';
+  source: 'file' | 'link' | 'text';
   url: string | null;
   file_name: string | null;
   file_size: number | null;
   link_url: string | null;
+  body: string | null;
   is_default: boolean;
   created_at: string;
 };
-type Me = { crew: CrewProfile | null; cvs?: CrewCvItem[]; applications?: MeApp[]; email?: string; mode?: string };
-
-/** Trang ứng tuyển đang dở (đăng ký / tạo hồ sơ xong thì quay lại tin này). */
-const NEXT_KEY = 'dvvn-crew-next';
-const readNext = (href: (p: string) => string) => {
-  try {
-    const v = window.localStorage.getItem(NEXT_KEY) || '';
-    return v.startsWith(href('/tuyen-dung/ung-tuyen/')) ? v : '';
-  } catch {
-    return '';
-  }
-};
-const writeNext = (v: string) => {
-  try {
-    if (v) window.localStorage.setItem(NEXT_KEY, v);
-    else window.localStorage.removeItem(NEXT_KEY);
-  } catch {
-    /* trình duyệt chặn lưu */
-  }
-};
+type Lib = { cvs: CrewFileItem[]; covers: CrewFileItem[] };
+type Me = { crew: CrewProfile | null; applications?: MeApp[]; email?: string; mode?: string } & Partial<Lib>;
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -123,7 +117,50 @@ const vnDate = (s: string) => new Date(s).toLocaleDateString('vi-VN', { timeZone
 async function sendJson(url: string, method: string, body?: unknown) {
   const res = await actorFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** File có phải PDF không: theo nội dung (%PDF-), không tin đuôi / loại file trình duyệt báo. */
+async function isPdf(file: File): Promise<boolean> {
+  try {
+    const head = new Uint8Array(await file.slice(0, 1024).arrayBuffer());
+    return new TextDecoder('latin1').decode(head).includes('%PDF-');
+  } catch {
+    return /\.pdf$/i.test(file.name);
+  }
+}
+
+/**
+ * Tải 1 file PDF vào kho: tải thẳng lên kho riêng tư (tới 10MB, không qua Vercel),
+ * không được thì tải qua máy chủ (tới 4MB). Trả về danh sách kho mới + id file vừa thêm.
+ */
+async function uploadPdf(kind: CrewFileKind, file: File): Promise<{ ok: boolean; data: { cvs?: CrewFileItem[]; covers?: CrewFileItem[]; id?: string; error?: string } }> {
+  if (file.size === 0) return { ok: false, data: { error: 'File trống.' } };
+  if (file.size > CREW_FILE_MAX_BYTES) return { ok: false, data: { error: 'File vượt quá 10MB. Vui lòng nén / xuất lại PDF nhẹ hơn.' } };
+  if (!(await isPdf(file))) return { ok: false, data: { error: 'Chỉ nhận file PDF. Vui lòng xuất file sang PDF rồi tải lên.' } };
+  const title = file.name.replace(/\.pdf$/i, '').slice(0, 80);
+  // Luôn gắn loại "application/pdf" (một số máy báo loại file rỗng / khác → kho từ chối)
+  const pdf = new File([file], file.name || `${kind}.pdf`, { type: 'application/pdf' });
+
+  const u = await sendJson('/api/dienvienvn/crew/files/upload-url', 'POST', { kind, size: file.size }).catch(() => null);
+  if (u && !u.ok && u.status < 500) return u; // kho đầy, quá dung lượng, chưa đăng nhập…
+  const c = actorClient();
+  if (u?.ok && c) {
+    const { error } = await c.storage.from(u.data.bucket).uploadToSignedUrl(u.data.path, u.data.token, pdf, { contentType: 'application/pdf', upsert: false });
+    if (!error) return sendJson('/api/dienvienvn/crew/files', 'POST', { kind, path: u.data.path, name: file.name, title });
+    console.warn('[dienvienvn] Tải thẳng lên kho lỗi, thử qua máy chủ:', error.message);
+  }
+  if (file.size > CREW_SERVER_UPLOAD_MAX) return { ok: false, data: { error: u?.data?.error || 'Không tải được file lên. Vui lòng thử lại sau ít phút.' } };
+  const fd = new FormData();
+  fd.append('kind', kind);
+  fd.append('title', title);
+  fd.append('file', pdf);
+  try {
+    const res = await actorFetch('/api/dienvienvn/crew/files', { method: 'POST', body: fd });
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  } catch {
+    return { ok: false, data: { error: 'Mất kết nối mạng. Vui lòng thử lại.' } };
+  }
 }
 
 /* ---------------- Đăng ký tài khoản ekip ---------------- */
@@ -132,7 +169,6 @@ async function sendJson(url: string, method: string, body?: unknown) {
 export function CrewSignup() {
   const href = useDvvnHref();
   const router = useRouter();
-  const params = useSearchParams();
   const session = useActorSession();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -141,11 +177,7 @@ export function CrewSignup() {
   const [error, setError] = useState('');
   const [exists, setExists] = useState(false);
   const [sent, setSent] = useState('');
-  const next = params.get('next') || '';
 
-  useEffect(() => {
-    if (next.startsWith(href('/tuyen-dung/ung-tuyen/'))) writeNext(next);
-  }, [next, href]);
   useEffect(() => {
     if (session.status === 'signed-in') router.replace(href('/tai-khoan/ekip'));
   }, [session.status, router, href]);
@@ -238,62 +270,62 @@ export function CrewSignup() {
   );
 }
 
-/* ---------------- Kho CV ---------------- */
+/* ---------------- Kho CV / cover letter ---------------- */
 
 /**
- * Kho CV: thêm file PDF / link, đặt mặc định, xoá.
- * select: dùng khi ứng tuyển — chọn 1 CV gửi kèm (CV mới tải lên tự được chọn).
+ * Kho file của 1 loại (CV hoặc cover letter): tải PDF, viết cover letter (chỉ ở trang tài khoản), đặt mặc định, xoá.
+ * select: dùng khi ứng tuyển — chọn 1 file gửi kèm (file mới tải lên tự được chọn).
  */
-function CvLibrary({
-  cvs,
-  onChange,
-  select
+function FileLibrary({
+  kind,
+  items,
+  onLib,
+  select,
+  hideEmpty = false
 }: {
-  cvs: CrewCvItem[];
-  onChange: (cvs: CrewCvItem[]) => void;
-  select?: { value: string | null; onSelect: (id: string | null) => void; required: boolean };
+  kind: CrewFileKind;
+  items: CrewFileItem[];
+  onLib: (lib: Partial<Lib>) => void;
+  select?: { value: string | null; onSelect: (id: string | null) => void };
+  hideEmpty?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [linkOpen, setLinkOpen] = useState(false);
-  const [linkTitle, setLinkTitle] = useState('');
-  const [linkUrl, setLinkUrl] = useState('');
-  const full = cvs.length >= CREW_MAX_CVS;
+  const [writing, setWriting] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const max = kind === 'cv' ? CREW_MAX_CVS : CREW_MAX_COVERS;
+  const full = items.length >= max;
+  const label = kind === 'cv' ? 'CV' : 'cover letter';
 
-  const done = (data: { cvs?: CrewCvItem[]; id?: string; error?: string }, ok: boolean) => {
-    if (!ok) return setError(data.error || 'Không lưu được. Vui lòng thử lại.');
+  const apply = (r: { ok: boolean; data: { cvs?: CrewFileItem[]; covers?: CrewFileItem[]; id?: string; error?: string } }) => {
+    if (!r.ok) {
+      setError(r.data.error || 'Không lưu được. Vui lòng thử lại.');
+      return false;
+    }
     setError('');
-    if (data.cvs) onChange(data.cvs);
-    if (data.id && select) select.onSelect(data.id);
+    onLib({ ...(r.data.cvs ? { cvs: r.data.cvs } : {}), ...(r.data.covers ? { covers: r.data.covers } : {}) });
+    if (r.data.id && select) select.onSelect(r.data.id);
+    return true;
   };
   const upload = async (file: File) => {
-    setError('');
-    if (file.type && file.type !== 'application/pdf') return setError('Chỉ nhận file PDF.');
-    if (file.size > CREW_FILE_MAX_BYTES) return setError('File vượt quá 4MB.');
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('title', file.name.replace(/\.pdf$/i, '').slice(0, 80));
     setBusy('upload');
     try {
-      const res = await actorFetch('/api/dienvienvn/crew/cvs', { method: 'POST', body: fd });
-      done(await res.json().catch(() => ({})), res.ok);
-    } catch {
-      setError('Mất kết nối mạng. Vui lòng thử lại.');
+      apply(await uploadPdf(kind, file));
     } finally {
       setBusy(null);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
-  const addLink = async () => {
-    setBusy('link');
+  const saveText = async () => {
+    setBusy('text');
     try {
-      const { ok, data } = await sendJson('/api/dienvienvn/crew/cvs', 'POST', { title: linkTitle.trim() || 'CV', link_url: linkUrl.trim() });
-      done(data, ok);
+      const ok = apply(await sendJson('/api/dienvienvn/crew/files', 'POST', { kind: 'cover', title: draftTitle.trim(), body: draftBody.trim() }));
       if (ok) {
-        setLinkOpen(false);
-        setLinkTitle('');
-        setLinkUrl('');
+        setWriting(false);
+        setDraftTitle('');
+        setDraftBody('');
       }
     } catch {
       setError('Mất kết nối mạng. Vui lòng thử lại.');
@@ -304,19 +336,17 @@ function CvLibrary({
   const makeDefault = async (id: string) => {
     setBusy(id);
     try {
-      const { ok, data } = await sendJson('/api/dienvienvn/crew/cvs', 'PATCH', { id });
-      done(data, ok);
+      apply(await sendJson('/api/dienvienvn/crew/files', 'PATCH', { id }));
     } finally {
       setBusy(null);
     }
   };
-  const remove = async (cv: CrewCvItem) => {
-    if (!window.confirm(`Xoá CV "${cv.title}" khỏi kho? CV đã gửi cho nhà tuyển dụng vẫn được giữ.`)) return;
-    setBusy(cv.id);
+  const remove = async (f: CrewFileItem) => {
+    if (!window.confirm(`Xoá "${f.title}" khỏi kho? Bản đã gửi cho nhà tuyển dụng vẫn được giữ.`)) return;
+    setBusy(f.id);
     try {
-      const { ok, data } = await sendJson(`/api/dienvienvn/crew/cvs?id=${encodeURIComponent(cv.id)}`, 'DELETE');
-      done(data, ok);
-      if (ok && select?.value === cv.id) select.onSelect(null);
+      const ok = apply(await sendJson(`/api/dienvienvn/crew/files?id=${encodeURIComponent(f.id)}`, 'DELETE'));
+      if (ok && select?.value === f.id) select.onSelect(null);
     } finally {
       setBusy(null);
     }
@@ -324,54 +354,55 @@ function CvLibrary({
 
   return (
     <div>
-      {cvs.length === 0 ? (
-        <p className="rounded-[12px] bg-[var(--dv-bg-alt)] p-4 text-[14px] text-[var(--dv-text-secondary)]">Chưa có CV nào. Tải CV (PDF) hoặc thêm link CV.</p>
+      {items.length === 0 ? (
+        hideEmpty ? null : <p className="rounded-[12px] bg-[var(--dv-bg-alt)] p-4 text-[14px] text-[var(--dv-text-secondary)]">
+          {kind === 'cv' ? 'Chưa có CV nào.' : 'Chưa có cover letter nào.'}
+        </p>
       ) : (
         <ul className="space-y-2">
-          {select && !select.required && (
-            <li>
-              <label className={`flex cursor-pointer items-center gap-3 rounded-[14px] border p-3.5 ${select.value === null ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'}`}>
-                <input type="radio" name="crew-cv" checked={select.value === null} onChange={() => select.onSelect(null)} className="h-4 w-4 accent-[#1d1d1f]" />
-                <span className="text-[15px]">Không gửi kèm CV</span>
-              </label>
-            </li>
-          )}
-          {cvs.map(cv => {
-            const picked = select?.value === cv.id;
-            const meta = [cv.kind === 'file' ? 'PDF' : 'Link', sizeText(cv.file_size), `Thêm ${vnDate(cv.created_at)}`].filter(Boolean).join(' · ');
+          {items.map(f => {
+            const picked = select?.value === f.id;
+            const meta = [
+              f.source === 'file' ? 'PDF' : f.source === 'link' ? 'Link' : 'Viết tay',
+              sizeText(f.file_size),
+              `Thêm ${vnDate(f.created_at)}`
+            ]
+              .filter(Boolean)
+              .join(' · ');
             return (
-              <li key={cv.id} className={`flex flex-wrap items-center gap-3 rounded-[14px] border p-3.5 ${picked ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'} bg-white`}>
-                <label className={`flex min-w-0 flex-1 items-center gap-3 ${select ? 'cursor-pointer' : ''}`}>
-                  {select && <input type="radio" name="crew-cv" checked={picked} onChange={() => select.onSelect(cv.id)} className="h-4 w-4 shrink-0 accent-[#1d1d1f]" />}
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--dv-bg-alt)]">
-                    {cv.kind === 'file' ? <FileText className="h-5 w-5" /> : <Link2 className="h-5 w-5" />}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate text-[15px] font-semibold">{cv.title}</span>
-                      {cv.is_default && <span className="shrink-0 rounded-full bg-[#1d1d1f] px-2 py-0.5 text-[11px] font-semibold text-white">Mặc định</span>}
+              <li key={f.id} className={`rounded-[14px] border bg-white p-3.5 ${picked ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'}`}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className={`flex min-w-0 flex-1 items-center gap-3 ${select ? 'cursor-pointer' : ''}`}>
+                    {select && <input type="radio" name={`crew-${kind}`} checked={picked} onChange={() => select.onSelect(f.id)} className="h-4 w-4 shrink-0 accent-[#1d1d1f]" />}
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--dv-bg-alt)]">
+                      {f.source === 'link' ? <Link2 className="h-5 w-5" /> : f.source === 'text' ? <PenLine className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                     </span>
-                    <span className="block truncate text-[13px] text-[var(--dv-text-secondary)]">{meta}</span>
-                  </span>
-                </label>
-                <div className="flex shrink-0 items-center gap-1">
-                  {busy === cv.id && <Loader2 className="h-4 w-4 animate-spin text-[var(--dv-text-secondary)]" />}
-                  {cv.url && (
-                    <a href={cv.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-medium hover:bg-[var(--dv-bg-alt)]">
-                      Xem <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  )}
-                  {!select && !cv.is_default && (
-                    <button type="button" onClick={() => makeDefault(cv.id)} disabled={!!busy} className="inline-flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-medium hover:bg-[var(--dv-bg-alt)]">
-                      <Star className="h-3.5 w-3.5" /> Đặt mặc định
-                    </button>
-                  )}
-                  {!select && (
-                    <button type="button" onClick={() => remove(cv)} disabled={!!busy} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#b00020] hover:bg-[#fff0f0]" aria-label={`Xoá CV ${cv.title}`}>
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate text-[15px] font-semibold">{f.title}</span>
+                        {f.is_default && <span className="shrink-0 rounded-full bg-[#1d1d1f] px-2 py-0.5 text-[11px] font-semibold text-white">Mặc định</span>}
+                      </span>
+                      <span className="block truncate text-[13px] text-[var(--dv-text-secondary)]">{meta}</span>
+                    </span>
+                  </label>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {busy === f.id && <Loader2 className="h-4 w-4 animate-spin text-[var(--dv-text-secondary)]" />}
+                    {f.url && (
+                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-medium hover:bg-[var(--dv-bg-alt)]">
+                        Xem <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {!select && !f.is_default && (
+                      <button type="button" onClick={() => makeDefault(f.id)} disabled={!!busy} className="inline-flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-medium hover:bg-[var(--dv-bg-alt)]">
+                        <Star className="h-3.5 w-3.5" /> Đặt mặc định
+                      </button>
+                    )}
+                    <button type="button" onClick={() => remove(f)} disabled={!!busy} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#b00020] hover:bg-[#fff0f0]" aria-label={`Xoá ${f.title}`}>
                       <Trash2 className="h-4 w-4" />
                     </button>
-                  )}
+                  </div>
                 </div>
+                {f.source === 'text' && f.body && <p className="mt-2 line-clamp-3 whitespace-pre-line pl-[52px] text-[14px] leading-[1.5] text-[var(--dv-text-secondary)]">{f.body}</p>}
               </li>
             );
           })}
@@ -381,18 +412,27 @@ function CvLibrary({
       {error && <ErrorBox>{error}</ErrorBox>}
 
       {full ? (
-        <p className="mt-3 text-[13px] text-[var(--dv-text-secondary)]">Kho CV đã đủ {CREW_MAX_CVS} CV. Xoá bớt CV cũ trong Tài khoản ekip để thêm CV mới.</p>
-      ) : linkOpen ? (
+        <p className="mt-3 text-[13px] text-[var(--dv-text-secondary)]">
+          Kho đã đủ {max} {label}. Xoá bớt {label} cũ để thêm mới.
+        </p>
+      ) : writing ? (
         <div className="mt-3 space-y-2 rounded-[14px] border border-[#e5e5ea] bg-white p-3.5">
-          <input className="dv-input" placeholder="Tên CV (VD: CV Trợ lý casting)" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} maxLength={80} aria-label="Tên CV" />
-          <input className="dv-input" type="url" inputMode="url" placeholder="https://drive.google.com/…" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} aria-label="Link CV" />
-          <p className="text-[13px] text-[var(--dv-text-secondary)]">Để chế độ chia sẻ &ldquo;Bất kỳ ai có đường liên kết&rdquo; để nhà tuyển dụng mở được.</p>
+          <input className="dv-input" placeholder="Tên cover letter (VD: Cover letter Trợ lý casting)" value={draftTitle} onChange={e => setDraftTitle(e.target.value)} maxLength={80} aria-label="Tên cover letter" />
+          <textarea
+            rows={6}
+            maxLength={COVER_LETTER_MAX}
+            className="dv-input min-h-[150px] py-3"
+            placeholder="Giới thiệu ngắn về bạn và kinh nghiệm phù hợp với công việc…"
+            value={draftBody}
+            onChange={e => setDraftBody(e.target.value)}
+            aria-label="Nội dung cover letter"
+          />
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setLinkOpen(false)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
+            <button type="button" onClick={() => setWriting(false)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
               Huỷ
             </button>
-            <button type="button" onClick={addLink} disabled={!!busy || !linkUrl.trim()} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-              {busy === 'link' && <Loader2 className="h-4 w-4 animate-spin" />} Lưu link
+            <button type="button" onClick={saveText} disabled={!!busy || draftBody.trim().length < 20} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+              {busy === 'text' && <Loader2 className="h-4 w-4 animate-spin" />} Lưu cover letter
             </button>
           </div>
         </div>
@@ -409,60 +449,70 @@ function CvLibrary({
             }}
           />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={!!busy} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-            {busy === 'upload' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Tải CV (PDF, tối đa 4MB)
+            {busy === 'upload' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {busy === 'upload' ? 'Đang tải lên…' : kind === 'cv' ? 'Tải CV mới (PDF, tối đa 10MB)' : 'Tải cover letter (PDF)'}
           </button>
-          <button type="button" onClick={() => setLinkOpen(true)} disabled={!!busy} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
-            <Link2 className="h-4 w-4" /> Thêm link CV
-          </button>
+          {kind === 'cover' && !select && (
+            <button type="button" onClick={() => setWriting(true)} disabled={!!busy} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
+              <PenLine className="h-4 w-4" /> Viết cover letter
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+/** 2 khối quản lý file trên trang tài khoản. */
+function FileBlocks({ me, setMe }: { me: Me; setMe: (m: Me) => void }) {
+  const onLib = (lib: Partial<Lib>) => setMe({ ...me, ...lib });
+  return (
+    <>
+      <div className="dv-card p-6">
+        <p className="text-[19px] font-semibold">
+          Cover letter <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">· {(me.covers || []).length}/{CREW_MAX_COVERS}</span>
+        </p>
+        <div className="mt-3">
+          <FileLibrary kind="cover" items={me.covers || []} onLib={onLib} />
+        </div>
+      </div>
+      <div className="dv-card p-6">
+        <p className="text-[19px] font-semibold">
+          Kho CV <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">· {(me.cvs || []).length}/{CREW_MAX_CVS}</span>
+        </p>
+        <div className="mt-3">
+          <FileLibrary kind="cv" items={me.cvs || []} onLib={onLib} />
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ---------------- Ứng tuyển ---------------- */
 
-/** Chọn CV + cover letter (viết / PDF, không bắt buộc) rồi gửi. */
+/** Cover letter (chọn trong kho / viết mới cho tin này / tải PDF, không bắt buộc) rồi CV (chọn trong kho / tải mới), gửi. */
 function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; setMe: (m: Me) => void; onDone: (kind: 'applied' | 'already') => void }) {
   const cvs = me.cvs || [];
+  const covers = me.covers || [];
   const [cvId, setCvId] = useState<string | null>(() => cvs.find(c => c.is_default)?.id || cvs[0]?.id || null);
+  // null = không gửi; 'write' = viết mới cho tin này; còn lại = id cover letter trong kho
+  const [cover, setCover] = useState<string | null>(() => covers.find(c => c.is_default)?.id || null);
   const [letter, setLetter] = useState('');
-  const [letterFile, setLetterFile] = useState<{ path: string; name: string } | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const uploadLetter = async (file: File) => {
-    setError('');
-    if (file.type && file.type !== 'application/pdf') return setError('Cover letter chỉ nhận file PDF.');
-    if (file.size > CREW_FILE_MAX_BYTES) return setError('File vượt quá 4MB.');
-    const fd = new FormData();
-    fd.append('file', file);
-    setUploading(true);
-    try {
-      const res = await actorFetch('/api/dienvienvn/crew/cover', { method: 'POST', body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return setError(data.error || 'Không tải được file lên.');
-      setLetterFile(data.path ? { path: data.path, name: data.name || file.name } : null);
-    } catch {
-      setError('Mất kết nối mạng. Vui lòng thử lại.');
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  };
+  const onLib = (lib: Partial<Lib>) => setMe({ ...me, ...lib });
 
   const submit = async () => {
     setError('');
     if (job.requires_cv && !cvId) return setError('Tin này yêu cầu gửi kèm CV. Vui lòng chọn hoặc tải lên 1 CV.');
+    if (cover === 'write' && !letter.trim()) return setError('Vui lòng viết cover letter, hoặc chọn "Không gửi cover letter".');
     setBusy(true);
     try {
       const { ok, data } = await sendJson('/api/dienvienvn/crew/apply', 'POST', {
         job_id: job.id,
         cv_id: cvId,
-        cover_letter: letter.trim(),
-        cover_letter_path: letterFile?.path || null
+        cover_id: cover && cover !== 'write' ? cover : null,
+        cover_letter: cover === 'write' ? letter.trim() : ''
       });
       if (!ok) return setError(data.error || 'Không gửi được ứng tuyển. Vui lòng thử lại.');
       onDone(data.applied === 'already' ? 'already' : 'applied');
@@ -473,62 +523,61 @@ function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; se
     }
   };
 
+  const option = (checked: boolean, onPick: () => void, text: string) => (
+    <label className={`flex cursor-pointer items-center gap-3 rounded-[14px] border bg-white p-3.5 ${checked ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'}`}>
+      <input type="radio" name="crew-cover" checked={checked} onChange={onPick} className="h-4 w-4 accent-[#1d1d1f]" />
+      <span className="text-[15px]">{text}</span>
+    </label>
+  );
+
   return (
     <>
       <div className="dv-card p-6">
         <p className="text-[19px] font-semibold">
-          CV gửi kèm{job.requires_cv ? <span className="text-[#b00020]"> *</span> : <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]"> (không bắt buộc)</span>}
+          1. Cover letter <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">(không bắt buộc)</span>
         </p>
-        <div className="mt-3">
-          <CvLibrary cvs={cvs} onChange={next => setMe({ ...me, cvs: next })} select={{ value: cvId, onSelect: setCvId, required: !!job.requires_cv }} />
+        <div className="mt-3 space-y-2">
+          {option(cover === null, () => setCover(null), 'Không gửi cover letter')}
+          <FileLibrary kind="cover" items={covers} onLib={onLib} select={{ value: cover, onSelect: id => setCover(id) }} hideEmpty />
+          {option(cover === 'write', () => setCover('write'), 'Viết cover letter mới cho tin này')}
+          {cover === 'write' && (
+            <div>
+              <textarea
+                rows={6}
+                maxLength={COVER_LETTER_MAX}
+                className="dv-input min-h-[150px] py-3"
+                placeholder="Giới thiệu ngắn vì sao bạn phù hợp với vị trí này…"
+                value={letter}
+                onChange={e => setLetter(e.target.value)}
+                aria-label="Cover letter"
+                autoFocus
+              />
+              <p className="mt-1 text-right text-[12px] text-[var(--dv-text-tertiary)]">
+                {letter.length}/{COVER_LETTER_MAX}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="dv-card p-6">
         <p className="text-[19px] font-semibold">
-          Cover letter <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">(không bắt buộc)</span>
+          2. CV{job.requires_cv ? <span className="text-[#b00020]"> *</span> : <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]"> (không bắt buộc)</span>}
         </p>
-        <textarea
-          rows={6}
-          maxLength={COVER_LETTER_MAX}
-          className="dv-input mt-3 min-h-[150px] py-3"
-          placeholder="Giới thiệu ngắn vì sao bạn phù hợp với vị trí này…"
-          value={letter}
-          onChange={e => setLetter(e.target.value)}
-          aria-label="Cover letter"
-        />
-        <p className="mt-1 text-right text-[12px] text-[var(--dv-text-tertiary)]">
-          {letter.length}/{COVER_LETTER_MAX}
-        </p>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/pdf,.pdf"
-          className="hidden"
-          onChange={e => {
-            const f = e.target.files?.[0];
-            if (f) uploadLetter(f);
-          }}
-        />
-        {letterFile ? (
-          <div className="mt-2 flex items-center justify-between gap-3 rounded-[12px] bg-[var(--dv-bg-alt)] px-3.5 py-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[14px]">
-              <FileText className="h-4 w-4 shrink-0" /> <span className="truncate">{letterFile.name}</span>
-            </span>
-            <button type="button" onClick={() => setLetterFile(null)} className="shrink-0 text-[13px] font-semibold underline">
-              Bỏ file
-            </button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="dv-btn dv-btn-secondary mt-2 !h-10 !py-0 text-[14px]">
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Đính kèm cover letter (PDF)
-          </button>
-        )}
+        <div className="mt-3 space-y-2">
+          {!job.requires_cv && (
+            <label className={`flex cursor-pointer items-center gap-3 rounded-[14px] border bg-white p-3.5 ${cvId === null ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'}`}>
+              <input type="radio" name="crew-cv" checked={cvId === null} onChange={() => setCvId(null)} className="h-4 w-4 accent-[#1d1d1f]" />
+              <span className="text-[15px]">Không gửi CV</span>
+            </label>
+          )}
+          <FileLibrary kind="cv" items={cvs} onLib={onLib} select={{ value: cvId, onSelect: setCvId }} />
+        </div>
       </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
       <div className="flex justify-end">
-        <button type="button" onClick={submit} disabled={busy || uploading} className="dv-btn dv-btn-primary">
+        <button type="button" onClick={submit} disabled={busy} className="dv-btn dv-btn-primary">
           {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />} Gửi ứng tuyển
         </button>
       </div>
@@ -536,7 +585,7 @@ function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; se
   );
 }
 
-/** Trang ứng tuyển một tin: chưa đăng nhập → đăng ký / đăng nhập; chưa có hồ sơ → tạo hồ sơ; có hồ sơ → chọn CV, cover letter, gửi. */
+/** Trang ứng tuyển một tin: chưa đăng nhập → đăng ký / đăng nhập; chưa có hồ sơ → tạo hồ sơ; có hồ sơ → cover letter, CV, gửi. */
 export function CrewApply({ job }: { job: PublicCrewJob | null }) {
   const href = useDvvnHref();
   const session = useActorSession();
@@ -608,7 +657,7 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
     return gate(
       'Đăng ký tài khoản ekip để ứng tuyển.',
       <>
-        <Link href={href(`/ekip/dang-ky?next=${encodeURIComponent(here)}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+        <Link href={href('/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
           Đăng ký tài khoản ekip
         </Link>
         <Link href={href(`/dang-nhap?next=${encodeURIComponent(here)}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
@@ -620,9 +669,9 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
   if (meError || !me) return <Shell>{back}<ErrorBox>{meError}</ErrorBox></Shell>;
   if (!me.crew) {
     return gate(
-      'Hoàn thiện hồ sơ ekip để ứng tuyển.',
-      <Link href={href(`/tai-khoan/ekip?next=${encodeURIComponent(here)}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-        Tạo hồ sơ ekip
+      'Điền hồ sơ ekip trước khi ứng tuyển.',
+      <Link href={href('/tai-khoan/ekip')} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+        Điền hồ sơ ekip
       </Link>
     );
   }
@@ -645,20 +694,15 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
             </Link>
           </div>
         ) : (
-          <>
-            <div className="dv-card p-6">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[19px] font-semibold">Hồ sơ ekip</p>
-                <Link href={href(`/tai-khoan/ekip?next=${encodeURIComponent(here)}`)} className="dv-link text-[14px]">
-                  Sửa hồ sơ
-                </Link>
-              </div>
-              <div className="mt-3">
-                <CrewProfileDetails p={crew} compact />
-              </div>
-            </div>
-            <ApplyPanel job={job} me={me} setMe={setMe} onDone={k => { setDone(k); window.scrollTo({ top: 0 }); }} />
-          </>
+          <ApplyPanel
+            job={job}
+            me={me}
+            setMe={setMe}
+            onDone={k => {
+              setDone(k);
+              window.scrollTo({ top: 0 });
+            }}
+          />
         )}
       </div>
     </Shell>
@@ -667,11 +711,10 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
 
 /* ---------------- Tài khoản ekip ---------------- */
 
-/** Tài khoản ekip: tạo / sửa hồ sơ, kho CV, các tin đã ứng tuyển (kèm CV / cover letter đã gửi). */
+/** Tài khoản ekip: hồ sơ chung (Form B), cover letter, kho CV, các tin đã ứng tuyển. */
 export function CrewAccount() {
   const href = useDvvnHref();
   const router = useRouter();
-  const params = useSearchParams();
   const session = useActorSession();
   const signedIn = session.status === 'signed-in';
   const { me, setMe, error: meError, reload } = useCrewMe(signedIn);
@@ -679,16 +722,10 @@ export function CrewAccount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [next, setNext] = useState('');
 
   useEffect(() => {
     if (session.status === 'signed-out') router.replace(href(`/dang-nhap?next=${encodeURIComponent(href('/tai-khoan/ekip'))}`));
   }, [session.status, router, href]);
-  useEffect(() => {
-    const p = params.get('next') || '';
-    if (p.startsWith(href('/tuyen-dung/ung-tuyen/'))) writeNext(p);
-    setNext(readNext(href));
-  }, [params, href]);
   // Chưa có hồ sơ: mở Form B ngay, email = email đăng nhập
   useEffect(() => {
     if (me && !me.crew && !form) setForm(crewFormBFrom(null, me.email || (signedIn ? session.session.user.email || '' : '')));
@@ -715,6 +752,8 @@ export function CrewAccount() {
         ? await sendJson('/api/dienvienvn/crew/me', 'PATCH', { profile: form })
         : await sendJson('/api/dienvienvn/crew/profile', 'POST', { profile: form });
       if (!ok) return setError(data.error || 'Không lưu được hồ sơ.');
+      // Lần đầu lưu hồ sơ: về trang Việc làm ekip để chọn tin ứng tuyển
+      if (!crew) return router.push(href('/ekip'));
       setForm(null);
       setSaved(true);
       await reload();
@@ -735,14 +774,16 @@ export function CrewAccount() {
     </div>
   );
 
-  // Chưa có hồ sơ: Form B
+  // Lần đầu: Form B (hồ sơ chung) + cover letter + kho CV
   if (!crew) {
     return (
       <Shell>
         {header}
         <h1 className="dv-display dv-headline mt-4">Hồ sơ ekip.</h1>
+        <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">Điền hồ sơ chung cho các tin tuyển dụng trước khi nộp đơn ứng tuyển (có thể sửa lại sau).</p>
         <div className="mt-6 space-y-4">
           {form ? <CrewProfileFields value={form} onChange={setForm} emailLocked /> : <Spinner />}
+          <FileBlocks me={me} setMe={setMe} />
         </div>
         {error && <ErrorBox>{error}</ErrorBox>}
         <div className="mt-6 flex justify-end">
@@ -760,19 +801,6 @@ export function CrewAccount() {
       {header}
       <h1 className="dv-display dv-headline mt-4">Tài khoản ekip.</h1>
       {saved && !form && <p className="mt-4 rounded-[12px] bg-[#e8f5ec] p-3 text-[14px] text-[#1e6b3a]">Đã lưu hồ sơ.</p>}
-      {next && !locked && (
-        <div className="dv-card mt-4 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[15px] font-semibold">Bạn đang ứng tuyển dở một tin.</p>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => { writeNext(''); setNext(''); }} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
-              Bỏ qua
-            </button>
-            <Link href={next} onClick={() => writeNext('')} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-              Tiếp tục ứng tuyển
-            </Link>
-          </div>
-        </div>
-      )}
       <div className="mt-6 space-y-4">
         {locked && <LockedNote />}
         {form ? (
@@ -806,12 +834,7 @@ export function CrewAccount() {
           </div>
         )}
 
-        <div className="dv-card p-6">
-          <p className="text-[19px] font-semibold">
-            Kho CV <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">· {(me.cvs || []).length}/{CREW_MAX_CVS}</span>
-          </p>
-          <div className="mt-3">{locked ? <p className="text-[14px] text-[var(--dv-text-secondary)]">Tài khoản đang bị khoá.</p> : <CvLibrary cvs={me.cvs || []} onChange={cvs => setMe({ ...me, cvs })} />}</div>
-        </div>
+        {!locked && <FileBlocks me={me} setMe={setMe} />}
 
         <div className="dv-card p-6">
           <div className="flex items-center justify-between gap-3">

@@ -3,7 +3,7 @@ import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CrewApplication, crewProfileSchema, toCrewProfileColumns } from '@/lib/dienvienvn/crew-profiles';
 import { CREW_MISSING, getCrewUser, isMissingTable } from '@/lib/dienvienvn/crew-server';
 import { CrewJob, crewJobActive } from '@/lib/dienvienvn/crew-jobs';
-import { attachmentsFor, listCvs } from '@/lib/dienvienvn/crew-files';
+import { attachmentsFor, listFiles } from '@/lib/dienvienvn/crew-files';
 
 // Tài khoản ekip: hồ sơ, kho CV, các tin đã ứng tuyển (kèm CV / cover letter đã nộp); sửa hồ sơ.
 export async function GET(req: NextRequest) {
@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
   if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
   const who = await getCrewUser(req, db);
   if (who instanceof NextResponse) return who;
-  if (!who.crew) return NextResponse.json({ mode: 'live', crew: null, email: who.user.email || '' }, { headers: { 'Cache-Control': 'no-store' } });
+  // Chưa có hồ sơ: vẫn trả kho file (tải CV / cover letter được ngay sau khi tạo mật khẩu)
+  if (!who.crew) {
+    const lib = await listFiles(db, who.user.id, null).catch(() => ({ cvs: [], covers: [] }));
+    return NextResponse.json({ mode: 'live', crew: null, email: who.user.email || '', ...lib }, { headers: { 'Cache-Control': 'no-store' } });
+  }
 
   const { data: apps, error } = await db.from('crew_applications').select('*').eq('crew_profile_id', who.crew.id).order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: isMissingTable(error) ? CREW_MISSING : 'Không tải được dữ liệu.' }, { status: 500 });
@@ -20,7 +24,7 @@ export async function GET(req: NextRequest) {
   const { data: jobs } = list.length ? await db.from('crew_jobs').select('*').in('id', list.map(a => a.job_id)) : { data: [] };
   const byId = new Map(((jobs || []) as CrewJob[]).map(j => [j.id, j]));
   // Bảng kho CV có thể chưa có (chưa chạy migration 20261118) → vẫn trả hồ sơ
-  const [cvs, files] = await Promise.all([listCvs(db, who.crew.id).catch(() => []), attachmentsFor(db, list).catch(() => new Map())]);
+  const [lib, files] = await Promise.all([listFiles(db, who.user.id, who.crew.id).catch(() => ({ cvs: [], covers: [] })), attachmentsFor(db, list).catch(() => new Map())]);
   const applications = list.map(a => {
     const j = byId.get(a.job_id);
     return {
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest) {
       ...(files.get(a.id) || { cv: null, cover_letter: null, cover_letter_url: null })
     };
   });
-  return NextResponse.json({ mode: 'live', crew: who.crew, cvs, applications }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ mode: 'live', crew: who.crew, ...lib, applications }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: NextRequest) {

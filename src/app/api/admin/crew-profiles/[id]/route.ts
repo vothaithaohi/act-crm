@@ -3,12 +3,12 @@ import { z } from 'zod';
 import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 import { CrewApplication } from '@/lib/dienvienvn/crew-profiles';
 import { notifyApplications } from '@/lib/dienvienvn/crew-server';
-import { attachmentsFor, listCvs } from '@/lib/dienvienvn/crew-files';
+import { attachmentsFor, listFiles } from '@/lib/dienvienvn/crew-files';
 import { CrewJob } from '@/lib/dienvienvn/crew-jobs';
 
 const schema = z.object({ review_status: z.enum(['pending', 'approved', 'rejected']) });
 
-// ACT xem kho CV + các lượt ứng tuyển (kèm CV / cover letter, link xem tạm 1 giờ) của 1 ứng viên ekip.
+// ACT xem kho CV / cover letter + các lượt ứng tuyển (kèm CV / cover letter, link xem tạm 1 giờ) của 1 ứng viên ekip.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guardPartnerAdmin(req);
   if ('res' in g) return g.res;
@@ -18,7 +18,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const list = (apps || []) as CrewApplication[];
   const { data: jobs } = list.length ? await g.db.from('crew_jobs').select('id,title,company').in('id', list.map(a => a.job_id)) : { data: [] };
   const jobById = new Map(((jobs || []) as Pick<CrewJob, 'id' | 'title' | 'company'>[]).map(j => [j.id, j]));
-  const [cvs, files] = await Promise.all([listCvs(g.db, id).catch(() => []), attachmentsFor(g.db, list).catch(() => new Map())]);
+  const { data: profile } = await g.db.from('crew_profiles').select('auth_user_id').eq('id', id).maybeSingle();
+  const [lib, files] = await Promise.all([
+    listFiles(g.db, (profile?.auth_user_id as string | null) || null, id).catch(() => ({ cvs: [], covers: [] })),
+    attachmentsFor(g.db, list).catch(() => new Map())
+  ]);
   const applications = list.map(a => ({
     id: a.id,
     created_at: a.created_at,
@@ -26,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     company: jobById.get(a.job_id)?.company || '',
     attachments: files.get(a.id) || null
   }));
-  return NextResponse.json({ cvs, applications }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ cvs: lib.cvs, covers: lib.covers, applications }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 // ACT khoá / mở khoá tài khoản ekip (hồ sơ cũ "Chờ duyệt" mở khoá = duyệt). Mở khoá: gửi email báo NSX các lượt ứng tuyển chưa báo.
