@@ -2,21 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, MapPin } from 'lucide-react';
-import {
-  COMPANY_TYPES,
-  CREW_PROJECT_TYPES,
-  EMPLOYMENT_TYPES,
-  PROJECT_PHASES,
-  SALARY_TYPES,
-  SENIORITY_LEVELS,
-  WORK_CITIES,
-  WORK_MODES,
-  OTHER_ID,
-  departmentOf,
-  labelOf,
-  roleLabel
-} from '@/lib/dienvienvn/crew-taxonomy';
+import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, MapPin, UsersRound } from 'lucide-react';
+import { OTHER_ID, departmentOf, jobOptionText, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
 import { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { useDvvnHref } from './base-path';
@@ -88,10 +75,12 @@ const fmtMoney = (n?: number | null) => (n ? n.toLocaleString('vi-VN') : '');
 function salaryText(job: PublicCrewJob): string {
   if (!job.salary_type) return job.compensation || '';
   if (job.salary_type === 'negotiable') return 'Thỏa thuận theo năng lực';
+  const other = job.salary_type === OTHER_ID ? jobOptionText('salary_type', OTHER_ID, job.other_values) : '';
   const unit = { per_day: 'VND/ngày', per_project: 'VND/dự án', per_month: 'VND/tháng' }[job.salary_type] || 'VND';
   const [lo, hi] = [fmtMoney(job.salary_min), fmtMoney(job.salary_max)];
   const range = lo && hi ? `${lo} – ${hi}` : lo ? `Từ ${lo}` : hi ? `Đến ${hi}` : '';
-  return range ? `${range} ${unit}` : labelOf(SALARY_TYPES, job.salary_type);
+  if (other) return range ? `${range} VND · ${other}` : other;
+  return range ? `${range} ${unit}` : jobOptionText('salary_type', job.salary_type, job.other_values);
 }
 
 /** Khung cho ứng viên ekip: chưa đăng nhập → đăng ký / đăng nhập; đã đăng nhập → hồ sơ ekip. */
@@ -138,13 +127,15 @@ function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean
   const formA = !!job.role_title;
   const role = roleLabel(job.department, job.role_title, job.role_other);
   const dates = [job.start_date ? formatVnDate(job.start_date) : '', job.end_date ? formatVnDate(job.end_date) : ''].filter(Boolean).join(' → ');
-  const place = [labelOf(WORK_CITIES, job.city), job.location_detail].filter(Boolean).join(' · ');
+  const t = (f: Parameters<typeof jobOptionText>[0], id?: string | null) => jobOptionText(f, id, job.other_values).split(' (')[0];
+  const place = [t('city', job.city), job.location_detail].filter(Boolean).join(' · ');
   const facts = (
     formA
       ? [
           place ? { icon: MapPin, text: place } : null,
           dates || job.shooting_days ? { icon: CalendarDays, text: [dates, job.shooting_days ? `${job.shooting_days} ngày quay` : ''].filter(Boolean).join(' · ') } : null,
-          salaryText(job) ? { icon: Coins, text: salaryText(job) } : null
+          salaryText(job) ? { icon: Coins, text: salaryText(job) } : null,
+          job.quantity ? { icon: UsersRound, text: `Cần ${job.quantity} người` } : null
         ]
       : [
           job.location ? { icon: MapPin, text: job.location } : null,
@@ -155,13 +146,13 @@ function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean
   const tags = formA
     ? [
         job.department === OTHER_ID ? '' : departmentOf(job.department)?.label,
-        labelOf(SENIORITY_LEVELS, job.seniority_level).split(' (')[0],
-        labelOf(EMPLOYMENT_TYPES, job.employment_type).split(' (')[0],
-        labelOf(WORK_MODES, job.work_mode)
+        t('seniority_level', job.seniority_level),
+        t('employment_type', job.employment_type),
+        t('work_mode', job.work_mode)
       ].filter(Boolean)
     : job.positions;
   const project = formA
-    ? [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), labelOf(CREW_PROJECT_TYPES, job.project_type).split(' (')[0], labelOf(PROJECT_PHASES, job.project_phase).split(' (')[0]]
+    ? [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), t('project_type', job.project_type), t('project_phase', job.project_phase)]
         .filter(Boolean)
         .join(' · ')
     : '';
@@ -172,7 +163,7 @@ function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean
           {job.company && (
             <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">
               {job.company}
-              {job.company_type ? <span className="font-normal"> · {labelOf(COMPANY_TYPES, job.company_type).split(' (')[0]}</span> : null}
+              {job.company_type ? <span className="font-normal"> · {t('company_type', job.company_type)}</span> : null}
             </p>
           )}
           <h2 className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2] md:text-[24px]">{formA && role ? role.vi : job.title}</h2>

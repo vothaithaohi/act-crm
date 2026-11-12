@@ -5,6 +5,7 @@ export type Option = { id: string; label: string };
 export const COMPANY_TYPES: Option[] = [
   { id: 'production_house', label: 'Production House / Studio' },
   { id: 'agency', label: 'Creative / Advertising Agency' },
+  { id: 'casting_agency', label: 'Casting Agency' },
   { id: 'broadcaster', label: 'Đài truyền hình / Đơn vị phát hành (Platform/Broadcaster)' },
   { id: 'indie', label: 'Đoàn phim độc lập (Indie Filmmaker)' },
   { id: 'in_house_brand', label: 'Nhãn hàng / Doanh nghiệp tự sản xuất (In-house Brand)' }
@@ -172,4 +173,30 @@ export function roleLabel(dept?: string | null, role?: string | null, other?: st
   if (found) return { vi: found.vi, en: found.en };
   if (role === OTHER_ID && other?.trim()) return { vi: other.trim(), en: '' };
   return null;
+}
+
+/** Ô chọn của form đăng tin ekip có thêm "Khác (tự ghi)" — chọn thì hiện ô ghi (lưu trong other_values của tin). */
+export const OTHER_OPTION: Option = { id: OTHER_ID, label: 'Khác (tự ghi)' };
+export const withOther = (list: Option[]): Option[] => [...list.filter(o => o.id !== OTHER_ID), OTHER_OPTION];
+
+/** Các ô chọn có "Khác" trong form đăng tin ekip. */
+export const JOB_OTHER_FIELDS = ['company_type', 'project_type', 'project_phase', 'seniority_level', 'employment_type', 'city', 'work_mode', 'salary_type'] as const;
+export type JobOtherField = (typeof JOB_OTHER_FIELDS)[number];
+
+export const JOB_OPTIONS: Record<JobOtherField, Option[]> = {
+  company_type: withOther(COMPANY_TYPES),
+  project_type: withOther(CREW_PROJECT_TYPES),
+  project_phase: withOther(PROJECT_PHASES),
+  seniority_level: withOther(SENIORITY_LEVELS),
+  employment_type: withOther(EMPLOYMENT_TYPES),
+  city: withOther(WORK_CITIES),
+  work_mode: withOther(WORK_MODES),
+  salary_type: withOther(SALARY_TYPES)
+};
+
+/** Chữ hiển thị của một ô chọn trong tin: lựa chọn có sẵn, hoặc chữ người đăng tự ghi khi chọn "Khác". */
+export function jobOptionText(field: JobOtherField, id?: string | null, others?: Partial<Record<string, string>> | null): string {
+  if (!id) return '';
+  if (id === OTHER_ID) return (others?.[field] || '').trim() || 'Khác';
+  return labelOf(JOB_OPTIONS[field], id);
 }

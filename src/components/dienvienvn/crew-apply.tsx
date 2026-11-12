@@ -17,7 +17,7 @@ import {
   CrewFileKind,
   CrewProfile
 } from '@/lib/dienvienvn/crew-profiles';
-import { CREW_PROJECT_TYPES, labelOf, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
+import { jobOptionText, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
 import { useDvvnHref } from './base-path';
 import { CrewFormB, CrewProfileFields, crewFormBFrom } from './crew-profile-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from './crew-profile-view';
@@ -39,7 +39,7 @@ export type CrewFileItem = {
   created_at: string;
 };
 type Lib = { cvs: CrewFileItem[]; covers: CrewFileItem[] };
-type Me = { crew: CrewProfile | null; applications?: MeApp[]; email?: string; mode?: string } & Partial<Lib>;
+type Me = { crew: CrewProfile | null; applications?: MeApp[]; open_jobs?: PublicCrewJob[]; email?: string; mode?: string } & Partial<Lib>;
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -79,7 +79,7 @@ function LockedNote() {
 
 function JobSummary({ job }: { job: PublicCrewJob }) {
   const role = roleLabel(job.department, job.role_title, job.role_other);
-  const project = [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), labelOf(CREW_PROJECT_TYPES, job.project_type).split(' (')[0]].filter(Boolean).join(' · ');
+  const project = [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), jobOptionText('project_type', job.project_type, job.other_values).split(' (')[0]].filter(Boolean).join(' · ');
   return (
     <div className="dv-card p-6">
       {job.company && <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{job.company}</p>}
@@ -834,6 +834,8 @@ export function CrewAccount() {
           </div>
         )}
 
+        {!locked && <OpenJobs jobs={me.open_jobs || []} />}
+
         {!locked && <FileBlocks me={me} setMe={setMe} />}
 
         <div className="dv-card p-6">
@@ -863,5 +865,59 @@ export function CrewAccount() {
         </div>
       </div>
     </Shell>
+  );
+}
+
+/** Việc làm đang tuyển (chưa ứng tuyển) ngay trên trang tài khoản ekip. */
+function OpenJobs({ jobs }: { jobs: PublicCrewJob[] }) {
+  const href = useDvvnHref();
+  const [all, setAll] = useState(false);
+  const shown = all ? jobs : jobs.slice(0, 5);
+  return (
+    <div className="dv-card p-6">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[19px] font-semibold">
+          Việc làm đang tuyển <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">· {jobs.length}</span>
+        </p>
+        <Link href={href('/ekip')} className="dv-link text-[14px]">
+          Xem trang việc làm
+        </Link>
+      </div>
+      {jobs.length === 0 ? (
+        <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">Bạn đã ứng tuyển hết các tin đang tuyển. Tin mới sẽ hiện tại đây.</p>
+      ) : (
+        <>
+          <ul className="mt-3 divide-y divide-[#f0f0f2]">
+            {shown.map(j => {
+              const role = roleLabel(j.department, j.role_title, j.role_other);
+              const meta = [
+                j.company,
+                j.project_name || (j.project_type ? 'Dự án bảo mật' : ''),
+                j.quantity ? `Cần ${j.quantity} người` : '',
+                j.deadline ? `Hạn ${new Date(`${j.deadline}T00:00:00+07:00`).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}` : ''
+              ]
+                .filter(Boolean)
+                .join(' · ');
+              return (
+                <li key={j.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold">{role?.vi || j.title}</p>
+                    <p className="text-[13px] text-[var(--dv-text-secondary)]">{meta}</p>
+                  </div>
+                  <Link href={href(`/tuyen-dung/ung-tuyen/${j.id}`)} className="dv-btn dv-btn-primary !h-9 shrink-0 !px-4 !py-0 text-[14px]">
+                    Ứng tuyển
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {jobs.length > 5 && (
+            <button type="button" onClick={() => setAll(v => !v)} className="mt-2 text-[14px] font-semibold underline underline-offset-4">
+              {all ? 'Thu gọn' : `Xem thêm ${jobs.length - 5} tin`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }

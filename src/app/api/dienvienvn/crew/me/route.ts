@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CrewApplication, crewProfileSchema, toCrewProfileColumns } from '@/lib/dienvienvn/crew-profiles';
 import { CREW_MISSING, getCrewUser, isMissingTable } from '@/lib/dienvienvn/crew-server';
-import { CrewJob, crewJobActive } from '@/lib/dienvienvn/crew-jobs';
+import { CrewJob, crewJobActive, toPublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { attachmentsFor, listFiles } from '@/lib/dienvienvn/crew-files';
 
 // Tài khoản ekip: hồ sơ, kho CV, các tin đã ứng tuyển (kèm CV / cover letter đã nộp); sửa hồ sơ.
@@ -37,7 +37,11 @@ export async function GET(req: NextRequest) {
       ...(files.get(a.id) || { cv: null, cover_letter: null, cover_letter_url: null })
     };
   });
-  return NextResponse.json({ mode: 'live', crew: who.crew, ...lib, applications }, { headers: { 'Cache-Control': 'no-store' } });
+  // Việc làm đang tuyển mà tài khoản chưa ứng tuyển (hiện ngay trên trang tài khoản)
+  const applied = new Set(list.map(a => a.job_id));
+  const { data: openRows } = await db.from('crew_jobs').select('*').eq('status', 'open').order('created_at', { ascending: false }).limit(100);
+  const open_jobs = ((openRows || []) as CrewJob[]).filter(j => crewJobActive(j) && !applied.has(j.id)).map(toPublicCrewJob);
+  return NextResponse.json({ mode: 'live', crew: who.crew, ...lib, applications, open_jobs }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: NextRequest) {
