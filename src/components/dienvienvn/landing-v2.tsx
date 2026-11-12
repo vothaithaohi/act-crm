@@ -24,7 +24,17 @@ const SERVICE_PHOTOS = ['/dienvienvn/home/dich-vu-1.jpg', '/dienvienvn/home/dich
  * Hồ sơ luôn có mặt trong khối ảnh phần đầu trang chủ (vị trí / thứ tự đổi ngẫu nhiên mỗi lần vào trang / F5).
  * Các ô còn lại bốc ngẫu nhiên xoay vòng như bình thường. Sửa danh sách bằng username của hồ sơ.
  */
-const PINNED_HERO = ['phamthaikhuongthaikhuongpham', 'jakelee', 'truongquochau'];
+const PINNED_HERO = ['phamthaikhuongthaikhuongpham', 'jakelee', 'truongquochau', 'ngohien', 'huaankhang'];
+
+/** Khớp theo username, hoặc theo tên viết liền không dấu ("Hứa An Khang" → "huaankhang") nếu username khác dự kiến. */
+const compact = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+const isPinned = (f: { username: string; name: string }) => PINNED_HERO.includes(f.username) || PINNED_HERO.includes(compact(f.name));
 
 export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   const href = useDvvnHref();
@@ -35,8 +45,8 @@ export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
   const [faces, setFaces] = useState<HomeStats['faces'] | null>(null);
   const [hiringFaces, setHiringFaces] = useState<HomeStats['faces']>([]);
   useEffect(() => {
-    const pinned = stats.faces.filter(f => PINNED_HERO.includes(f.username));
-    const others = stats.faces.filter(f => !PINNED_HERO.includes(f.username));
+    const pinned = stats.faces.filter(isPinned);
+    const others = stats.faces.filter(f => !isPinned(f));
     setFaces(shuffle([...pinned, ...pickRotatingFaces(others, MOSAIC_FACES - pinned.length)]));
   }, [stats.faces]);
   useEffect(() => {
