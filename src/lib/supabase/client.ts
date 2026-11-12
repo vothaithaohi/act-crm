@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { previewGuardedFetch } from './preview-lock';
 
 export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,5 +9,6 @@ export function createClient() {
     return null;
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  // Super Admin đang "xem với vai trò…": chặn ghi dữ liệu (xem preview-lock.ts)
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, { global: { fetch: previewGuardedFetch } });
 }

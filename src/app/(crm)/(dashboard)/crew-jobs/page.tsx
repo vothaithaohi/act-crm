@@ -20,7 +20,9 @@ const emptyDraft = (): Draft => ({ status: 'open', form: crewFormFrom(null, 'ACT
 
 /** Tin tuyển ekip: duyệt tin đối tác đăng, ACT tự đăng / sửa / đóng tin. Hiện công khai tại dienvienvn.com/tuyen-dung. */
 export default function CrewJobsPage() {
-  const { currentUser } = useCRM();
+  const { currentUser, can } = useCRM();
+  // Vai trò Chỉ xem: xem tin + ứng viên, không đăng / duyệt / sửa / xoá
+  const canEdit = can('talents:write');
   const [jobs, setJobs] = useState<CrewJob[] | null>(null);
   const [problem, setProblem] = useState('');
   const [filter, setFilter] = useState<'all' | CrewJobStatus>('all');
@@ -109,7 +111,7 @@ export default function CrewJobsPage() {
   const pending = (jobs || []).filter(j => j.status === 'draft').length;
 
   return (
-    <PermissionGuard permission="talents:write" customTitle="Tuyển dụng ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý tin tuyển dụng.">
+    <PermissionGuard permissions={['talents:write', 'crew:read']} customTitle="Tuyển dụng ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý tin tuyển dụng.">
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -127,9 +129,9 @@ export default function CrewJobsPage() {
               <p className="mt-3 inline-flex rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">{pending} tin đang chờ duyệt</p>
             )}
           </div>
-          <button onClick={() => setEditing(emptyDraft())} className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold shrink-0">
+          {canEdit && <button onClick={() => setEditing(emptyDraft())} className="h-10 inline-flex items-center gap-2 px-4 rounded-xl bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold shrink-0">
             <Plus className="w-4 h-4" /> Đăng tin
-          </button>
+          </button>}
         </div>
 
         {problem ? (
@@ -173,27 +175,31 @@ export default function CrewJobsPage() {
                       <button onClick={() => setViewing(j)} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
                         <UsersRound className="w-3.5 h-3.5" /> Ứng viên · {(applicants.get(j.id) || []).length}
                       </button>
-                      {j.status === 'draft' && (
+                      {canEdit && j.status === 'draft' && (
                         <button onClick={() => setStatus(j, 'open', 'Đã duyệt — tin hiện công khai.')} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
                           <Check className="w-3.5 h-3.5" /> Duyệt
                         </button>
                       )}
-                      {j.status === 'open' && (
+                      {canEdit && j.status === 'open' && (
                         <button onClick={() => setStatus(j, 'closed', 'Đã đóng tin.')} className="h-8 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
                           Đóng tin
                         </button>
                       )}
-                      {j.status === 'closed' && (
+                      {canEdit && j.status === 'closed' && (
                         <button onClick={() => setStatus(j, 'open', 'Đã mở lại tin.')} className="h-8 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
                           Mở lại
                         </button>
                       )}
+                      {canEdit && (
+                      <>
                       <button title="Sửa" onClick={() => setEditing({ id: j.id, status: j.status, form: crewFormFrom(j) })} className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-muted">
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button title="Xoá" onClick={() => remove(j)} className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-destructive/10 hover:text-destructive">
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      </>
+                      )}
                     </div>
                   </div>
                 ))}

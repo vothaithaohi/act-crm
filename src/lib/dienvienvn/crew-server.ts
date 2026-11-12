@@ -7,6 +7,7 @@ import { CrewJob, crewJobActive } from './crew-jobs';
 import { CrewApplication, CrewProfile, crewPrimaryRoleText } from './crew-profiles';
 import { SENIORITY_LEVELS, labelOf } from './crew-taxonomy';
 import { sendMail } from './mailer';
+import { authUserInUse } from '@/lib/supabase/account-cleanup';
 
 export const CREW_MISSING = 'Hệ thống chưa sẵn sàng (cần chạy migration 20261115_crew_profiles.sql).';
 export const isMissingTable = (e: { message?: string; code?: string } | null) =>
@@ -88,6 +89,21 @@ export async function inviteCrewAccount(db: SupabaseClient, input: { email: stri
   if (!existing) return 'failed';
   // Đã đăng ký ekip nhưng chưa bấm link / chưa tạo mật khẩu: gửi lại link xác nhận.
   // Tài khoản khác (diễn viên, đối tác…) → đăng nhập bằng tài khoản đó rồi tạo hồ sơ ekip.
+  // Tài khoản bị bỏ lại (hồ sơ đã bị xoá, không còn gắn với hồ sơ nào): xoá rồi đăng ký lại như email mới
+  if (!(await authUserInUse(db, existing))) {
+    const { error: delErr } = await db.auth.admin.deleteUser(existing.id);
+    if (delErr) {
+      console.error('[dienvienvn] Không xoá được tài khoản bị bỏ lại:', delErr.message);
+      return 'failed';
+    }
+    const { data: fresh, error: freshErr } = await db.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: { redirectTo, data: { kind: 'dienvienvn_crew', full_name: input.full_name } }
+    });
+    if (freshErr || !fresh?.properties?.hashed_token) return 'failed';
+    return (await send('invite', fresh.properties.hashed_token)) ? 'invited' : 'failed';
+  }
   const pendingCrew = existing.user_metadata?.kind === 'dienvienvn_crew' && !isSelfSignup(existing) && !existing.last_sign_in_at;
   if (!pendingCrew) return 'exists';
   const { data: again, error: againErr } = await db.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } });

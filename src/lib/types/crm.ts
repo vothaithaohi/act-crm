@@ -1,4 +1,7 @@
-export type UserRole = 'super_admin' | 'sales' | 'marketing' | 'casting' | 'developer';
+export type UserRole = 'super_admin' | 'sales' | 'marketing' | 'casting' | 'developer' | 'viewer';
+
+/** Thứ tự hiển thị các vai trò (Nhân sự & Phân quyền, xem với vai trò…) */
+export const USER_ROLES: UserRole[] = ['super_admin', 'sales', 'marketing', 'casting', 'developer', 'viewer'];
 
 export type Permission = 
   | 'leads:read'
@@ -12,31 +15,43 @@ export type Permission =
   | 'talents:export'
   | 'users:manage'
   | 'webhooks:manage'
-  | 'system:settings';
+  | 'system:settings'
+  /** Mục "Hồ sơ DienVienVN" (duyệt hồ sơ nộp từ web) */
+  | 'submissions:read'
+  /** Xem Khách mời showcase (sửa cần talents:write) */
+  | 'guests:read'
+  /** Xem Tuyển dụng ekip & Ứng viên ekip (sửa cần talents:write) */
+  | 'crew:read'
+  /** Khung "Dữ liệu ACT Academy" + nút Reset dữ liệu Excel */
+  | 'workspace:data';
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   super_admin: [
     'leads:read', 'leads:write', 'leads:delete', 'leads:convert', 'leads:export',
     'talents:read', 'talents:write', 'talents:delete', 'talents:export',
-    'users:manage', 'webhooks:manage', 'system:settings'
+    'users:manage', 'webhooks:manage', 'system:settings',
+    'submissions:read', 'guests:read', 'crew:read', 'workspace:data'
   ],
   sales: [
     'leads:read', 'leads:write', 'leads:convert',
-    'talents:read'
+    'talents:read', 'submissions:read', 'workspace:data'
   ],
   marketing: [
     'leads:read', 'leads:write',
     'talents:read',
-    'webhooks:manage'
+    'webhooks:manage', 'submissions:read', 'workspace:data'
   ],
   casting: [
     'talents:read', 'talents:write', 'talents:export',
-    'leads:read'
+    'leads:read', 'submissions:read', 'guests:read', 'crew:read', 'workspace:data'
   ],
   developer: [
     'webhooks:manage', 'system:settings',
-    'leads:read', 'talents:read'
-  ]
+    'leads:read', 'talents:read', 'submissions:read', 'workspace:data'
+  ],
+  // Chỉ xem (VD: chị Kathy): xem Tổng quan, Tuyển sinh, Casting Matching, Dự án, Khách mời, Tuyển dụng & Ứng viên ekip.
+  // Không tạo / sửa / xoá (cơ sở dữ liệu cũng chặn ghi với vai trò này).
+  viewer: ['leads:read', 'talents:read', 'guests:read', 'crew:read']
 };
 
 export function hasPermission(role: UserRole, permission: Permission): boolean {
@@ -68,6 +83,11 @@ export const ROLE_DETAILS: Record<UserRole, { label: string; badge: string; desc
     label: 'Developer / IT',
     badge: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300',
     desc: 'Kỹ thuật hệ thống, cấu hình Webhook, API Meta & Supabase'
+  },
+  viewer: {
+    label: 'Chỉ xem (Viewer)',
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300',
+    desc: 'Chỉ xem dữ liệu, không tạo mới, không sửa, không xoá'
   }
 };
 

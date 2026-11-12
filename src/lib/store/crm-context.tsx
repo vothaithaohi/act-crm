@@ -15,13 +15,15 @@ import {
   TalentReviewStatus,
   hasPermission, 
   getReviewStatus,
-  ROLE_DETAILS 
+  ROLE_DETAILS,
+  ROLE_PERMISSIONS
 } from '@/lib/types/crm';
 import seedData from '@/data/seed_data.json';
 import { calculateAge } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
+import { readViewAs, writeViewAs } from '@/lib/supabase/preview-lock';
 
 export const INITIAL_TEAM_MEMBERS: Profile[] = [
   {
@@ -172,6 +174,11 @@ interface CRMContextType {
   deleteTeamMember: (id: string) => Promise<void>;
   switchRole: (role: UserRole) => void;
   can: (permission: Permission) => boolean;
+  /** Vai trò thật của tài khoản đang đăng nhập */
+  realRole: UserRole | null;
+  /** Super Admin đang xem giao diện với vai trò khác (null = không xem thử) */
+  viewAsRole: UserRole | null;
+  setViewAsRole: (role: UserRole | null) => void;
   filterCriteria: CastingFilterCriteria;
   setFilterCriteria: React.Dispatch<React.SetStateAction<CastingFilterCriteria>>;
   resetFilters: () => void;
@@ -249,6 +256,26 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [filterCriteria, setFilterCriteria] = useState<CastingFilterCriteria>(initialFilterCriteria);
 
   const isAuthenticated = currentUser !== null;
+  // Super Admin "Xem với vai trò…" (lưu theo tab trình duyệt; chặn ghi dữ liệu trong lúc xem thử)
+  const [viewAsState, setViewAsState] = useState<UserRole | null>(null);
+  useEffect(() => {
+    const saved = readViewAs();
+    if (saved && saved in ROLE_PERMISSIONS) setViewAsState(saved as UserRole);
+  }, []);
+  const realRole = currentUser?.role || null;
+  const viewAsRole = realRole === 'super_admin' && viewAsState && viewAsState !== 'super_admin' ? viewAsState : null;
+  // Tài khoản không phải Super Admin thì không bao giờ ở chế độ xem thử
+  useEffect(() => {
+    if (currentUser && currentUser.role !== 'super_admin' && readViewAs()) writeViewAs(null);
+  }, [currentUser]);
+  const setViewAsRole = (role: UserRole | null) => {
+    if (realRole !== 'super_admin') return;
+    const next = role && role !== 'super_admin' ? role : null;
+    writeViewAs(next);
+    setViewAsState(next);
+    if (next) toast.success(`Đang xem với vai trò: ${ROLE_DETAILS[next]?.label || next}`, { description: 'Chỉ xem giao diện — thao tác tạo / sửa / xoá không được lưu.' });
+    else toast.success('Đã thoát chế độ xem thử');
+  };
 
   /** Tìm hồ sơ nhân sự đang hoạt động theo email đăng nhập. */
   async function fetchStaffProfile(supabase: NonNullable<ReturnType<typeof createClient>>, email: string): Promise<Profile | null> {
@@ -524,6 +551,8 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    writeViewAs(null);
+    setViewAsState(null);
     setCurrentUser(null);
     const supabase = createClient();
     if (supabase) {
@@ -858,8 +887,24 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteTalent = async (id: string) => {
-    const updated = talents.filter(t => t.id !== id);
-    syncTalentsLocal(updated);
+    // Xoá qua máy chủ: báo lỗi thật (trước đây lỗi bị bỏ qua → hồ sơ vẫn còn, nộp lại email bị báo trùng)
+    // và xoá luôn tài khoản đăng nhập bị bỏ lại của email đó.
+    const supabase = createClient();
+    if (supabase) {
+      try {
+        const res = await authedFetch(`/api/admin/talents/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast.error(body.error || 'Không xoá được hồ sơ diễn viên.');
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to delete talent:', err);
+        toast.error('Mất kết nối mạng — chưa xoá được hồ sơ.');
+        return;
+      }
+    }
+    syncTalentsLocal(talents.filter(t => t.id !== id));
     try {
       const local = readLocalSubmissions();
       if (local.some(t => t.id === id)) {
@@ -869,15 +914,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       console.error(e);
     }
     toast.info('Đã xóa hồ sơ diễn viên');
-
-    const supabase = createClient();
-    if (supabase) {
-      try {
-        await supabase.from('talent_profiles').delete().eq('id', id);
-      } catch (err) {
-        console.error('Failed to delete talent from Supabase:', err);
-      }
-    }
   };
 
   // RBAC Team Management
@@ -974,18 +1010,24 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       toast.error('Không thể xóa tài khoản bạn đang đăng nhập');
       return;
     }
-    const updated = teamMembers.filter(m => m.id !== id);
-    syncTeamMembersLocal(updated);
-    toast.info('Đã xóa nhân sự khỏi hệ thống');
-
+    // Xoá qua máy chủ: xoá nhân sự + tài khoản đăng nhập (nếu email không còn dùng ở đâu khác), báo lỗi thật
     const supabase = createClient();
     if (supabase) {
       try {
-        await supabase.from('profiles').delete().eq('id', id);
+        const res = await authedFetch(`/api/admin/staff/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast.error(body.error || 'Không xoá được nhân sự.');
+          return;
+        }
       } catch (err) {
-        console.error('Failed to delete member from Supabase:', err);
+        console.error('Failed to delete member:', err);
+        toast.error('Mất kết nối mạng — chưa xoá được nhân sự.');
+        return;
       }
     }
+    syncTeamMembersLocal(teamMembers.filter(m => m.id !== id));
+    toast.info('Đã xóa nhân sự khỏi hệ thống');
   };
 
   const switchRole = (role: UserRole) => {
@@ -1015,7 +1057,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const can = (permission: Permission): boolean => {
     if (!currentUser) return false;
-    return hasPermission(currentUser.role, permission);
+    return hasPermission(viewAsRole || currentUser.role, permission);
   };
 
   const resetFilters = () => {
@@ -1183,6 +1225,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         deleteTeamMember,
         switchRole,
         can,
+        realRole,
+        viewAsRole,
+        setViewAsRole,
         filterCriteria,
         setFilterCriteria,
         resetFilters,

@@ -5,7 +5,7 @@ import { requireStaffRole } from '@/lib/supabase/auth-guard';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 
 // Quản lý tài khoản nhân sự CRM (API /api/admin/staff) — chỉ Ban Giám Đốc.
-export const STAFF_ROLES = ['super_admin', 'sales', 'marketing', 'casting', 'developer'] as const;
+export const STAFF_ROLES = ['super_admin', 'sales', 'marketing', 'casting', 'developer', 'viewer'] as const;
 export const MIN_STAFF_PASSWORD = 8;
 
 export async function guardStaffAdmin(req: NextRequest) {

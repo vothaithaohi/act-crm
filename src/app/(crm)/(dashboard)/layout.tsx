@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/navigation/sidebar';
 import { Topbar } from '@/components/navigation/topbar';
 import { LeadDialog } from '@/components/leads/lead-dialog';
 import { useCRM } from '@/lib/store/crm-context';
+import { ROLE_DETAILS } from '@/lib/types/crm';
 
 export default function DashboardLayout({
   children,
@@ -14,7 +15,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
-  const { currentUser, isLoading, isAuthenticated } = useCRM();
+  const { isLoading, isAuthenticated, viewAsRole, setViewAsRole } = useCRM();
   const router = useRouter();
 
   // Redirect to login if user is not authenticated
@@ -50,6 +51,16 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
+        {viewAsRole && (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-amber-100 border-b border-amber-300 px-4 py-2 text-xs text-amber-900">
+            <span>
+              Đang xem với vai trò <strong>{ROLE_DETAILS[viewAsRole].label}</strong> · chỉ xem giao diện, thao tác tạo / sửa / xoá không được lưu.
+            </span>
+            <button type="button" onClick={() => setViewAsRole(null)} className="font-semibold underline underline-offset-2">
+              Thoát xem thử
+            </button>
+          </div>
+        )}
         <Topbar onOpenNewLead={() => setIsNewLeadOpen(true)} />
         <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
           {children}

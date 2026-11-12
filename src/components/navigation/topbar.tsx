@@ -15,14 +15,14 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/lib/store/crm-context';
-import { UserRole, ROLE_DETAILS } from '@/lib/types/crm';
+import { ROLE_DETAILS, USER_ROLES } from '@/lib/types/crm';
 
 interface TopbarProps {
   onOpenNewLead?: () => void;
 }
 
 export function Topbar({ onOpenNewLead }: TopbarProps) {
-  const { currentUser, switchRole, can, logout } = useCRM();
+  const { currentUser, can, logout, realRole, viewAsRole, setViewAsRole } = useCRM();
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -38,8 +38,7 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const rolesList: UserRole[] = ['super_admin', 'sales', 'marketing', 'casting', 'developer'];
-  const activeRole = currentUser?.role || 'super_admin';
+  const activeRole = viewAsRole || currentUser?.role || 'super_admin';
   const activeRoleInfo = ROLE_DETAILS[activeRole] || ROLE_DETAILS.super_admin;
 
   const handleLogout = () => {
@@ -135,6 +134,30 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
                   Phòng ban: <span className="font-medium text-foreground">{currentUser?.department || 'ACT Academy'}</span>
                 </p>
               </div>
+
+              {/* Super Admin: xem giao diện với vai trò khác (chỉ xem, không lưu thay đổi) */}
+              {realRole === 'super_admin' && (
+                <div className="px-2 pt-1.5 pb-1 border-b border-border/60">
+                  <p className="px-2.5 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Xem với vai trò</p>
+                  {USER_ROLES.map(r => {
+                    const on = (viewAsRole || 'super_admin') === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => {
+                          setViewAsRole(r === 'super_admin' ? null : r);
+                          setIsRoleDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-lg transition-colors ${on ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                      >
+                        <span>{r === 'super_admin' ? 'Super Admin (vai trò của bạn)' : ROLE_DETAILS[r].label}</span>
+                        {on && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Admin Links */}
               {can('users:manage') && (

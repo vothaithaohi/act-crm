@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { purgeAuthIfOrphan } from '@/lib/supabase/account-cleanup';
 import { z } from 'zod';
 import { sendPartnerApprovalEmail, sendPartnerEmail } from '@/lib/dienvienvn/partner-server';
 import { PartnerAccount } from '@/lib/dienvienvn/partners';
@@ -68,13 +69,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ partner });
 }
 
-// Xoá tài khoản đối tác (mất quyền xem ngay; tài khoản đăng nhập Supabase vẫn giữ để không ảnh hưởng hồ sơ diễn viên cùng email).
+// Xoá tài khoản đối tác (mất quyền xem ngay). Tài khoản đăng nhập của email đó cũng bị xoá nếu không còn gắn với
+// hồ sơ nào khác (VD: diễn viên cùng email thì giữ) — để đăng ký lại bằng email này không bị báo trùng.
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guardPartnerAdmin(req);
   if ('res' in g) return g.res;
   const { id } = await params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Không tìm thấy đối tác.' }, { status: 404 });
+  const { data: partner } = await g.db.from('partner_accounts').select('email, auth_user_id').eq('id', id).maybeSingle();
   const { error } = await g.db.from('partner_accounts').delete().eq('id', id);
   if (error) return NextResponse.json({ error: 'Không xoá được đối tác.' }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  const accountRemoved = partner ? await purgeAuthIfOrphan(g.db, { userId: partner.auth_user_id, email: partner.email }).catch(() => false) : false;
+  return NextResponse.json({ ok: true, accountRemoved });
 }

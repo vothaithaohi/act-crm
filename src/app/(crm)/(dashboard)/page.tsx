@@ -127,10 +127,11 @@ function LeadsList({ limit = 6 }: { limit?: number }) {
   );
 }
 
-function CastingSections({ showLeads }: { showLeads: boolean }) {
+/** todo=false: vai trò Chỉ xem — không có khối "Việc cần làm" (các việc duyệt không thuộc quyền của vai trò này). */
+function CastingSections({ showLeads, todo = true }: { showLeads: boolean; todo?: boolean }) {
   const { talents, leads } = useCRM();
   const { projects, applications } = useProjects();
-  const { partners, crewJobs } = usePendingApprovals(true);
+  const { partners, crewJobs } = usePendingApprovals(todo);
 
   const pendingTalents = talents.filter(t => getReviewStatus(t) === 'pending').length;
   const approved = talents.filter(t => getReviewStatus(t) === 'approved').length;
@@ -148,6 +149,8 @@ function CastingSections({ showLeads }: { showLeads: boolean }) {
 
   return (
     <>
+      {todo && (
+      <>
       <SectionTitle>Việc cần làm hôm nay</SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <TodoCard icon={ClipboardCheck} label="Hồ sơ chờ duyệt" count={pendingTalents} href="/talents" hint="Hồ sơ diễn viên từ dienvienvn.com" />
@@ -155,6 +158,8 @@ function CastingSections({ showLeads }: { showLeads: boolean }) {
         <TodoCard icon={Handshake} label="Đối tác chờ duyệt" count={partners} href="/admin/partners" hint="Tài khoản đối tác tự đăng ký" />
         <TodoCard icon={BriefcaseBusiness} label="Tin tuyển ekip chờ duyệt" count={crewJobs} href="/crew-jobs" hint="Tin đối tác gửi" />
       </div>
+      </>
+      )}
 
       <SectionTitle>Số liệu</SectionTitle>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -364,10 +369,11 @@ function DeveloperSections() {
 
 /** Trang tổng quan CRM: hiện việc cần làm, số liệu và danh sách theo vai trò của người đăng nhập. */
 export default function DashboardOverviewPage() {
-  const { leads, talents, currentUser } = useCRM();
+  const { leads, talents, currentUser, viewAsRole } = useCRM();
   const [isAiReportOpen, setIsAiReportOpen] = useState(false);
   const [aiReportType, setAiReportType] = useState<'ads_optimization' | 'finance'>('ads_optimization');
-  const role = (currentUser?.role || 'developer') as UserRole;
+  // Super Admin đang "xem với vai trò…" → trang tổng quan của vai trò đó
+  const role = (viewAsRole || currentUser?.role || 'developer') as UserRole;
   const showAi = role === 'super_admin' || role === 'marketing';
 
   const sections = useMemo(() => {
@@ -375,6 +381,7 @@ export default function DashboardOverviewPage() {
     if (role === 'casting') return <CastingSections showLeads={false} />;
     if (role === 'sales') return <SalesSections />;
     if (role === 'marketing') return <MarketingSections />;
+    if (role === 'viewer') return <CastingSections showLeads todo={false} />;
     return <DeveloperSections />;
   }, [role]);
 

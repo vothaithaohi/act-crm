@@ -63,14 +63,14 @@ export function Sidebar() {
       href: '/talents/submissions',
       icon: Globe,
       badge: pendingSubmissionsCount > 0 ? pendingSubmissionsCount : null,
-      visible: can('talents:read')
+      visible: can('submissions:read')
     },
     {
       title: 'Khách mời showcase',
       href: '/guests',
       icon: Mic,
       badge: null,
-      visible: can('talents:write')
+      visible: can('talents:write') || can('guests:read')
     },
     {
       title: 'Link kho diễn viên',
@@ -84,14 +84,14 @@ export function Sidebar() {
       href: '/crew-jobs',
       icon: BriefcaseBusiness,
       badge: null,
-      visible: can('talents:write')
+      visible: can('talents:write') || can('crew:read')
     },
     {
       title: 'Ứng viên ekip',
       href: '/crew-profiles',
       icon: UsersRound,
       badge: null,
-      visible: can('talents:write')
+      visible: can('talents:write') || can('crew:read')
     },
     {
       title: 'Tài khoản đối tác',
@@ -222,7 +222,8 @@ export function Sidebar() {
           </div>
         )}
 
-        {/* Quick Highlights */}
+        {/* Quick Highlights (ẩn với vai trò Chỉ xem) */}
+        {can('workspace:data') && (
         <div className="px-4 py-3 mx-3 mt-2 rounded-xl bg-muted/50 border border-border/60 text-xs space-y-2">
           <div className="font-semibold text-foreground flex items-center gap-1.5">
             <GraduationCap className="w-4 h-4 text-brand-gold" />
@@ -232,10 +233,12 @@ export function Sidebar() {
             Hệ thống đã nạp <span className="font-bold text-foreground">{leads.length}</span> học viên thực tế từ Excel và <span className="font-bold text-foreground">{talents.length}</span> hồ sơ diễn viên.
           </p>
         </div>
+        )}
       </div>
 
       {/* Bottom Footer Actions */}
       <div className="p-4 border-t space-y-3">
+        {can('workspace:data') && (
         <button
           onClick={resetAllData}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-brand-600 bg-muted/60 hover:bg-brand-50 rounded-lg transition-colors border"
@@ -244,6 +247,7 @@ export function Sidebar() {
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Reset Dữ liệu Excel</span>
         </button>
+        )}
 
         <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
           <span>ACT CRM v2.0</span>

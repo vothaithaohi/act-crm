@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ExternalLink, FileText, Link2, Loader2, Lock, LockOpen, UsersRound } from 'lucide-react';
+import { ChevronDown, ExternalLink, FileText, Link2, Loader2, Lock, LockOpen, Trash2, UsersRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
+import { useCRM } from '@/lib/store/crm-context';
 import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile, CrewReviewStatus, crewPrimaryRoleText } from '@/lib/dienvienvn/crew-profiles';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
 
@@ -13,6 +14,10 @@ const MIGRATION_HINT = 'Hãy chạy migration 20261115_crew_profiles.sql trong S
 
 /** Ứng viên ekip: tài khoản tự đăng ký trên dienvienvn.com/ekip, hoạt động ngay; ACT khoá / mở khoá, xem kho CV và các lượt ứng tuyển. */
 export default function CrewProfilesPage() {
+  const { can } = useCRM();
+  // Vai trò Chỉ xem: xem hồ sơ, CV, cover letter; không khoá / mở khoá / xoá
+  const canEdit = can('talents:write');
+  const canDelete = can('talents:delete');
   const [list, setList] = useState<(CrewProfile & { app_count: number })[] | null>(null);
   const [problem, setProblem] = useState('');
   const [filter, setFilter] = useState<'all' | CrewReviewStatus>('all');
@@ -61,6 +66,20 @@ export default function CrewProfilesPage() {
     }
   };
 
+  const remove = async (p: CrewProfile) => {
+    if (!window.confirm(`Xoá hẳn ứng viên ekip ${p.full_name} (${p.public_email})? Hồ sơ, các lượt ứng tuyển, CV / cover letter và tài khoản đăng nhập của email này sẽ bị xoá. Không hoàn tác được.`)) return;
+    setBusyId(p.id);
+    try {
+      const res = await authedFetch(`/api/admin/crew-profiles/${p.id}`, { method: 'DELETE' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return toast.error(body.error || 'Không xoá được');
+      setList(l => (l || []).filter(x => x.id !== p.id));
+      toast.success('Đã xoá ứng viên ekip.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const needle = q.trim().toLowerCase();
   const shown = (list || []).filter(
     p =>
@@ -71,7 +90,7 @@ export default function CrewProfilesPage() {
   const tabs = (['all', 'approved', 'rejected', 'pending'] as const).filter(k => k !== 'pending' || (list || []).some(p => p.review_status === 'pending'));
 
   return (
-    <PermissionGuard permission="talents:write" customTitle="Ứng viên ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý ứng viên ekip.">
+    <PermissionGuard permissions={['talents:write', 'crew:read']} customTitle="Ứng viên ekip" customMessage="Chỉ Ban Giám Đốc và bộ phận Casting quản lý ứng viên ekip.">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
@@ -129,18 +148,28 @@ export default function CrewProfilesPage() {
                       </button>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                        {p.review_status !== 'approved' && (
+                        {canEdit && p.review_status !== 'approved' && (
                           <button onClick={() => review(p, 'approved')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
                             <LockOpen className="w-3.5 h-3.5" /> {p.review_status === 'pending' ? 'Kích hoạt' : 'Mở khoá'}
                           </button>
                         )}
-                        {p.review_status !== 'rejected' && (
+                        {canEdit && p.review_status !== 'rejected' && (
                           <button
                             onClick={() => window.confirm(`Khoá tài khoản ekip của ${p.full_name}? Nhà tuyển dụng sẽ không thấy hồ sơ này và tài khoản không ứng tuyển được.`) && review(p, 'rejected')}
                             disabled={busyId === p.id}
                             className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted"
                           >
                             <Lock className="w-3.5 h-3.5" /> Khoá
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => remove(p)}
+                            disabled={busyId === p.id}
+                            title="Xoá ứng viên ekip"
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCRM } from '@/lib/store/crm-context';
-import { Permission, UserRole, ROLE_DETAILS, ROLE_PERMISSIONS } from '@/lib/types/crm';
+import { Permission, ROLE_DETAILS, ROLE_PERMISSIONS, USER_ROLES } from '@/lib/types/crm';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -47,7 +47,7 @@ export function PermissionGuard({
   }
 
   // Find which roles have this permission to suggest to the user in demo mode
-  const authorizedRoles = (['super_admin', 'sales', 'marketing', 'casting', 'developer'] as UserRole[])
+  const authorizedRoles = USER_ROLES
     .filter(r => requiredPerms.some(p => ROLE_PERMISSIONS[r]?.includes(p)));
 
   const currentRole = currentUser?.role || 'sales';

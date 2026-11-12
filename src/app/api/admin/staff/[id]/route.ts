@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { findAuthUserId, guardStaffAdmin, MIN_STAFF_PASSWORD, STAFF_ROLES } from '@/lib/supabase/staff-admin';
+import { purgeAuthIfOrphan } from '@/lib/supabase/account-cleanup';
 
 const schema = z.object({
   full_name: z.string().trim().min(2).max(120).optional(),
@@ -38,4 +39,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (pwError) return NextResponse.json({ error: 'Đã lưu thông tin nhưng không đổi được mật khẩu.' }, { status: 500 });
   }
   return NextResponse.json({ profile });
+}
+
+// Xoá nhân sự CRM: xoá dòng nhân sự + tài khoản đăng nhập (nếu email không còn gắn với hồ sơ diễn viên / đối tác / ekip),
+// để thêm lại nhân sự hoặc đăng ký bằng email này không bị báo trùng.
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const g = await guardStaffAdmin(req);
+  if ('res' in g) return g.res;
+  const { id } = await params;
+  if (!/^[0-9a-z-]{1,64}$/i.test(id)) return NextResponse.json({ error: 'Không tìm thấy nhân sự.' }, { status: 404 });
+  const { data: profile } = await g.db.from('profiles').select('id, email').eq('id', id).maybeSingle();
+  if (!profile) return NextResponse.json({ ok: true, missing: true });
+  if ((profile.email || '').toLowerCase() === g.staff.email.toLowerCase()) {
+    return NextResponse.json({ error: 'Không thể xoá tài khoản bạn đang đăng nhập.' }, { status: 400 });
+  }
+  const { error } = await g.db.from('profiles').delete().eq('id', id);
+  if (error) {
+    console.error('[crm] Xoá nhân sự lỗi:', error.message);
+    return NextResponse.json({ error: `Không xoá được nhân sự: ${error.message}` }, { status: 500 });
+  }
+  const accountRemoved = await purgeAuthIfOrphan(g.db, { userId: profile.id, email: profile.email }).catch(() => false);
+  return NextResponse.json({ ok: true, accountRemoved });
 }

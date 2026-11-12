@@ -438,6 +438,7 @@ export default function AdminUsersPage() {
                     <option value="marketing">Marketing & Ads</option>
                     <option value="casting">Casting Director</option>
                     <option value="developer">Developer / IT</option>
+                    <option value="viewer">Chỉ xem (Viewer)</option>
                     <option value="super_admin">Super Admin</option>
                   </select>
                 </div>

@@ -52,6 +52,6 @@ export async function requireStaffRole(req: NextRequest, roles: string[]): Promi
     .limit(1);
   const profile = profiles?.[0];
   if (!profile || profile.status !== 'active') return NextResponse.json({ error: 'Tài khoản không có quyền truy cập.' }, { status: 403 });
-  if (!roles.includes(profile.role)) return NextResponse.json({ error: 'Chỉ quản trị viên hoặc bộ phận casting được quản lý tài khoản đối tác.' }, { status: 403 });
+  if (!roles.includes(profile.role)) return NextResponse.json({ error: 'Vai trò của bạn không có quyền thực hiện thao tác này.' }, { status: 403 });
   return { email, role: profile.role };
 }

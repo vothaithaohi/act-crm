@@ -17,8 +17,11 @@ export const EMAIL_RESULT_MESSAGE: Record<string, string> = {
   approved_no_email: 'Đã duyệt — đối tác đăng nhập được ngay, nhưng chưa gửi được email báo duyệt (kiểm tra cấu hình SMTP_* trên Vercel).'
 };
 
-export async function guardPartnerAdmin(req: NextRequest) {
-  const staff = await requireStaffRole(req, PARTNER_MANAGER_ROLES);
+/** API chỉ đọc (VD: xem CV / cover letter ứng viên ekip): thêm vai trò Chỉ xem. */
+export const READ_ONLY_VIEW_ROLES = [...PARTNER_MANAGER_ROLES, 'viewer'];
+
+export async function guardPartnerAdmin(req: NextRequest, roles: string[] = PARTNER_MANAGER_ROLES) {
+  const staff = await requireStaffRole(req, roles);
   if (staff instanceof NextResponse) return { res: staff };
   const { mode, db } = getServiceDb();
   if (mode === 'demo' || !staff) return { res: NextResponse.json({ mode: 'demo' }) };

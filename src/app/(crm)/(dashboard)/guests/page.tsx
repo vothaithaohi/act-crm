@@ -12,7 +12,8 @@ import { INVITATION_STATUS, INVITATION_STATUS_LIST, InvitationStatus, foldVi, gu
 
 export default function GuestsPage() {
   const router = useRouter();
-  const { currentUser } = useCRM();
+  const { currentUser, can } = useCRM();
+  const canEdit = can('talents:write');
   const { guests, invitations, reviews, loading, problem, importGuests } = useGuests();
   const [q, setQ] = useState('');
   const [term, setTerm] = useState('all');
@@ -58,7 +59,7 @@ export default function GuestsPage() {
   const selectCls = 'h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-foreground';
 
   return (
-    <PermissionGuard permission="talents:write" customTitle="Khách mời showcase" customMessage="Danh sách khách mời chỉ dành cho Ban Giám Đốc và bộ phận Casting.">
+    <PermissionGuard permissions={['talents:write', 'guests:read']} customTitle="Khách mời showcase" customMessage="Danh sách khách mời chỉ dành cho Ban Giám Đốc và bộ phận Casting.">
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -69,6 +70,7 @@ export default function GuestsPage() {
               Đạo diễn, nhà sản xuất, giảng viên mời làm khách mời / giám khảo showcase. Chỉ dùng nội bộ, không hiện trên dienvienvn.com.
             </p>
           </div>
+          {canEdit && (
           <div className="flex gap-2 shrink-0">
             <button onClick={() => setImportOpen(true)} className="h-10 inline-flex items-center gap-2 px-4 rounded-xl border text-xs font-semibold hover:bg-muted">
               <FileUp className="w-4 h-4" /> Nhập từ Excel
@@ -77,6 +79,7 @@ export default function GuestsPage() {
               <Plus className="w-4 h-4" /> Thêm khách mời
             </Link>
           </div>
+          )}
         </div>
 
         {problem && <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 text-sm text-destructive">{problem}</div>}
@@ -129,7 +132,7 @@ export default function GuestsPage() {
           <div className="p-12 rounded-2xl border bg-card text-center">
             <Mic className="w-8 h-8 mx-auto text-muted-foreground" strokeWidth={1.5} />
             <p className="mt-3 font-semibold">Chưa có khách mời nào</p>
-            <p className="mt-1 text-sm text-muted-foreground">Bấm &ldquo;Nhập từ Excel&rdquo; để đưa danh sách cũ vào, hoặc &ldquo;Thêm khách mời&rdquo;.</p>
+            {canEdit && <p className="mt-1 text-sm text-muted-foreground">Bấm &ldquo;Nhập từ Excel&rdquo; để đưa danh sách cũ vào, hoặc &ldquo;Thêm khách mời&rdquo;.</p>}
           </div>
         ) : (
           <div className="rounded-2xl border bg-card overflow-x-auto">

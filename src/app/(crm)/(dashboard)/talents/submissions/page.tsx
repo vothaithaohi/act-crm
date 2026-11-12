@@ -7,7 +7,7 @@ import { SubmissionsReview } from '@/components/talents/submissions-review';
 export default function TalentSubmissionsPage() {
   return (
     <PermissionGuard
-      permission="talents:read"
+      permission="submissions:read"
       customTitle="Hồ Sơ Nộp Từ DienVienVN"
       customMessage="Bạn không có quyền xem hồ sơ diễn viên tự nộp từ dienvienvn.com."
     >

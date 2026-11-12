@@ -45,7 +45,9 @@ function emptyGuest(): ShowcaseGuest {
 
 export function GuestDetail({ guestId }: { guestId: string | null }) {
   const router = useRouter();
-  const { currentUser } = useCRM();
+  const { currentUser, can } = useCRM();
+  // Vai trò Chỉ xem: xem được, mọi ô nhập / nút sửa bị khoá
+  const canEdit = can('talents:write');
   const store = useGuests();
   const isNew = guestId === null;
   const original = useMemo(() => (isNew ? null : store.guests.find(g => g.id === guestId) || null), [isNew, store.guests, guestId]);
@@ -98,7 +100,7 @@ export function GuestDetail({ guestId }: { guestId: string | null }) {
         <Link href="/guests" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Khách mời showcase
         </Link>
-        {!isNew && (
+        {!isNew && canEdit && (
           <button
             type="button"
             onClick={async () => {
@@ -132,6 +134,7 @@ export function GuestDetail({ guestId }: { guestId: string | null }) {
         </div>
       </div>
 
+      <fieldset disabled={!canEdit} className="min-w-0 space-y-6 border-0 p-0 m-0">
       {/* Thông tin */}
       <section className="bg-card rounded-2xl border p-5 sm:p-6 space-y-4">
         <h3 className="font-bold text-sm border-b pb-3">Thông tin khách mời</h3>
@@ -229,6 +232,7 @@ export function GuestDetail({ guestId }: { guestId: string | null }) {
           <ReviewsSection guestId={form.id} store={store} reviews={revs} author={currentUser?.full_name || currentUser?.email || null} />
         </>
       )}
+      </fieldset>
     </div>
   );
 }

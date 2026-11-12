@@ -125,8 +125,9 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
               Nộp hồ sơ
             </Link>
           ) : audience === 'crew' ? (
-            <Link href={href(signedIn ? '/tai-khoan/ekip' : '/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
-              {signedIn ? 'Hồ sơ ekip' : 'Đăng ký ekip'}
+            // Đã đăng nhập: "Tài khoản" bên cạnh đã mở trang hồ sơ → nút chính mở danh sách việc làm
+            <Link href={href(signedIn ? '/ekip' : '/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
+              {signedIn ? 'Việc làm ekip' : 'Đăng ký ekip'}
             </Link>
           ) : (
             <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
