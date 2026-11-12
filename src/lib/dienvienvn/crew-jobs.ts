@@ -49,6 +49,8 @@ export interface CrewJob {
   other_values?: Record<string, string> | null;
   /** Số lượng cần tuyển cho vị trí */
   quantity?: number | null;
+  /** Mã ngắn của tin cho link gọn: /ekip/<tên-vị-trí>-<mã> */
+  short_code?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -115,8 +117,8 @@ export const crewJobSchema = z
     department: enumOf([...DEPARTMENTS, { id: OTHER_ID }], 'Vui lòng chọn phân nhóm chuyên môn'),
     role_title: z.string().trim().min(1, 'Vui lòng chọn vị trí cụ thể'),
     role_other: text(120),
-    // Mô tả công việc (JD) của vị trí
-    description: text(3000),
+    // Mô tả công việc (JD) của vị trí — không giới hạn số chữ (chỉ chặn mức bất thường để chống spam)
+    description: text(100_000),
     requires_cv: z.boolean().optional().default(false),
     seniority_level: enumOf(JOB_OPTIONS.seniority_level, 'Vui lòng chọn cấp độ kinh nghiệm'),
     // Số lượng cần tuyển cho vị trí
@@ -254,4 +256,34 @@ export function contactHref(contact: string): string | null {
   const digits = c.replace(/[^\d+]/g, '');
   if (/^\+?\d{9,12}$/.test(digits) && digits.length >= c.replace(/\s/g, '').length - 2) return `tel:${digits}`;
   return null;
+}
+
+/** Chữ không dấu, nối bằng gạch: "Trợ lý tuyển vai" → "tro-ly-tuyen-vai". */
+export function slugifyVi(text: string, max = 48): string {
+  const slug = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (slug.length <= max) return slug;
+  // Dài quá: cắt ở ranh giới chữ, không cắt giữa chữ
+  const cut = slug.slice(0, max + 1);
+  return cut.slice(0, cut.lastIndexOf('-') > 0 ? cut.lastIndexOf('-') : max);
+}
+
+/** Link gọn của một tin tuyển ekip: /ekip/tro-ly-tuyen-vai-k7f3qa (tin cũ chưa có mã: link cũ theo id). */
+export function crewJobPath(j: Pick<CrewJob, 'id' | 'short_code' | 'title' | 'department' | 'role_title' | 'role_other'>): string {
+  if (!j.short_code) return `/tuyen-dung/ung-tuyen/${j.id}`;
+  // Bỏ phần trong ngoặc (thường là bản dịch): "Camera Operator (Kỹ thuật quay)" → "Camera Operator"
+  const name = (roleLabel(j.department, j.role_title, j.role_other)?.vi || j.title || 'viec-lam').replace(/\([^)]*\)/g, ' ');
+  const slug = slugifyVi(name);
+  return `/ekip/${slug ? `${slug}-` : ''}${j.short_code}`;
+}
+
+/** Mã ngắn trong đường dẫn "/ekip/<tên>-<mã>": phần sau dấu "-" cuối cùng. */
+export function crewJobCodeFromParam(param: string): string {
+  const v = decodeURIComponent(param).trim().toLowerCase();
+  return v.slice(v.lastIndexOf('-') + 1);
 }

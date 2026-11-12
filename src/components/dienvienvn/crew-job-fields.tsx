@@ -152,6 +152,41 @@ function SelectBox({ id, list, v, onPick, placeholder, cls }: { id: string; list
   );
 }
 
+/**
+ * Ô JD: đang điền thì tự xổ ra theo nội dung (không phải cuộn trong ô), bấm sang ô khác / ra ngoài thì thu gọn lại.
+ * Không giới hạn số chữ.
+ */
+function JdBox({ id, cls, value, onChange }: { id: string; cls: string; value: string; onChange: (v: string) => void }) {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const COLLAPSED = 110;
+  const fit = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(COLLAPSED, el.scrollHeight + 2)}px`;
+  }, []);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open) fit();
+    else el.style.height = `${COLLAPSED}px`;
+  }, [open, value, fit]);
+  return (
+    <textarea
+      ref={ref}
+      id={id}
+      className={`${cls} resize-none py-2.5`}
+      style={{ height: COLLAPSED, overflowY: open ? 'hidden' : 'auto' }}
+      value={value}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onChange={e => onChange(e.target.value)}
+      placeholder="Công việc cụ thể, yêu cầu, quyền lợi…"
+    />
+  );
+}
+
 /** Ô chọn có "Khác (tự ghi)": chọn "Khác" thì hiện ô ghi ngay bên dưới. */
 function OtherSelect({
   id,
@@ -292,15 +327,7 @@ function PositionCard({
       </div>
       <div className={field}>
         <FieldLabel cls={ui.label} htmlFor={id('jd')}>Mô tả công việc (JD)</FieldLabel>
-        <textarea
-          id={id('jd')}
-          rows={4}
-          maxLength={3000}
-          className={`${ui.input} !h-auto min-h-[110px] py-2.5`}
-          value={value.description}
-          onChange={e => set({ description: e.target.value })}
-          placeholder="Công việc cụ thể, yêu cầu, quyền lợi…"
-        />
+        <JdBox id={id('jd')} cls={ui.input} value={value.description} onChange={v => set({ description: v })} />
       </div>
       <div className={field}>
         <FieldLabel cls={ui.label} required htmlFor={id('stype')}>Cách tính thù lao</FieldLabel>

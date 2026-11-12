@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Check, ChevronLeft, ExternalLink, FileText, Link2, Loader2, Lock, PenLine, Star, Trash2, Upload } from 'lucide-react';
 import { actorClient, actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { LogoutButton } from './logout-button';
-import type { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { crewJobPath, type PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import {
   COVER_LETTER_MAX,
   CREW_FILE_MAX_BYTES,
@@ -592,7 +592,7 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
   const signedIn = session.status === 'signed-in';
   const { me, setMe, error: meError } = useCrewMe(signedIn);
   const [done, setDone] = useState<null | 'applied' | 'already'>(null);
-  const here = job ? href(`/tuyen-dung/ung-tuyen/${job.id}`) : href('/ekip');
+  const here = job ? href(crewJobPath(job)) : href('/ekip');
 
   if (!job) {
     return (
@@ -904,7 +904,7 @@ function OpenJobs({ jobs }: { jobs: PublicCrewJob[] }) {
                     <p className="text-[15px] font-semibold">{role?.vi || j.title}</p>
                     <p className="text-[13px] text-[var(--dv-text-secondary)]">{meta}</p>
                   </div>
-                  <Link href={href(`/tuyen-dung/ung-tuyen/${j.id}`)} className="dv-btn dv-btn-primary !h-9 shrink-0 !px-4 !py-0 text-[14px]">
+                  <Link href={href(crewJobPath(j))} className="dv-btn dv-btn-primary !h-9 shrink-0 !px-4 !py-0 text-[14px]">
                     Ứng tuyển
                   </Link>
                 </li>

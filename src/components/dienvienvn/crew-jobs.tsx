@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, MapPin, UsersRound } from 'lucide-react';
 import { OTHER_ID, departmentOf, jobOptionText, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
-import { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { PublicCrewJob, crewJobPath } from '@/lib/dienvienvn/crew-jobs';
 import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { useDvvnHref } from './base-path';
 import { formatVnDate } from './projects-section';
@@ -188,7 +188,7 @@ function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean
         </div>
         <div className="flex shrink-0 flex-col gap-2 md:items-end">
           {job.deadline && <p className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</p>}
-          <Link href={href(`/tuyen-dung/ung-tuyen/${job.id}`)} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+          <Link href={href(crewJobPath(job))} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
             {crew ? 'Ứng tuyển vị trí này' : 'Ứng tuyển'}
           </Link>
           {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm CV</p>}

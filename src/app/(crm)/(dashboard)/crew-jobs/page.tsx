@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { BriefcaseBusiness, Check, ExternalLink, Loader2, Pencil, Plus, Trash2, UsersRound, X } from 'lucide-react';
+import { BriefcaseBusiness, Check, ExternalLink, Link2, Loader2, Pencil, Plus, Trash2, UsersRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
 import { useCRM } from '@/lib/store/crm-context';
-import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, parseCrewJobBatch, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
+import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, crewJobPath, parseCrewJobBatch, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
@@ -172,6 +172,23 @@ export default function CrewJobsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {busyId === j.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                      {j.status === 'open' && (
+                        <button
+                          title="Sao chép link tin"
+                          onClick={async () => {
+                            const url = `https://www.dienvienvn.com${crewJobPath(j)}`;
+                            try {
+                              await navigator.clipboard.writeText(url);
+                              toast.success('Đã sao chép link', { description: url });
+                            } catch {
+                              window.prompt('Sao chép link tin:', url);
+                            }
+                          }}
+                          className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted"
+                        >
+                          <Link2 className="w-3.5 h-3.5" /> Link
+                        </button>
+                      )}
                       <button onClick={() => setViewing(j)} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold hover:bg-muted">
                         <UsersRound className="w-3.5 h-3.5" /> Ứng viên · {(applicants.get(j.id) || []).length}
                       </button>
