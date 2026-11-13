@@ -1,6 +1,6 @@
 // Tin tuyển ekip (dienvienvn.com/tuyen-dung): đối tác / ACT đăng, ACT duyệt; người xem liên hệ trực tiếp.
 import { z } from 'zod';
-import { DEPARTMENTS, JOB_OPTIONS, JOB_OTHER_FIELDS, OTHER_ID, roleLabel, roleOf } from './crew-taxonomy';
+import { DEPARTMENTS, JOB_OPTIONS, JOB_OTHER_FIELDS, OTHER_ID, roleLabel, roleOf, splitIds } from './crew-taxonomy';
 
 export type CrewJobStatus = 'draft' | 'open' | 'closed';
 
@@ -81,8 +81,16 @@ export const CREW_POSITION_SUGGESTIONS = [
 ];
 
 const text = (max: number) => z.string().trim().max(max).optional().default('');
-const optEnum = (ids: string[]) => z.enum(ids as [string, ...string[]]).optional().or(z.literal('')).default('');
 const enumOf = (list: { id: string }[], msg: string) => z.enum(list.map(o => o.id) as [string, ...string[]], { errorMap: () => ({ message: msg }) });
+/** Ô chọn nhiều: nhận "a,b" hoặc ['a','b'], chỉ giữ mã hợp lệ, bỏ trùng. required: bắt buộc chọn ít nhất 1. */
+const multiOf = (list: { id: string }[], required: string | null) => {
+  const ids = list.map(o => o.id);
+  const arr = z.preprocess(
+    v => Array.from(new Set((Array.isArray(v) ? v.map(String) : splitIds(typeof v === 'string' ? v : '')).filter(x => ids.includes(x)))),
+    z.array(z.string())
+  );
+  return required ? arr.refine(a => a.length > 0, { message: required }) : arr;
+};
 const OTHER_FIELD_LABEL: Record<(typeof JOB_OTHER_FIELDS)[number], string> = {
   company_type: 'loại hình đơn vị',
   project_type: 'loại hình dự án',
@@ -111,8 +119,8 @@ export const crewJobSchema = z
     // 2. Thông tin dự án
     project_name: text(160),
     project_hidden: z.boolean().optional().default(false),
-    project_type: enumOf(JOB_OPTIONS.project_type, 'Vui lòng chọn loại hình dự án'),
-    project_phase: optEnum(JOB_OPTIONS.project_phase.map(o => o.id)),
+    project_type: multiOf(JOB_OPTIONS.project_type, 'Vui lòng chọn ít nhất 1 loại hình dự án'),
+    project_phase: multiOf(JOB_OPTIONS.project_phase, null),
     // 3. Vị trí & yêu cầu chuyên môn
     department: enumOf([...DEPARTMENTS, { id: OTHER_ID }], 'Vui lòng chọn phân nhóm chuyên môn'),
     role_title: z.string().trim().min(1, 'Vui lòng chọn vị trí cụ thể'),
@@ -120,17 +128,17 @@ export const crewJobSchema = z
     // Mô tả công việc (JD) của vị trí — không giới hạn số chữ (chỉ chặn mức bất thường để chống spam)
     description: text(100_000),
     requires_cv: z.boolean().optional().default(false),
-    seniority_level: enumOf(JOB_OPTIONS.seniority_level, 'Vui lòng chọn cấp độ kinh nghiệm'),
+    seniority_level: multiOf(JOB_OPTIONS.seniority_level, 'Vui lòng chọn ít nhất 1 cấp độ kinh nghiệm'),
     // Số lượng cần tuyển cho vị trí
     quantity: z.coerce.number({ invalid_type_error: 'Số lượng cần tuyển phải là số' }).int().min(1, 'Số lượng cần tuyển ít nhất là 1').max(999).optional().or(z.literal('')).default(1),
     // 4. Thời gian & hình thức làm việc
-    employment_type: enumOf(JOB_OPTIONS.employment_type, 'Vui lòng chọn hình thức hợp đồng'),
+    employment_type: multiOf(JOB_OPTIONS.employment_type, 'Vui lòng chọn ít nhất 1 hình thức hợp đồng'),
     start_date: date,
     end_date: date,
     shooting_days: z.coerce.number().int().min(0).max(1000).optional().nullable().or(z.literal('')).default(null),
-    city: optEnum(JOB_OPTIONS.city.map(o => o.id)),
+    city: multiOf(JOB_OPTIONS.city, null),
     location_detail: text(200),
-    work_mode: optEnum(JOB_OPTIONS.work_mode.map(o => o.id)),
+    work_mode: multiOf(JOB_OPTIONS.work_mode, null),
     // 5. Ngân sách & thù lao
     salary_type: enumOf(JOB_OPTIONS.salary_type, 'Vui lòng chọn cách tính thù lao'),
     salary_min: money,
@@ -140,7 +148,9 @@ export const crewJobSchema = z
   })
   .superRefine((v, ctx) => {
     for (const f of JOB_OTHER_FIELDS) {
-      if (v[f] === OTHER_ID && (v.other_values[f] || '').trim().length < 2) {
+      const val = v[f] as string | string[];
+      const picked = Array.isArray(val) ? val.includes(OTHER_ID) : val === OTHER_ID;
+      if (picked && (v.other_values[f] || '').trim().length < 2) {
         ctx.addIssue({ code: 'custom', path: [f], message: `Vui lòng ghi rõ ${OTHER_FIELD_LABEL[f]} (mục "Khác")` });
       }
     }
@@ -159,6 +169,9 @@ export const crewJobSchema = z
 export type CrewJobInput = z.infer<typeof crewJobSchema>;
 
 /** Chuẩn hoá thành cột của bảng crew_jobs (chuỗi rỗng → null; tiêu đề / liên hệ / vị trí tính sẵn cho trang công khai). */
+/** Nhiều lựa chọn → "a,b" trong cùng cột (chưa chọn → null). */
+const joinIds = (v: string[] | string | null | undefined) => (Array.isArray(v) ? v.join(',') : v || '') || null;
+
 export function toCrewJobColumns(input: CrewJobInput) {
   const orNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
   const num = (v: unknown) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
@@ -174,28 +187,31 @@ export function toCrewJobColumns(input: CrewJobInput) {
     contact_phone: input.contact_phone.trim(),
     project_name: orNull(input.project_name),
     project_hidden: !!input.project_hidden,
-    project_type: input.project_type,
-    project_phase: orNull(input.project_phase),
+    project_type: joinIds(input.project_type),
+    project_phase: joinIds(input.project_phase),
     department: input.department,
     role_title: input.role_title,
     role_other: input.role_title === OTHER_ID ? input.role_other.trim() : null,
     description: orNull(input.description),
     requires_cv: !!input.requires_cv,
-    seniority_level: input.seniority_level,
-    employment_type: input.employment_type,
+    seniority_level: joinIds(input.seniority_level),
+    employment_type: joinIds(input.employment_type),
     start_date: orNull(input.start_date),
     end_date: orNull(input.end_date),
     shooting_days: num(input.shooting_days),
-    city: orNull(input.city),
+    city: joinIds(input.city),
     location_detail: orNull(input.location_detail),
-    work_mode: orNull(input.work_mode),
+    work_mode: joinIds(input.work_mode),
     salary_type: input.salary_type,
     salary_min: input.salary_type === 'negotiable' ? null : num(input.salary_min),
     salary_max: input.salary_type === 'negotiable' ? null : num(input.salary_max),
     currency: 'VND',
     // Chỉ giữ chữ của các ô đang chọn "Khác"
     other_values: Object.fromEntries(
-      JOB_OTHER_FIELDS.filter(f => input[f] === OTHER_ID).map(f => [f, (input.other_values[f] || '').trim()])
+      JOB_OTHER_FIELDS.filter(f => {
+        const val = input[f] as string | string[];
+        return Array.isArray(val) ? val.includes(OTHER_ID) : val === OTHER_ID;
+      }).map(f => [f, (input.other_values[f] || '').trim()])
     ),
     quantity: Number(input.quantity) || 1
   };

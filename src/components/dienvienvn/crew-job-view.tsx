@@ -3,13 +3,13 @@
 import React from 'react';
 import { CalendarDays, Clapperboard, Clock, Coins, MapPin, UsersRound } from 'lucide-react';
 import type { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
-import { OTHER_ID, departmentOf, jobOptionText, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
+import { OTHER_ID, departmentOf, jobOptionText, roleLabel, splitIds } from '@/lib/dienvienvn/crew-taxonomy';
 import { formatVnDate } from './projects-section';
 
 // Hiển thị dùng chung cho tin tuyển ekip: tiêu đề tách phần trong ngoặc, các thông tin chính, JD tự định dạng.
 
 type Field = Parameters<typeof jobOptionText>[0];
-const opt = (job: PublicCrewJob, f: Field, id?: string | null) => jobOptionText(f, id, job.other_values).split(' (')[0];
+const opt = (job: PublicCrewJob, f: Field, id?: string | null) => jobOptionText(f, id, job.other_values, true);
 
 /** Tiêu đề chính + dòng phụ: "CAMERA OPERATOR (KỸ THUẬT QUAY)" → "CAMERA OPERATOR" / "KỸ THUẬT QUAY". Giữ nguyên chữ hoa / thường người đăng nhập. */
 export function jobTitle(job: PublicCrewJob): { main: string; sub: string } {
@@ -66,12 +66,16 @@ export function jobFacts(job: PublicCrewJob): JobFact[] {
 /** Nhãn ngắn: bộ phận, cấp độ, hình thức, chế độ làm việc. */
 export function jobTags(job: PublicCrewJob): string[] {
   if (!job.role_title) return job.positions || [];
-  return [
-    job.department === OTHER_ID ? '' : departmentOf(job.department)?.label || '',
-    opt(job, 'seniority_level', job.seniority_level),
-    opt(job, 'employment_type', job.employment_type),
-    opt(job, 'work_mode', job.work_mode)
-  ].filter(Boolean);
+  // Mỗi lựa chọn một nhãn riêng (ô chọn nhiều: "Junior", "Mid-Level"…)
+  const each = (f: Field, v?: string | null) => splitIds(v).map(id => opt(job, f, id));
+  return Array.from(
+    new Set([
+      job.department === OTHER_ID ? '' : departmentOf(job.department)?.label || '',
+      ...each('seniority_level', job.seniority_level),
+      ...each('employment_type', job.employment_type),
+      ...each('work_mode', job.work_mode)
+    ].filter(Boolean))
+  );
 }
 
 export const companyLine = (job: PublicCrewJob) => [job.company, job.company_type ? opt(job, 'company_type', job.company_type) : ''].filter(Boolean).join(' · ');

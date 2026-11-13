@@ -194,9 +194,23 @@ export const JOB_OPTIONS: Record<JobOtherField, Option[]> = {
   salary_type: withOther(SALARY_TYPES)
 };
 
-/** Chữ hiển thị của một ô chọn trong tin: lựa chọn có sẵn, hoặc chữ người đăng tự ghi khi chọn "Khác". */
-export function jobOptionText(field: JobOtherField, id?: string | null, others?: Partial<Record<string, string>> | null): string {
-  if (!id) return '';
-  if (id === OTHER_ID) return (others?.[field] || '').trim() || 'Khác';
-  return labelOf(JOB_OPTIONS[field], id);
+/** Các ô chọn được chọn nhiều giá trị (lưu dạng "a,b" trong cùng cột). */
+export const JOB_MULTI_FIELDS: JobOtherField[] = ['project_type', 'project_phase', 'seniority_level', 'employment_type', 'city', 'work_mode'];
+
+/** "feature_film,tvc" → ['feature_film', 'tvc'] (giá trị cũ một lựa chọn vẫn đọc được). */
+export const splitIds = (v?: string | null): string[] => (v || '').split(',').map(x => x.trim()).filter(Boolean);
+
+/**
+ * Chữ hiển thị của một ô chọn trong tin: lựa chọn có sẵn, hoặc chữ người đăng tự ghi khi chọn "Khác".
+ * Nhiều lựa chọn → nối bằng " · ". short: bỏ phần giải thích trong ngoặc ("Junior (1–2 năm…)" → "Junior").
+ */
+export function jobOptionText(field: JobOtherField, id?: string | null, others?: Partial<Record<string, string>> | null, short = false): string {
+  return splitIds(id)
+    .map(one => {
+      if (one === OTHER_ID) return (others?.[field] || '').trim() || 'Khác';
+      const label = labelOf(JOB_OPTIONS[field], one);
+      return short ? label.split(' (')[0] : label;
+    })
+    .filter(Boolean)
+    .join(' · ');
 }

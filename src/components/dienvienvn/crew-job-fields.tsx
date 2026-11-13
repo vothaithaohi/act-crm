@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2 } from 'lucide-react';
 import { CREW_MAX_POSITIONS, type CrewJob } from '@/lib/dienvienvn/crew-jobs';
-import { DEPARTMENT_OPTIONS, JOB_OPTIONS, JobOtherField, OTHER_ID, Option, departmentOf } from '@/lib/dienvienvn/crew-taxonomy';
+import { DEPARTMENT_OPTIONS, JOB_MULTI_FIELDS, JOB_OPTIONS, JobOtherField, OTHER_ID, Option, departmentOf, splitIds } from '@/lib/dienvienvn/crew-taxonomy';
 
 /** Chữ tự ghi khi chọn "Khác" ở các ô chọn. */
 type Others = Partial<Record<JobOtherField, string>>;
@@ -187,6 +187,62 @@ function JdBox({ id, cls, value, onChange }: { id: string; cls: string; value: s
   );
 }
 
+/** Chọn nhiều: các lựa chọn là thẻ bấm (bấm để chọn / bỏ chọn); chọn "Khác (tự ghi)" thì hiện ô ghi. Giá trị lưu dạng "a,b". */
+function MultiChips({
+  id,
+  field,
+  v,
+  others,
+  onPick,
+  onOther,
+  ui
+}: {
+  id: string;
+  field: JobOtherField;
+  v: string;
+  others: Others;
+  onPick: (x: string) => void;
+  onOther: (text: string) => void;
+  ui: { input: string };
+}) {
+  const picked = splitIds(v);
+  const toggle = (optId: string) => onPick((picked.includes(optId) ? picked.filter(x => x !== optId) : [...picked, optId]).join(','));
+  return (
+    <div id={id} role="group" className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {JOB_OPTIONS[field].map(o => {
+          const on = picked.includes(o.id);
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(o.id)}
+              className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-left text-[14px] leading-[1.3] transition-colors ${
+                on ? 'border-[#1d1d1f] bg-[#1d1d1f] text-white' : 'border-[#d2d2d7] bg-white text-[#1d1d1f] hover:border-[#1d1d1f]'
+              }`}
+            >
+              {on && <Check className="h-3.5 w-3.5 shrink-0" />}
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {picked.includes(OTHER_ID) && (
+        <input
+          id={`${id}-other`}
+          className={ui.input}
+          value={others[field] || ''}
+          maxLength={120}
+          onChange={e => onOther(e.target.value)}
+          placeholder="Ghi rõ lựa chọn khác *"
+          aria-label="Ghi rõ lựa chọn khác"
+        />
+      )}
+    </div>
+  );
+}
+
 /** Ô chọn có "Khác (tự ghi)": chọn "Khác" thì hiện ô ghi ngay bên dưới. */
 function OtherSelect({
   id,
@@ -301,8 +357,8 @@ function PositionCard({
       )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_180px]">
         <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor={id('senior')}>Cấp độ kinh nghiệm kỳ vọng</FieldLabel>
-          <OtherSelect
+          <FieldLabel cls={ui.label} required htmlFor={id('senior')}>Cấp độ kinh nghiệm kỳ vọng (chọn được nhiều)</FieldLabel>
+          <MultiChips
             ui={ui}
             id={id('senior')}
             field="seniority_level"
@@ -310,7 +366,6 @@ function PositionCard({
             others={value.other_values}
             onPick={x => set({ seniority_level: x })}
             onOther={t => setOther('seniority_level', t)}
-            placeholder="Chọn cấp độ"
           />
         </div>
         <div className={field}>
@@ -368,7 +423,18 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
   const set = (patch: Partial<CrewFormA>) => onChange({ ...value, ...patch });
   const others = value.other_values || {};
   const setOther = (f: JobOtherField, text: string) => set({ other_values: { ...others, [f]: text } });
-  const sel = (f: JobOtherField, htmlId: string, placeholder: string) => (
+  const sel = (f: JobOtherField, htmlId: string, placeholder: string) =>
+    JOB_MULTI_FIELDS.includes(f) ? (
+      <MultiChips
+        ui={ui}
+        id={htmlId}
+        field={f}
+        v={value[f as keyof CrewFormA] as string}
+        others={others}
+        onPick={x => set({ [f]: x } as Partial<CrewFormA>)}
+        onOther={t => setOther(f, t)}
+      />
+    ) : (
     <OtherSelect
       ui={ui}
       id={htmlId}
@@ -428,13 +494,13 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
             Dự án bảo mật / Giữ kín tên
           </label>
         </div>
-        <div className={grid}>
+        <div className="space-y-4">
           <div className={field}>
-            <FieldLabel cls={ui.label} required htmlFor="cj-ptype">Loại hình dự án</FieldLabel>
+            <FieldLabel cls={ui.label} required htmlFor="cj-ptype">Loại hình dự án (chọn được nhiều)</FieldLabel>
             {sel('project_type', 'cj-ptype', 'Chọn loại hình dự án')}
           </div>
           <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-phase">Giai đoạn dự án đang tuyển</FieldLabel>
+            <FieldLabel cls={ui.label} htmlFor="cj-phase">Giai đoạn dự án đang tuyển (chọn được nhiều)</FieldLabel>
             {sel('project_phase', 'cj-phase', 'Chọn giai đoạn')}
           </div>
         </div>
@@ -476,7 +542,7 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
       <section className={ui.section}>
         <p className={ui.title}>4. Thời gian &amp; hình thức làm việc</p>
         <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor="cj-emp">Hình thức hợp đồng</FieldLabel>
+          <FieldLabel cls={ui.label} required htmlFor="cj-emp">Hình thức hợp đồng (chọn được nhiều)</FieldLabel>
           {sel('employment_type', 'cj-emp', 'Chọn hình thức')}
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -493,13 +559,13 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
             <input id="cj-days" inputMode="numeric" className={ui.input} value={value.shooting_days} onChange={e => set({ shooting_days: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="Nếu là On-set" />
           </div>
         </div>
-        <div className={grid}>
+        <div className="space-y-4">
           <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-city">Thành phố chính</FieldLabel>
+            <FieldLabel cls={ui.label} htmlFor="cj-city">Thành phố (chọn được nhiều)</FieldLabel>
             {sel('city', 'cj-city', 'Chọn thành phố')}
           </div>
           <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-mode">Chế độ làm việc</FieldLabel>
+            <FieldLabel cls={ui.label} htmlFor="cj-mode">Chế độ làm việc (chọn được nhiều)</FieldLabel>
             {sel('work_mode', 'cj-mode', 'Chọn chế độ')}
           </div>
         </div>
