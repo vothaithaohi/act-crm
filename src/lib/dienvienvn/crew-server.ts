@@ -1,12 +1,13 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { findAuthUserByEmail, isSelfSignup, isStaffEmail, SET_PASSWORD_PATH } from './actor-server';
+import { findAuthUserByEmail, isSelfSignup, isStaffEmail } from './actor-server';
 import { CRM_HOST, publicSiteUrl } from './hosts';
 import { CrewJob, crewJobActive } from './crew-jobs';
 import { CrewApplication, CrewProfile, crewPrimaryRoleText } from './crew-profiles';
 import { SENIORITY_LEVELS, labelOf } from './crew-taxonomy';
 import { sendMail } from './mailer';
+import { mailAuthLink } from './auth-mail';
 import { authUserInUse } from '@/lib/supabase/account-cleanup';
 
 export const CREW_MISSING = 'Hệ thống chưa sẵn sàng (cần chạy migration 20261115_crew_profiles.sql).';
@@ -47,20 +48,6 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<
 
 export type CrewSignupResult = 'invited' | 'exists' | 'staff' | 'failed';
 
-/** Email xác nhận tài khoản ekip (gửi qua Brevo, nội dung riêng cho ứng viên ekip — không dùng mẫu email mời chung của Supabase). */
-function crewConfirmEmail(name: string, link: string) {
-  const hello = name ? `Xin chào ${escapeHtml(name)},` : 'Xin chào,';
-  const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1d1d1f">
-  <p style="font-size:20px;font-weight:600;margin:0 0 24px">🎬 DienVienVN</p>
-  <h2 style="font-size:22px;margin:0 0 12px">Xác nhận tài khoản ứng viên ekip.</h2>
-  <p style="font-size:15px;line-height:1.5;color:#424245;margin:0 0 24px">${hello} bấm nút bên dưới để xác nhận email và tạo mật khẩu. Sau đó bạn hoàn thiện hồ sơ ekip, lưu CV và ứng tuyển việc làm ekip trên DienVienVN.</p>
-  <a href="${link}" style="display:inline-block;background:#1d1d1f;color:#ffffff;text-decoration:none;font-size:15px;padding:12px 24px;border-radius:980px">Xác nhận &amp; tạo mật khẩu</a>
-  <p style="font-size:12px;line-height:1.5;color:#86868b;margin:28px 0 0">Nếu bạn không đăng ký tài khoản ekip trên DienVienVN, hãy bỏ qua email này.</p>
-</div>`;
-  const text = `${name ? `Xin chào ${name},` : 'Xin chào,'} bấm link sau để xác nhận email và tạo mật khẩu tài khoản ứng viên ekip DienVienVN: ${link}\n\nNếu bạn không đăng ký tài khoản ekip trên DienVienVN, hãy bỏ qua email này.`;
-  return { subject: 'DienVienVN – Xác nhận tài khoản ứng viên ekip', html, text };
-}
-
 /**
  * Đăng ký tài khoản ứng viên ekip: tạo link xác nhận (chỉ chủ hộp thư mới vào được) và tự gửi email nội dung ekip.
  * Email đã có tài khoản DienVienVN (VD: cũng là diễn viên) → báo đăng nhập bằng tài khoản đó.
@@ -68,50 +55,32 @@ function crewConfirmEmail(name: string, link: string) {
 export async function inviteCrewAccount(db: SupabaseClient, input: { email: string; full_name: string }, headers: Headers): Promise<CrewSignupResult> {
   const email = input.email.trim().toLowerCase();
   if (await isStaffEmail(db, email)) return 'staff';
-  const site = publicSiteUrl(headers);
-  const redirectTo = `${site}${SET_PASSWORD_PATH}`;
-  const send = async (type: 'invite' | 'recovery', hashed: string) => {
-    const link = `${redirectTo}?token_hash=${encodeURIComponent(hashed)}&type=${type}&for=ekip`;
-    return sendMail({ to: email, ...crewConfirmEmail(input.full_name, link) });
-  };
+  const invite = () =>
+    mailAuthLink(db, { email, name: input.full_name, audience: 'crew', type: 'invite', purpose: 'confirm', data: { kind: 'dienvienvn_crew', full_name: input.full_name } }, headers);
+  const resend = () => mailAuthLink(db, { email, name: input.full_name, audience: 'crew', type: 'recovery', purpose: 'confirm' }, headers);
 
-  const { data, error } = await db.auth.admin.generateLink({
-    type: 'invite',
-    email,
-    options: { redirectTo, data: { kind: 'dienvienvn_crew', full_name: input.full_name } }
-  });
-  if (!error && data?.properties?.hashed_token) return (await send('invite', data.properties.hashed_token)) ? 'invited' : 'failed';
-  if (error && !/already|registered|exists/i.test(error.message)) {
-    console.error('[dienvienvn] Không tạo được link xác nhận ekip:', error.message);
-    return 'failed';
-  }
+  const first = await invite();
+  if (first.result === 'sent') return 'invited';
+  if (first.result === 'failed') return 'failed';
+
   const existing = await findAuthUserByEmail(db, email);
   if (!existing) return 'failed';
-  // Đã đăng ký ekip nhưng chưa bấm link / chưa tạo mật khẩu: gửi lại link xác nhận.
-  // Tài khoản khác (diễn viên, đối tác…) → đăng nhập bằng tài khoản đó rồi tạo hồ sơ ekip.
-  // Tài khoản bị bỏ lại (hồ sơ đã bị xoá, không còn gắn với hồ sơ nào): xoá rồi đăng ký lại như email mới
-  if (!(await authUserInUse(db, existing))) {
+  const activeCrew = existing.user_metadata?.kind === 'dienvienvn_crew' && !!existing.last_sign_in_at;
+  // Tài khoản bị bỏ lại (hồ sơ đã bị xoá, không còn gắn với hồ sơ nào): xoá rồi đăng ký lại như email mới.
+  // Không áp dụng cho tài khoản ekip đã tạo mật khẩu nhưng chưa điền hồ sơ (vẫn đang dùng).
+  if (!activeCrew && !(await authUserInUse(db, existing))) {
     const { error: delErr } = await db.auth.admin.deleteUser(existing.id);
     if (delErr) {
       console.error('[dienvienvn] Không xoá được tài khoản bị bỏ lại:', delErr.message);
       return 'failed';
     }
-    const { data: fresh, error: freshErr } = await db.auth.admin.generateLink({
-      type: 'invite',
-      email,
-      options: { redirectTo, data: { kind: 'dienvienvn_crew', full_name: input.full_name } }
-    });
-    if (freshErr || !fresh?.properties?.hashed_token) return 'failed';
-    return (await send('invite', fresh.properties.hashed_token)) ? 'invited' : 'failed';
+    return (await invite()).result === 'sent' ? 'invited' : 'failed';
   }
+  // Đã đăng ký ekip nhưng chưa bấm link / chưa tạo mật khẩu: gửi lại link xác nhận.
+  // Tài khoản khác (diễn viên, đối tác, ekip đã kích hoạt) → đăng nhập bằng tài khoản đó.
   const pendingCrew = existing.user_metadata?.kind === 'dienvienvn_crew' && !isSelfSignup(existing) && !existing.last_sign_in_at;
   if (!pendingCrew) return 'exists';
-  const { data: again, error: againErr } = await db.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } });
-  if (againErr || !again?.properties?.hashed_token) {
-    console.error('[dienvienvn] Không tạo được link xác nhận ekip:', againErr?.message);
-    return 'failed';
-  }
-  return (await send('recovery', again.properties.hashed_token)) ? 'invited' : 'failed';
+  return (await resend()).result === 'sent' ? 'invited' : 'failed';
 }
 
 /** Tin còn nhận ứng tuyển (đã duyệt, còn hạn). */

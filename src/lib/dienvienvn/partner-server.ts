@@ -1,4 +1,5 @@
 import 'server-only';
+import { mailAuthLink } from './auth-mail';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { SHORTLIST_STATUSES, buildProducerView, toProducerTalent } from '@/lib/projects/producer';
@@ -92,46 +93,44 @@ export async function sendPartnerEmail(db: SupabaseClient, partner: PartnerAccou
   const email = partner.email.trim().toLowerCase();
   if (await isStaffEmail(db, email)) return 'staff';
   const redirectTo = `${publicSiteUrl(headers)}${SET_PASSWORD_PATH}`;
+  const name = partner.full_name || '';
   const link = async (userId: string) => {
     if (userId !== partner.auth_user_id) await db.from('partner_accounts').update({ auth_user_id: userId }).eq('id', partner.id);
   };
-  const reset = async () => {
-    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) console.error('[dienvienvn] Không gửi được email đặt mật khẩu cho đối tác:', error.message);
-    return error ? 'failed' : 'reset';
-  };
+  // Email do hệ thống tự gửi với nội dung dành cho đối tác (mẫu email chung của Supabase viết cho diễn viên)
+  const recovery = async (purpose: 'confirm' | 'reset') =>
+    (await mailAuthLink(db, { email, name, audience: 'partner', type: 'recovery', purpose }, headers)).result === 'sent' ? 'reset' : 'failed';
 
   if (partner.auth_user_id) {
     const { data } = await db.auth.admin.getUserById(partner.auth_user_id);
     // Đối tác tự đăng ký kèm mật khẩu: ACT duyệt chính là bước xác minh → không cần gửi email
     if (data?.user && isSelfSignup(data.user) && partner.created_by === 'Tự đăng ký') return 'ready';
-    if (data?.user && (data.user.last_sign_in_at || data.user.email_confirmed_at)) return reset();
+    if (data?.user && (data.user.last_sign_in_at || data.user.email_confirmed_at)) return recovery('reset');
   }
 
-  const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    data: { kind: 'dienvienvn_partner', full_name: partner.full_name }
-  });
-  if (error) {
-    if (/already|registered|exists/i.test(error.message)) {
-      // Email đã có tài khoản DienVienVN (VD: cũng là diễn viên): gắn vào đối tác và gửi email đặt mật khẩu.
-      const existing = await findAuthUserByEmail(db, email);
-      if (!existing) return 'failed';
-      if (isSelfSignup(existing)) {
-        // Ai đó đã tự tạo tài khoản bằng email này: lấy lại, chỉ chủ hộp thư nhận được lời mời
-        const newId = await reclaimSelfSignup(db, existing, redirectTo);
-        if (!newId) return 'failed';
-        await link(newId);
-        return 'invited';
-      }
-      await link(existing.id);
-      return reset();
-    }
-    console.error('[dienvienvn] Không gửi được email mời đối tác:', error.message);
-    return 'failed';
+  const invited = await mailAuthLink(
+    db,
+    { email, name, audience: 'partner', type: 'invite', purpose: 'confirm', data: { kind: 'dienvienvn_partner', full_name: partner.full_name } },
+    headers
+  );
+  if (invited.result === 'sent') {
+    if (invited.userId) await link(invited.userId);
+    return 'invited';
   }
-  if (data?.user?.id) await link(data.user.id);
-  return 'invited';
+  if (invited.result === 'failed') return 'failed';
+
+  // Email đã có tài khoản DienVienVN (VD: cũng là diễn viên, hoặc đã mời nhưng chưa tạo mật khẩu): gắn vào đối tác và gửi link.
+  const existing = await findAuthUserByEmail(db, email);
+  if (!existing) return 'failed';
+  if (isSelfSignup(existing)) {
+    // Ai đó đã tự tạo tài khoản bằng email này: lấy lại, chỉ chủ hộp thư nhận được lời mời
+    const newId = await reclaimSelfSignup(db, existing, redirectTo);
+    if (!newId) return 'failed';
+    await link(newId);
+    return 'invited';
+  }
+  await link(existing.id);
+  return recovery(existing.last_sign_in_at ? 'reset' : 'confirm');
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);

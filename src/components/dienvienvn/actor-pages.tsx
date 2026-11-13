@@ -193,6 +193,7 @@ export function ActorLogin() {
   const session = useActorSession();
   const next = safeNext(params.get('next'), href('/tai-khoan'));
   const forPartner = next.startsWith(href('/doi-tac')) || next.startsWith(href('/nsx'));
+  const forCrew = next.startsWith(href('/ekip')) || next.startsWith(href('/tai-khoan/ekip')) || next.startsWith(href('/tuyen-dung/ung-tuyen'));
   const [mode, setMode] = useState<'login' | 'resend'>(params.get('quen-mat-khau') ? 'resend' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -252,7 +253,19 @@ export function ActorLogin() {
         )}
       </div>
       {forPartner ? (
-        <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">Tài khoản đối tác do DienVienVN cấp.</p>
+        <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
+          Chưa có tài khoản đối tác?{' '}
+          <Link href={href('/doi-tac/dang-ky')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
+            Đăng ký đối tác
+          </Link>
+        </p>
+      ) : forCrew ? (
+        <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
+          Chưa có tài khoản ekip?{' '}
+          <Link href={href('/ekip/dang-ky')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
+            Đăng ký tài khoản ekip
+          </Link>
+        </p>
       ) : (
         <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
           Chưa có hồ sơ?{' '}
@@ -278,8 +291,8 @@ export function SetPassword() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reason, setReason] = useState('');
-  // Link trong email tài khoản ekip có "&for=ekip": lời nhắn dành cho ứng viên ekip thay vì diễn viên
-  const [forCrew, setForCrew] = useState(false);
+  // Link trong email tài khoản ekip / đối tác có "&for=ekip" / "&for=doi-tac": lời nhắn đúng đối tượng thay vì diễn viên
+  const [audience, setAudience] = useState<'actor' | 'crew' | 'partner'>('actor');
   // Mã xác minh trong link email: chỉ dùng khi người dùng bấm lưu mật khẩu, không dùng lúc mở trang,
   // để trình quét link của Gmail/Outlook (tự mở link trước) không làm link hết hiệu lực.
   const pending = useRef<{ tokenHash: string; type: LinkType } | null>(null);
@@ -295,9 +308,11 @@ export function SetPassword() {
     const clearUrl = () => window.history.replaceState(null, '', window.location.pathname);
     const type = (query.get('type') || hash.get('type') || '') as LinkType;
     // Link gửi lại cho tài khoản ekip chưa tạo mật khẩu là link khôi phục: vẫn hiện như xác nhận tài khoản
-    const crewLink = query.get('for') === 'ekip';
-    setKind(type === 'recovery' && !crewLink ? 'recovery' : 'invite');
-    setForCrew(crewLink);
+    const forParam = query.get('for');
+    // Link xác nhận tài khoản gửi lại (dạng khôi phục) vẫn hiện như "Xác nhận tài khoản"
+    const confirmLink = forParam === 'ekip' || forParam === 'doi-tac';
+    setKind(type === 'recovery' && !confirmLink ? 'recovery' : 'invite');
+    setAudience(forParam === 'ekip' ? 'crew' : forParam === 'doi-tac' ? 'partner' : 'actor');
 
     (async () => {
       // 1) Mẫu email dùng token_hash (khuyến nghị)
@@ -409,8 +424,10 @@ export function SetPassword() {
             <div>
               <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{title}</h1>
               <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                {kind === 'invite' && forCrew
+                {kind === 'invite' && audience === 'crew'
                   ? 'Tạo mật khẩu để đăng nhập, hoàn thiện hồ sơ ekip và ứng tuyển việc làm ekip.'
+                  : kind === 'invite' && audience === 'partner'
+                  ? 'Tạo mật khẩu để đăng nhập cổng đối tác DienVienVN. Bạn dùng được cổng đối tác sau khi DienVienVN duyệt tài khoản.'
                   : kind === 'invite'
                   ? 'Email của bạn đã được xác nhận. Tạo mật khẩu để đăng nhập, chỉnh sửa hồ sơ và ứng tuyển các dự án đang casting.'
                   : `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`}
