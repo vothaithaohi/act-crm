@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ChevronLeft, ExternalLink, FileText, Link2, Loader2, Lock, PenLine, Star, Trash2, Upload } from 'lucide-react';
+import { Check, ChevronLeft, ExternalLink, FileText, Link2, Loader2, Lock, PenLine, Star, Trash2, Upload, X } from 'lucide-react';
 import { actorClient, actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { LogoutButton } from './logout-button';
 import { crewJobPath, type PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
@@ -21,6 +21,8 @@ import { jobOptionText, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
 import { useDvvnHref } from './base-path';
 import { CrewFormB, CrewProfileFields, crewFormBFrom } from './crew-profile-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from './crew-profile-view';
+import { JdText, companyLine, jobFacts, jobTags, jobTitle } from './crew-job-view';
+import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
 
 type MeApp = { id: string; job_id: string; created_at: string; title: string; company: string; open: boolean } & Partial<CrewAttachments>;
@@ -74,20 +76,6 @@ function LockedNote() {
     <p className="flex items-start gap-2 rounded-[12px] bg-[#fff6e0] p-3 text-[14px] text-[#8c5f2a]">
       <Lock className="mt-0.5 h-4 w-4 shrink-0" /> Tài khoản ekip đang bị khoá. Vui lòng liên hệ DienVienVN.
     </p>
-  );
-}
-
-function JobSummary({ job }: { job: PublicCrewJob }) {
-  const role = roleLabel(job.department, job.role_title, job.role_other);
-  const project = [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), jobOptionText('project_type', job.project_type, job.other_values).split(' (')[0]].filter(Boolean).join(' · ');
-  return (
-    <div className="dv-card p-6">
-      {job.company && <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{job.company}</p>}
-      <p className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2]">{role?.vi || job.title}</p>
-      {project && <p className="mt-1 text-[14px]">{project}</p>}
-      {job.description && <p className="mt-3 whitespace-pre-line text-[14px] leading-[1.55] text-[var(--dv-text-secondary)]">{job.description}</p>}
-      {job.requires_cv && <p className="mt-2 text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm CV</p>}
-    </div>
   );
 }
 
@@ -585,13 +573,16 @@ function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; se
   );
 }
 
-/** Trang ứng tuyển một tin: chưa đăng nhập → đăng ký / đăng nhập; chưa có hồ sơ → tạo hồ sơ; có hồ sơ → cover letter, CV, gửi. */
+/** Trang chi tiết tin + ứng tuyển: nội dung tin bên trái, thẻ "Ứng tuyển" dính bên phải (điện thoại: thanh dưới đáy);
+ *  bấm "Ứng tuyển ngay" mở cửa sổ trượt từ phải: 1. Cover letter → 2. CV → Gửi. */
 export function CrewApply({ job }: { job: PublicCrewJob | null }) {
   const href = useDvvnHref();
   const session = useActorSession();
   const signedIn = session.status === 'signed-in';
   const { me, setMe, error: meError } = useCrewMe(signedIn);
   const [done, setDone] = useState<null | 'applied' | 'already'>(null);
+  const [drawer, setDrawer] = useState(false);
+  const [copied, setCopied] = useState(false);
   const here = job ? href(crewJobPath(job)) : href('/ekip');
 
   if (!job) {
@@ -608,16 +599,12 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
     );
   }
 
-  const back = (
-    <Link href={href('/ekip')} className="dv-link text-[14px]">
-      <ChevronLeft className="h-4 w-4" /> Việc làm ekip
-    </Link>
-  );
-
   if (done) {
     return (
       <Shell>
-        {back}
+        <Link href={href('/ekip')} className="dv-link text-[14px]">
+          <ChevronLeft className="h-4 w-4" /> Việc làm ekip
+        </Link>
         <div className="dv-card mt-6 p-8 text-center md:p-10">
           <Check className="mx-auto h-10 w-10" strokeWidth={2.5} />
           <h1 className="dv-display mt-4 text-[26px] font-semibold">{done === 'already' ? 'Bạn đã ứng tuyển tin này.' : 'Đã ứng tuyển.'}</h1>
@@ -637,75 +624,228 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
     );
   }
 
-  if (session.status === 'loading' || (signedIn && !me && !meError)) return <Shell><Spinner /></Shell>;
+  const title = jobTitle(job);
+  const facts = jobFacts(job);
+  const tags = jobTags(job);
+  const crew = me?.crew || null;
+  const applied = !!crew && (me?.applications || []).some(a => a.job_id === job.id);
+  const loading = session.status === 'loading' || (signedIn && !me && !meError);
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href.split('#')[0]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* trình duyệt chặn sao chép */
+    }
+  };
 
-  const gate = (title: string, actions: React.ReactNode) => (
-    <Shell>
-      {back}
-      <h1 className="dv-display dv-headline mt-4">Ứng tuyển.</h1>
-      <div className="mt-6 space-y-4">
-        <JobSummary job={job} />
-        <div className="dv-card flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[17px] font-semibold">{title}</p>
-          <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+  // Nút chính của thẻ Ứng tuyển, theo trạng thái tài khoản
+  const btn = 'dv-btn w-full !h-11 !py-0 text-[15px]';
+  const cta = loading ? (
+    <div className="flex h-11 items-center justify-center">
+      <Loader2 className="h-5 w-5 animate-spin text-[var(--dv-text-secondary)]" />
+    </div>
+  ) : !signedIn ? (
+    <div className="space-y-2">
+      <Link href={href('/ekip/dang-ky')} className={`${btn} dv-btn-primary`}>
+        Đăng ký để ứng tuyển
+      </Link>
+      <Link href={href(`/dang-nhap?next=${encodeURIComponent(here)}`)} className={`${btn} dv-btn-secondary`}>
+        Đăng nhập
+      </Link>
+    </div>
+  ) : meError ? (
+    <p className="text-[14px] text-[#b00020]">{meError}</p>
+  ) : !crew ? (
+    <Link href={href('/tai-khoan/ekip')} className={`${btn} dv-btn-primary`}>
+      Điền hồ sơ ekip để ứng tuyển
+    </Link>
+  ) : crew.review_status === 'rejected' ? (
+    <LockedNote />
+  ) : applied ? (
+    <div className="space-y-2">
+      <p className="flex items-center justify-center gap-2 rounded-full bg-[#e8f5ec] py-2.5 text-[15px] font-semibold text-[#1e6b3a]">
+        <Check className="h-4 w-4" /> Bạn đã ứng tuyển
+      </p>
+      <Link href={href('/tai-khoan/ekip')} className={`${btn} dv-btn-secondary`}>
+        Xem trong Tài khoản ekip
+      </Link>
+    </div>
+  ) : (
+    <button type="button" onClick={() => setDrawer(true)} className={`${btn} dv-btn-primary`}>
+      Ứng tuyển ngay
+    </button>
+  );
+  // Thanh dưới đáy (điện thoại): chưa đăng nhập chỉ 1 nút, link Đăng nhập nằm trong trang đăng ký
+  const mobileCta = !loading && !signedIn ? (
+    <Link href={href('/ekip/dang-ky')} className={`${btn} dv-btn-primary`}>
+      Đăng ký để ứng tuyển
+    </Link>
+  ) : (
+    cta
+  );
+  const canOpenDrawer = !loading && signedIn && !!crew && crew.review_status !== 'rejected' && !applied;
+
+  return (
+    <>
+      <GlobalNav />
+      <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-12 pt-8 md:pt-12 lg:pb-20">
+        <div className="mx-auto max-w-[1120px]">
+          <Link href={href('/ekip')} className="dv-link text-[14px]">
+            <ChevronLeft className="h-4 w-4" /> Việc làm ekip
+          </Link>
+
+          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8">
+            {/* Nội dung tin */}
+            <article className="min-w-0 space-y-6">
+              <header className="dv-card p-6 md:p-8">
+                <p className="text-[13px] font-semibold uppercase tracking-[0.04em] text-[var(--dv-text-tertiary)]">{companyLine(job)}</p>
+                <h1 className="dv-display mt-2 text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] md:text-[34px]">{title.main}</h1>
+                {title.sub && <p className="mt-1.5 text-[17px] text-[var(--dv-text-secondary)]">{title.sub}</p>}
+                {tags.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {tags.map(t => (
+                      <span key={t} className="rounded-full bg-[var(--dv-bg-alt)] px-3 py-1 text-[13px] font-medium">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {facts.length > 0 && (
+                  <dl className="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 border-t border-[#f0f0f2] pt-6 sm:grid-cols-2 xl:grid-cols-3">
+                    {facts.map(f => (
+                      <div key={f.key} className="flex min-w-0 gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--dv-bg-alt)]">
+                          <f.icon className="h-[18px] w-[18px]" />
+                        </span>
+                        <div className="min-w-0">
+                          <dt className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--dv-text-tertiary)]">{f.label}</dt>
+                          <dd className="text-[15px] font-medium leading-[1.4]">{f.value}</dd>
+                        </div>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </header>
+
+              {job.description && (
+                <section className="dv-card p-6 md:p-8">
+                  <h2 className="mb-4 text-[19px] font-semibold">Mô tả công việc</h2>
+                  <JdText text={job.description} />
+                </section>
+              )}
+            </article>
+
+            {/* Thẻ Ứng tuyển: dính khi cuộn (máy tính) */}
+            <aside className="hidden lg:sticky lg:top-[72px] lg:block">
+              <div className="dv-card space-y-4 p-6">
+                <p className="text-[17px] font-semibold">Ứng tuyển vị trí này</p>
+                <ul className="space-y-1.5 text-[14px] text-[var(--dv-text-secondary)]">
+                  {job.deadline && (
+                    <li>
+                      Hạn nộp: <span className="font-semibold text-[var(--dv-text)]">{formatVnDate(job.deadline)}</span>
+                    </li>
+                  )}
+                  {job.quantity ? (
+                    <li>
+                      Số lượng: <span className="font-semibold text-[var(--dv-text)]">{job.quantity} người</span>
+                    </li>
+                  ) : null}
+                  <li>{job.requires_cv ? 'Yêu cầu gửi kèm CV (PDF)' : 'Gửi kèm CV và cover letter nếu có'}</li>
+                </ul>
+                {cta}
+                <button type="button" onClick={copyLink} className="flex w-full items-center justify-center gap-1.5 text-[14px] font-medium text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]">
+                  <Link2 className="h-4 w-4" /> {copied ? 'Đã sao chép link' : 'Sao chép link tin'}
+                </button>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+      <div className="pb-20 lg:pb-0">
+        <SiteFooter />
+      </div>
+
+      {/* Điện thoại / máy tính bảng: thanh Ứng tuyển dưới đáy */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] bg-white/95 backdrop-blur lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="mx-auto flex max-w-[1120px] items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-semibold">{title.main}</p>
+            <p className="truncate text-[12.5px] text-[var(--dv-text-secondary)]">
+              {[job.quantity ? `Cần ${job.quantity} người` : '', job.deadline ? `Hạn ${formatVnDate(job.deadline)}` : ''].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <div className="w-[190px] shrink-0">{mobileCta}</div>
         </div>
       </div>
-    </Shell>
+
+      {drawer && canOpenDrawer && me && (
+        <ApplyDrawer
+          title={title}
+          onClose={() => setDrawer(false)}
+          body={
+            <ApplyPanel
+              job={job}
+              me={me}
+              setMe={setMe}
+              onDone={k => {
+                setDrawer(false);
+                setDone(k);
+                window.scrollTo({ top: 0 });
+              }}
+            />
+          }
+          profile={
+            <div className="dv-card flex items-center justify-between gap-3 p-4">
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--dv-text-tertiary)]">Hồ sơ gửi kèm</p>
+                <p className="truncate text-[15px] font-semibold">{crew?.full_name}</p>
+              </div>
+              <Link href={href('/tai-khoan/ekip')} className="dv-link shrink-0 text-[14px]">
+                Sửa hồ sơ
+              </Link>
+            </div>
+          }
+        />
+      )}
+    </>
   );
+}
 
-  if (!signedIn) {
-    return gate(
-      'Đăng ký tài khoản ekip để ứng tuyển.',
-      <>
-        <Link href={href('/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-          Đăng ký tài khoản ekip
-        </Link>
-        <Link href={href(`/dang-nhap?next=${encodeURIComponent(here)}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-          Đăng nhập
-        </Link>
-      </>
-    );
-  }
-  if (meError || !me) return <Shell>{back}<ErrorBox>{meError}</ErrorBox></Shell>;
-  if (!me.crew) {
-    return gate(
-      'Điền hồ sơ ekip trước khi ứng tuyển.',
-      <Link href={href('/tai-khoan/ekip')} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-        Điền hồ sơ ekip
-      </Link>
-    );
-  }
-
-  const crew = me.crew;
-  const applied = (me.applications || []).some(a => a.job_id === job.id);
+/** Cửa sổ ứng tuyển trượt từ phải (giống cửa sổ hồ sơ diễn viên). */
+function ApplyDrawer({ title, body, profile, onClose }: { title: { main: string; sub: string }; body: React.ReactNode; profile: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
   return (
-    <Shell>
-      {back}
-      <h1 className="dv-display dv-headline mt-4">Ứng tuyển.</h1>
-      <div className="mt-6 space-y-4">
-        <JobSummary job={job} />
-        {crew.review_status === 'rejected' ? (
-          <LockedNote />
-        ) : applied ? (
-          <div className="dv-card flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[17px] font-semibold">Bạn đã ứng tuyển tin này.</p>
-            <Link href={href('/tai-khoan/ekip')} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-              Xem trong Tài khoản ekip
-            </Link>
+    <div className="fixed inset-0 z-[70] flex justify-end bg-black/45 backdrop-blur-[2px]" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={`Ứng tuyển ${title.main}`} onClick={e => e.stopPropagation()} className="dv-slide-in-right flex h-full w-full max-w-[640px] flex-col bg-[var(--dv-bg-alt)] shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-black/[0.06] bg-white/90 px-4 py-3 backdrop-blur md:px-6">
+          <button type="button" onClick={onClose} aria-label="Đóng" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1d1d1f] text-white hover:bg-black">
+            <X className="h-5 w-5" />
+          </button>
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--dv-text-tertiary)]">Ứng tuyển</p>
+            <p className="truncate text-[15px] font-semibold">{title.main}</p>
           </div>
-        ) : (
-          <ApplyPanel
-            job={job}
-            me={me}
-            setMe={setMe}
-            onDone={k => {
-              setDone(k);
-              window.scrollTo({ top: 0 });
-            }}
-          />
-        )}
+        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 md:px-6" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))' }}>
+          {profile}
+          {body}
+        </div>
       </div>
-    </Shell>
+    </div>
   );
 }
 

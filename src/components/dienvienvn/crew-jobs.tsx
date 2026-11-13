@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { BriefcaseBusiness, CalendarDays, ChevronDown, Coins, MapPin, UsersRound } from 'lucide-react';
-import { OTHER_ID, departmentOf, jobOptionText, roleLabel } from '@/lib/dienvienvn/crew-taxonomy';
+import { BriefcaseBusiness } from 'lucide-react';
+import { companyLine, jdSummary, jobFacts, jobTags, jobTitle } from './crew-job-view';
 import { PublicCrewJob, crewJobPath } from '@/lib/dienvienvn/crew-jobs';
 import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { useDvvnHref } from './base-path';
@@ -69,20 +68,6 @@ export function CrewJobBoard({ jobs, variant = 'partner' }: { jobs: PublicCrewJo
   );
 }
 
-const fmtMoney = (n?: number | null) => (n ? n.toLocaleString('vi-VN') : '');
-
-/** Thù lao theo Form A: "1.500.000 – 2.500.000 VND/ngày" hoặc "Thỏa thuận". */
-function salaryText(job: PublicCrewJob): string {
-  if (!job.salary_type) return job.compensation || '';
-  if (job.salary_type === 'negotiable') return 'Thỏa thuận theo năng lực';
-  const other = job.salary_type === OTHER_ID ? jobOptionText('salary_type', OTHER_ID, job.other_values) : '';
-  const unit = { per_day: 'VND/ngày', per_project: 'VND/dự án', per_month: 'VND/tháng' }[job.salary_type] || 'VND';
-  const [lo, hi] = [fmtMoney(job.salary_min), fmtMoney(job.salary_max)];
-  const range = lo && hi ? `${lo} – ${hi}` : lo ? `Từ ${lo}` : hi ? `Đến ${hi}` : '';
-  if (other) return range ? `${range} VND · ${other}` : other;
-  return range ? `${range} ${unit}` : jobOptionText('salary_type', job.salary_type, job.other_values);
-}
-
 /** Khung cho ứng viên ekip: chưa đăng nhập → đăng ký / đăng nhập; đã đăng nhập → hồ sơ ekip. */
 function CrewSignupBox() {
   const href = useDvvnHref();
@@ -121,94 +106,53 @@ function CrewSignupBox() {
   );
 }
 
+/** Thẻ tin: bấm cả thẻ để mở trang chi tiết. Tiêu đề + dòng phụ, 3 thông tin chính, tóm tắt 1 câu, số lượng & hạn nộp bên phải. */
 function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean }) {
   const href = useDvvnHref();
-  const [open, setOpen] = useState(false);
-  const formA = !!job.role_title;
-  const role = roleLabel(job.department, job.role_title, job.role_other);
-  const dates = [job.start_date ? formatVnDate(job.start_date) : '', job.end_date ? formatVnDate(job.end_date) : ''].filter(Boolean).join(' → ');
-  const t = (f: Parameters<typeof jobOptionText>[0], id?: string | null) => jobOptionText(f, id, job.other_values).split(' (')[0];
-  const place = [t('city', job.city), job.location_detail].filter(Boolean).join(' · ');
-  const facts = (
-    formA
-      ? [
-          place ? { icon: MapPin, text: place } : null,
-          dates || job.shooting_days ? { icon: CalendarDays, text: [dates, job.shooting_days ? `${job.shooting_days} ngày quay` : ''].filter(Boolean).join(' · ') } : null,
-          salaryText(job) ? { icon: Coins, text: salaryText(job) } : null,
-          job.quantity ? { icon: UsersRound, text: `Cần ${job.quantity} người` } : null
-        ]
-      : [
-          job.location ? { icon: MapPin, text: job.location } : null,
-          job.work_time ? { icon: CalendarDays, text: job.work_time } : null,
-          job.compensation ? { icon: Coins, text: job.compensation } : null
-        ]
-  ).filter(Boolean) as { icon: typeof MapPin; text: string }[];
-  const tags = formA
-    ? [
-        job.department === OTHER_ID ? '' : departmentOf(job.department)?.label,
-        t('seniority_level', job.seniority_level),
-        t('employment_type', job.employment_type),
-        t('work_mode', job.work_mode)
-      ].filter(Boolean)
-    : job.positions;
-  const project = formA
-    ? [job.project_name || (job.project_type ? 'Dự án bảo mật' : ''), t('project_type', job.project_type), t('project_phase', job.project_phase)]
-        .filter(Boolean)
-        .join(' · ')
-    : '';
+  const path = href(crewJobPath(job));
+  const title = jobTitle(job);
+  const facts = jobFacts(job).filter(f => ['salary', 'time', 'place'].includes(f.key));
+  const tags = jobTags(job);
+  const summary = jdSummary(job.description);
   return (
-    <li className="dv-card p-6 md:p-7">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
-          {job.company && (
-            <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">
-              {job.company}
-              {job.company_type ? <span className="font-normal"> · {t('company_type', job.company_type)}</span> : null}
-            </p>
-          )}
-          <h2 className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2] md:text-[24px]">{formA && role ? role.vi : job.title}</h2>
-          {formA && role?.en && <p className="mt-0.5 text-[14px] text-[var(--dv-text-secondary)]">{role.en}</p>}
-          {project && <p className="mt-2 text-[14px]">{project}</p>}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {tags.map(p => (
-              <span key={p} className="rounded-full bg-[var(--dv-bg-alt)] px-3 py-1 text-[13px] font-medium">
-                {p}
-              </span>
-            ))}
-          </div>
-          {facts.length > 0 && (
-            <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-[var(--dv-text-secondary)]">
-              {facts.map(f => (
-                <span key={f.text} className="inline-flex items-center gap-1.5">
-                  <f.icon className="h-4 w-4 shrink-0" /> {f.text}
+    <li className="dv-card group relative p-6 transition-shadow hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.18)] md:p-7">
+      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.04em] text-[var(--dv-text-tertiary)]">{companyLine(job)}</p>
+          <h2 className="dv-display mt-1.5 text-[22px] font-semibold leading-[1.2] md:text-[24px]">
+            {/* Cả thẻ bấm được: link phủ toàn thẻ */}
+            <Link href={path} className="after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] focus-visible:outline-none group-hover:underline group-hover:underline-offset-4">
+              {title.main}
+            </Link>
+          </h2>
+          {title.sub && <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">{title.sub}</p>}
+          {tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {tags.map(t => (
+                <span key={t} className="rounded-full bg-[var(--dv-bg-alt)] px-3 py-1 text-[13px] font-medium">
+                  {t}
                 </span>
               ))}
-            </p>
+            </div>
           )}
+          {facts.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-[14px]">
+              {facts.map(f => (
+                <span key={f.key} className="inline-flex items-center gap-1.5">
+                  <f.icon className="h-4 w-4 shrink-0 text-[var(--dv-text-tertiary)]" /> {f.value}
+                </span>
+              ))}
+            </div>
+          )}
+          {summary && <p className="mt-4 line-clamp-2 max-w-[70ch] text-[14.5px] leading-[1.55] text-[var(--dv-text-secondary)]">{summary}</p>}
         </div>
-        <div className="flex shrink-0 flex-col gap-2 md:items-end">
-          {job.deadline && <p className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</p>}
-          <Link href={href(crewJobPath(job))} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-            {crew ? 'Ứng tuyển vị trí này' : 'Ứng tuyển'}
-          </Link>
-          {job.requires_cv && <p className="text-[13px] font-medium text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm CV</p>}
+        <div className="flex shrink-0 flex-row flex-wrap items-center gap-2 md:w-[190px] md:flex-col md:items-end">
+          {job.quantity ? <span className="rounded-full bg-[#1d1d1f] px-3 py-1 text-[13px] font-semibold text-white">Cần {job.quantity} người</span> : null}
+          {job.deadline && <span className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</span>}
+          {job.requires_cv && <span className="text-[13px] text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm CV</span>}
+          <span className="dv-btn dv-btn-primary pointer-events-none mt-1 !h-10 !py-0 text-[14px] md:mt-3">{crew ? 'Xem & ứng tuyển' : 'Xem tin'}</span>
         </div>
       </div>
-
-      {job.description && (
-        <div className="mt-4 border-t border-[#f0f0f2] pt-4">
-          {job.description && (
-            <>
-              <p className={`whitespace-pre-line text-[15px] leading-[1.5] ${open ? '' : 'line-clamp-3'}`}>{job.description}</p>
-              {job.description.length > 180 && (
-                <button type="button" onClick={() => setOpen(v => !v)} className="mt-1 inline-flex items-center gap-1 text-[14px] font-semibold" aria-expanded={open}>
-                  {open ? 'Thu gọn' : 'Xem thêm'} <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
     </li>
   );
 }
