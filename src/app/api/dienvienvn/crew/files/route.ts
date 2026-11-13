@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const path = newPath(ctx.user.id, kind);
     if (!(await storePdf(ctx.db, path, buffer))) return NextResponse.json({ error: CREW_FILES_MISSING }, { status: 500 });
     const name = (file.name || `${kind}.pdf`).slice(0, 120);
-    return insertFile(ctx, kind, { title: cleanTitle(form?.get('title') || name, kind === 'cv' ? 'CV' : 'Cover letter'), file_path: path, file_name: name, file_size: buffer.length });
+    return insertFile(ctx, kind, { title: cleanTitle(form?.get('title') || name, kind === 'cv' ? 'CV' : kind === 'portfolio' ? 'Portfolio' : 'Cover letter'), file_path: path, file_name: name, file_size: buffer.length });
   }
 
   const body = (await req.json().catch(() => null)) as { kind?: string; path?: string; name?: string; title?: string; body?: string } | null;
@@ -72,10 +72,10 @@ export async function POST(req: NextRequest) {
     const check = await verifyStoredPdf(ctx.db, body.path);
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
     const name = (body.name || `${kind}.pdf`).replace(/[\u0000-\u001f]/g, '').slice(0, 120);
-    return insertFile(ctx, kind, { title: cleanTitle(body.title || name, kind === 'cv' ? 'CV' : 'Cover letter'), file_path: body.path, file_name: name, file_size: check.size });
+    return insertFile(ctx, kind, { title: cleanTitle(body.title || name, kind === 'cv' ? 'CV' : kind === 'portfolio' ? 'Portfolio' : 'Cover letter'), file_path: body.path, file_name: name, file_size: check.size });
   }
 
-  if (kind !== 'cover') return NextResponse.json({ error: 'Vui lòng tải CV dạng file PDF.' }, { status: 400 });
+  if (kind !== 'cover') return NextResponse.json({ error: 'Vui lòng tải file PDF lên.' }, { status: 400 });
   const parsed = z
     .object({ title: z.string().trim().max(80).optional(), body: z.string().trim().min(20, 'Cover letter cần ít nhất 20 ký tự.').max(COVER_LETTER_MAX) })
     .safeParse(body);

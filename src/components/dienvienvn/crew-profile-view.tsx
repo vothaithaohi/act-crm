@@ -132,8 +132,8 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
 /** CV + cover letter gửi kèm 1 lượt ứng tuyển (link file PDF là link xem tạm có hạn: tải lại trang để lấy link mới). */
 export function CrewAttachmentsBlock({ a }: { a: CrewAttachments | null | undefined }) {
   const [open, setOpen] = useState(false);
-  if (!a || (!a.cv && !a.cover_letter && !a.cover_letter_url)) {
-    return <p className="text-[13px] opacity-70">Không gửi kèm CV / cover letter.</p>;
+  if (!a || (!a.cv && !a.portfolio && !a.cover_letter && !a.cover_letter_url)) {
+    return <p className="text-[13px] opacity-70">Không gửi kèm CV / Portfolio / cover letter.</p>;
   }
   const btn = 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium hover:bg-black/5';
   const long = (a.cover_letter || '').length > 220;
@@ -143,6 +143,11 @@ export function CrewAttachmentsBlock({ a }: { a: CrewAttachments | null | undefi
         {a.cv && (
           <a href={a.cv.url} target="_blank" rel="noopener noreferrer" className={`${btn} border-[#1d1d1f] bg-[#1d1d1f] text-white hover:bg-black`}>
             <FileText className="h-3.5 w-3.5" /> CV: {a.cv.title}
+          </a>
+        )}
+        {a.portfolio && (
+          <a href={a.portfolio.url} target="_blank" rel="noopener noreferrer" className={`${btn} border-[#1d1d1f] bg-[#1d1d1f] text-white hover:bg-black`}>
+            <FileText className="h-3.5 w-3.5" /> Portfolio: {a.portfolio.title}
           </a>
         )}
         {a.cover_letter_url && (

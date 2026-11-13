@@ -29,8 +29,10 @@ export interface CrewJob {
   role_title?: string | null;
   /** Tên vị trí tự nhập khi chọn "Khác". */
   role_other?: string | null;
-  /** Yêu cầu ứng viên gửi kèm portfolio / CV. */
+  /** Yêu cầu ứng viên gửi kèm portfolio / CV (cũ; tin mới dùng attach_requirement). */
   requires_cv?: boolean | null;
+  /** Yêu cầu hồ sơ đính kèm: none | cv | portfolio | either | both */
+  attach_requirement?: string | null;
   /** Các vị trí đăng cùng một lần (cùng dự án) có chung group_id. */
   group_id?: string | null;
   seniority_level?: string | null;
@@ -128,6 +130,7 @@ export const crewJobSchema = z
     // Mô tả công việc (JD) của vị trí — không giới hạn số chữ (chỉ chặn mức bất thường để chống spam)
     description: text(100_000),
     requires_cv: z.boolean().optional().default(false),
+    attach_requirement: z.enum(['none', 'cv', 'portfolio', 'either', 'both']).optional(),
     seniority_level: multiOf(JOB_OPTIONS.seniority_level, 'Vui lòng chọn ít nhất 1 cấp độ kinh nghiệm'),
     // Số lượng cần tuyển cho vị trí
     quantity: z.coerce.number({ invalid_type_error: 'Số lượng cần tuyển phải là số' }).int().min(1, 'Số lượng cần tuyển ít nhất là 1').max(999).optional().or(z.literal('')).default(1),
@@ -193,7 +196,9 @@ export function toCrewJobColumns(input: CrewJobInput) {
     role_title: input.role_title,
     role_other: input.role_title === OTHER_ID ? input.role_other.trim() : null,
     description: orNull(input.description),
-    requires_cv: !!input.requires_cv,
+    // Yêu cầu hồ sơ đính kèm (form mới) — giữ requires_cv đồng bộ cho chỗ còn đọc cột cũ
+    ...(input.attach_requirement ? { attach_requirement: input.attach_requirement } : {}),
+    requires_cv: input.attach_requirement ? input.attach_requirement !== 'none' : !!input.requires_cv,
     seniority_level: joinIds(input.seniority_level),
     employment_type: joinIds(input.employment_type),
     start_date: orNull(input.start_date),

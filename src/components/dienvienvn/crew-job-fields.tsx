@@ -3,6 +3,7 @@
 import React from 'react';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import { CREW_MAX_POSITIONS, type CrewJob } from '@/lib/dienvienvn/crew-jobs';
+import { ATTACH_REQUIREMENTS, AttachRequirement, attachRequirementOf } from '@/lib/dienvienvn/crew-profiles';
 import { DEPARTMENT_OPTIONS, JOB_MULTI_FIELDS, JOB_OPTIONS, JobOtherField, OTHER_ID, Option, departmentOf, splitIds } from '@/lib/dienvienvn/crew-taxonomy';
 
 /** Chữ tự ghi khi chọn "Khác" ở các ô chọn. */
@@ -36,6 +37,8 @@ export interface CrewFormA {
   project_type: string;
   project_phase: string;
   requires_cv: boolean;
+  /** Yêu cầu hồ sơ đính kèm (CV / Portfolio) */
+  attach_requirement: AttachRequirement;
   positions: CrewPositionForm[];
   employment_type: string;
   start_date: string;
@@ -83,6 +86,7 @@ export function crewFormFrom(j?: Partial<CrewJob> | null, fallbackCompany = ''):
     project_type: s(j?.project_type),
     project_phase: s(j?.project_phase),
     requires_cv: !!j?.requires_cv,
+    attach_requirement: attachRequirementOf(j || {}),
     positions: [
       {
         department: s(j?.department),
@@ -532,10 +536,24 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
             <Plus className="h-4 w-4" /> Thêm vị trí
           </button>
         )}
-        <label className="flex cursor-pointer items-center gap-2 text-[14px]">
-          <input type="checkbox" className={ui.check} checked={value.requires_cv} onChange={e => set({ requires_cv: e.target.checked })} />
-          Yêu cầu gửi kèm portfolio/CV
-        </label>
+        <div className="space-y-1.5">
+          <FieldLabel cls={ui.label} htmlFor="cj-attach">Yêu cầu hồ sơ đính kèm (file PDF)</FieldLabel>
+          <select
+            id="cj-attach"
+            className={ui.input}
+            value={value.attach_requirement}
+            onChange={e => {
+              const v = e.target.value as AttachRequirement;
+              set({ attach_requirement: v, requires_cv: v !== 'none' });
+            }}
+          >
+            {ATTACH_REQUIREMENTS.map(o => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </section>
 
       {/* 4. Thời gian & hình thức làm việc */}

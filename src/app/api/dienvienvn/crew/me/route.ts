@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   if (who instanceof NextResponse) return who;
   // Chưa có hồ sơ: vẫn trả kho file (tải CV / cover letter được ngay sau khi tạo mật khẩu)
   if (!who.crew) {
-    const lib = await listFiles(db, who.user.id, null).catch(() => ({ cvs: [], covers: [] }));
+    const lib = await listFiles(db, who.user.id, null).catch(() => ({ cvs: [], covers: [], portfolios: [] }));
     return NextResponse.json({ mode: 'live', crew: null, email: who.user.email || '', ...lib }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const { data: jobs } = list.length ? await db.from('crew_jobs').select('*').in('id', list.map(a => a.job_id)) : { data: [] };
   const byId = new Map(((jobs || []) as CrewJob[]).map(j => [j.id, j]));
   // Bảng kho CV có thể chưa có (chưa chạy migration 20261118) → vẫn trả hồ sơ
-  const [lib, files] = await Promise.all([listFiles(db, who.user.id, who.crew.id).catch(() => ({ cvs: [], covers: [] })), attachmentsFor(db, list).catch(() => new Map())]);
+  const [lib, files] = await Promise.all([listFiles(db, who.user.id, who.crew.id).catch(() => ({ cvs: [], covers: [], portfolios: [] })), attachmentsFor(db, list).catch(() => new Map())]);
   const applications = list.map(a => {
     const j = byId.get(a.job_id);
     return {

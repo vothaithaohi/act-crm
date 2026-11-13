@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { BriefcaseBusiness } from 'lucide-react';
 import { companyLine, jdSummary, jobFacts, jobTags, jobTitle } from './crew-job-view';
 import { PublicCrewJob, crewJobPath } from '@/lib/dienvienvn/crew-jobs';
+import { ATTACH_REQUIREMENTS, attachRequirementOf } from '@/lib/dienvienvn/crew-profiles';
 import { useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { useDvvnHref } from './base-path';
 import { formatVnDate } from './projects-section';
@@ -149,7 +150,9 @@ function CrewJobCard({ job, crew = false }: { job: PublicCrewJob; crew?: boolean
         <div className="flex shrink-0 flex-row flex-wrap items-center gap-2 md:w-[190px] md:flex-col md:items-end">
           {job.quantity ? <span className="rounded-full bg-[#1d1d1f] px-3 py-1 text-[13px] font-semibold text-white">Cần {job.quantity} người</span> : null}
           {job.deadline && <span className="text-[13px] text-[var(--dv-text-secondary)]">Hạn {formatVnDate(job.deadline)}</span>}
-          {job.requires_cv && <span className="text-[13px] text-[var(--dv-text-secondary)]">Yêu cầu gửi kèm CV</span>}
+          {attachRequirementOf(job) !== 'none' && (
+            <span className="text-[13px] text-[var(--dv-text-secondary)]">{ATTACH_REQUIREMENTS.find(r => r.id === attachRequirementOf(job))?.short}</span>
+          )}
           <span className="dv-btn dv-btn-primary pointer-events-none mt-1 !h-10 !py-0 text-[14px] md:mt-3">{crew ? 'Xem & ứng tuyển' : 'Xem tin'}</span>
         </div>
       </div>

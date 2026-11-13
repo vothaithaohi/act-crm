@@ -65,10 +65,12 @@ export interface CrewApplication {
   cv_link?: string | null;
   cover_letter?: string | null;
   cover_letter_path?: string | null;
+  portfolio_title?: string | null;
+  portfolio_path?: string | null;
 }
 
 /** 1 file trong kho của tài khoản ekip: CV (PDF; link cũ vẫn giữ) hoặc cover letter (viết tay hoặc PDF). */
-export type CrewFileKind = 'cv' | 'cover';
+export type CrewFileKind = 'cv' | 'cover' | 'portfolio';
 export interface CrewCv {
   id: string;
   crew_profile_id: string | null;
@@ -87,12 +89,14 @@ export interface CrewCv {
 /** CV / cover letter đã nộp, kèm link xem (link tạm có hạn cho file PDF). */
 export interface CrewAttachments {
   cv: { title: string; url: string } | null;
+  portfolio?: { title: string; url: string } | null;
   cover_letter: string | null;
   cover_letter_url: string | null;
 }
 
 export const CREW_MAX_CVS = 5;
 export const CREW_MAX_COVERS = 5;
+export const CREW_MAX_PORTFOLIOS = 5;
 /** Tải thẳng lên kho (không qua Vercel): tối đa 10MB */
 export const CREW_FILE_MAX_BYTES = 10 * 1024 * 1024;
 /** Đường dự phòng qua máy chủ (Vercel giới hạn mỗi request ~4,5MB) */
@@ -305,3 +309,27 @@ export const crewPrimaryRoleText = (p: Pick<CrewProfile, 'primary_department' | 
 
 /** Hồ sơ đã có CV hoặc portfolio (dùng khi tin tuyển yêu cầu gửi kèm portfolio/CV). */
 export const CV_REQUIRED_MESSAGE = 'Tin này yêu cầu gửi kèm CV. Vui lòng chọn hoặc tải lên 1 CV.';
+
+/** Yêu cầu hồ sơ đính kèm của tin tuyển ekip (người đăng tin chọn). */
+export type AttachRequirement = 'none' | 'cv' | 'portfolio' | 'either' | 'both';
+export const ATTACH_REQUIREMENTS: { id: AttachRequirement; label: string; short: string }[] = [
+  { id: 'none', label: 'Không bắt buộc', short: 'CV, portfolio, cover letter: không bắt buộc' },
+  { id: 'cv', label: 'Bắt buộc CV', short: 'Yêu cầu gửi kèm CV' },
+  { id: 'portfolio', label: 'Bắt buộc Portfolio', short: 'Yêu cầu gửi kèm Portfolio' },
+  { id: 'either', label: 'Bắt buộc CV hoặc Portfolio (có một trong hai)', short: 'Yêu cầu gửi kèm CV hoặc Portfolio' },
+  { id: 'both', label: 'Bắt buộc cả CV và Portfolio', short: 'Yêu cầu gửi kèm CV và Portfolio' }
+];
+/** Yêu cầu của 1 tin (tin cũ chỉ có ô tick requires_cv → "CV hoặc Portfolio"). */
+export function attachRequirementOf(job: { attach_requirement?: string | null; requires_cv?: boolean | null }): AttachRequirement {
+  const r = job.attach_requirement as AttachRequirement | null | undefined;
+  if (r && ATTACH_REQUIREMENTS.some(x => x.id === r)) return r;
+  return job.requires_cv ? 'either' : 'none';
+}
+/** Còn thiếu gì so với yêu cầu: '' = đủ. */
+export function attachMissing(req: AttachRequirement, hasCv: boolean, hasPortfolio: boolean): string {
+  if (req === 'cv' && !hasCv) return 'Tin này yêu cầu gửi kèm CV. Vui lòng chọn hoặc tải lên 1 CV.';
+  if (req === 'portfolio' && !hasPortfolio) return 'Tin này yêu cầu gửi kèm Portfolio. Vui lòng chọn hoặc tải lên 1 Portfolio.';
+  if (req === 'either' && !hasCv && !hasPortfolio) return 'Tin này yêu cầu gửi kèm CV hoặc Portfolio. Vui lòng chọn hoặc tải lên ít nhất 1 file.';
+  if (req === 'both' && (!hasCv || !hasPortfolio)) return 'Tin này yêu cầu gửi kèm cả CV và Portfolio. Vui lòng chọn hoặc tải lên đủ 2 file.';
+  return '';
+}

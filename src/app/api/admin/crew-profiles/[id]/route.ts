@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const jobById = new Map(((jobs || []) as Pick<CrewJob, 'id' | 'title' | 'company'>[]).map(j => [j.id, j]));
   const { data: profile } = await g.db.from('crew_profiles').select('auth_user_id').eq('id', id).maybeSingle();
   const [lib, files] = await Promise.all([
-    listFiles(g.db, (profile?.auth_user_id as string | null) || null, id).catch(() => ({ cvs: [], covers: [] })),
+    listFiles(g.db, (profile?.auth_user_id as string | null) || null, id).catch(() => ({ cvs: [], covers: [], portfolios: [] })),
     attachmentsFor(g.db, list).catch(() => new Map())
   ]);
   const applications = list.map(a => ({
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     company: jobById.get(a.job_id)?.company || '',
     attachments: files.get(a.id) || null
   }));
-  return NextResponse.json({ cvs: lib.cvs, covers: lib.covers, applications }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ cvs: lib.cvs, covers: lib.covers, portfolios: lib.portfolios, applications }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 // ACT khoá / mở khoá tài khoản ekip (hồ sơ cũ "Chờ duyệt" mở khoá = duyệt). Mở khoá: gửi email báo NSX các lượt ứng tuyển chưa báo.

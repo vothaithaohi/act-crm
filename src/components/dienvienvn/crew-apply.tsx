@@ -11,6 +11,10 @@ import {
   COVER_LETTER_MAX,
   CREW_FILE_MAX_BYTES,
   CREW_MAX_COVERS,
+  CREW_MAX_PORTFOLIOS,
+  ATTACH_REQUIREMENTS,
+  attachMissing,
+  attachRequirementOf,
   CREW_MAX_CVS,
   CREW_SERVER_UPLOAD_MAX,
   CrewAttachments,
@@ -40,7 +44,7 @@ export type CrewFileItem = {
   is_default: boolean;
   created_at: string;
 };
-type Lib = { cvs: CrewFileItem[]; covers: CrewFileItem[] };
+type Lib = { cvs: CrewFileItem[]; covers: CrewFileItem[]; portfolios: CrewFileItem[] };
 type Me = { crew: CrewProfile | null; applications?: MeApp[]; open_jobs?: PublicCrewJob[]; email?: string; mode?: string } & Partial<Lib>;
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -122,7 +126,7 @@ async function isPdf(file: File): Promise<boolean> {
  * Tải 1 file PDF vào kho: tải thẳng lên kho riêng tư (tới 10MB, không qua Vercel),
  * không được thì tải qua máy chủ (tới 4MB). Trả về danh sách kho mới + id file vừa thêm.
  */
-async function uploadPdf(kind: CrewFileKind, file: File): Promise<{ ok: boolean; data: { cvs?: CrewFileItem[]; covers?: CrewFileItem[]; id?: string; error?: string } }> {
+async function uploadPdf(kind: CrewFileKind, file: File): Promise<{ ok: boolean; data: { cvs?: CrewFileItem[]; covers?: CrewFileItem[]; portfolios?: CrewFileItem[]; id?: string; error?: string } }> {
   if (file.size === 0) return { ok: false, data: { error: 'File trống.' } };
   if (file.size > CREW_FILE_MAX_BYTES) return { ok: false, data: { error: 'File vượt quá 10MB. Vui lòng nén / xuất lại PDF nhẹ hơn.' } };
   if (!(await isPdf(file))) return { ok: false, data: { error: 'Chỉ nhận file PDF. Vui lòng xuất file sang PDF rồi tải lên.' } };
@@ -283,17 +287,17 @@ function FileLibrary({
   const [writing, setWriting] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftBody, setDraftBody] = useState('');
-  const max = kind === 'cv' ? CREW_MAX_CVS : CREW_MAX_COVERS;
+  const max = kind === 'cv' ? CREW_MAX_CVS : kind === 'portfolio' ? CREW_MAX_PORTFOLIOS : CREW_MAX_COVERS;
   const full = items.length >= max;
-  const label = kind === 'cv' ? 'CV' : 'cover letter';
+  const label = kind === 'cv' ? 'CV' : kind === 'portfolio' ? 'Portfolio' : 'cover letter';
 
-  const apply = (r: { ok: boolean; data: { cvs?: CrewFileItem[]; covers?: CrewFileItem[]; id?: string; error?: string } }) => {
+  const apply = (r: { ok: boolean; data: { cvs?: CrewFileItem[]; covers?: CrewFileItem[]; portfolios?: CrewFileItem[]; id?: string; error?: string } }) => {
     if (!r.ok) {
       setError(r.data.error || 'Không lưu được. Vui lòng thử lại.');
       return false;
     }
     setError('');
-    onLib({ ...(r.data.cvs ? { cvs: r.data.cvs } : {}), ...(r.data.covers ? { covers: r.data.covers } : {}) });
+    onLib({ ...(r.data.cvs ? { cvs: r.data.cvs } : {}), ...(r.data.covers ? { covers: r.data.covers } : {}), ...(r.data.portfolios ? { portfolios: r.data.portfolios } : {}) });
     if (r.data.id && select) select.onSelect(r.data.id);
     return true;
   };
@@ -344,7 +348,7 @@ function FileLibrary({
     <div>
       {items.length === 0 ? (
         hideEmpty ? null : <p className="rounded-[12px] bg-[var(--dv-bg-alt)] p-4 text-[14px] text-[var(--dv-text-secondary)]">
-          {kind === 'cv' ? 'Chưa có CV nào.' : 'Chưa có cover letter nào.'}
+          {kind === 'cv' ? 'Chưa có CV nào.' : kind === 'portfolio' ? 'Chưa có Portfolio nào.' : 'Chưa có cover letter nào.'}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -438,7 +442,7 @@ function FileLibrary({
           />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={!!busy} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
             {busy === 'upload' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {busy === 'upload' ? 'Đang tải lên…' : kind === 'cv' ? 'Tải CV mới (PDF, tối đa 10MB)' : 'Tải cover letter (PDF)'}
+            {busy === 'upload' ? 'Đang tải lên…' : kind === 'cv' ? 'Tải CV mới (PDF, tối đa 10MB)' : kind === 'portfolio' ? 'Tải Portfolio mới (PDF, tối đa 10MB)' : 'Tải cover letter (PDF)'}
           </button>
           {kind === 'cover' && !select && (
             <button type="button" onClick={() => setWriting(true)} disabled={!!busy} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
@@ -451,7 +455,7 @@ function FileLibrary({
   );
 }
 
-/** 2 khối quản lý file trên trang tài khoản. */
+/** Các khối quản lý file trên trang tài khoản: cover letter, CV, portfolio. */
 function FileBlocks({ me, setMe }: { me: Me; setMe: (m: Me) => void }) {
   const onLib = (lib: Partial<Lib>) => setMe({ ...me, ...lib });
   return (
@@ -472,6 +476,14 @@ function FileBlocks({ me, setMe }: { me: Me; setMe: (m: Me) => void }) {
           <FileLibrary kind="cv" items={me.cvs || []} onLib={onLib} />
         </div>
       </div>
+      <div className="dv-card p-6">
+        <p className="text-[19px] font-semibold">
+          Kho Portfolio <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">· {(me.portfolios || []).length}/{CREW_MAX_PORTFOLIOS}</span>
+        </p>
+        <div className="mt-3">
+          <FileLibrary kind="portfolio" items={me.portfolios || []} onLib={onLib} />
+        </div>
+      </div>
     </>
   );
 }
@@ -482,7 +494,13 @@ function FileBlocks({ me, setMe }: { me: Me; setMe: (m: Me) => void }) {
 function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; setMe: (m: Me) => void; onDone: (kind: 'applied' | 'already') => void }) {
   const cvs = me.cvs || [];
   const covers = me.covers || [];
+  const portfolios = me.portfolios || [];
+  // Yêu cầu hồ sơ đính kèm của tin (người đăng tin chọn)
+  const req = attachRequirementOf(job);
+  const cvRequired = req === 'cv' || req === 'both';
+  const portfolioRequired = req === 'portfolio' || req === 'both';
   const [cvId, setCvId] = useState<string | null>(() => cvs.find(c => c.is_default)?.id || cvs[0]?.id || null);
+  const [portfolioId, setPortfolioId] = useState<string | null>(() => portfolios.find(c => c.is_default)?.id || portfolios[0]?.id || null);
   // null = không gửi; 'write' = viết mới cho tin này; còn lại = id cover letter trong kho
   const [cover, setCover] = useState<string | null>(() => covers.find(c => c.is_default)?.id || null);
   const [letter, setLetter] = useState('');
@@ -492,13 +510,15 @@ function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; se
 
   const submit = async () => {
     setError('');
-    if (job.requires_cv && !cvId) return setError('Tin này yêu cầu gửi kèm CV. Vui lòng chọn hoặc tải lên 1 CV.');
+    const missing = attachMissing(req, !!cvId, !!portfolioId);
+    if (missing) return setError(missing);
     if (cover === 'write' && !letter.trim()) return setError('Vui lòng viết cover letter, hoặc chọn "Không gửi cover letter".');
     setBusy(true);
     try {
       const { ok, data } = await sendJson('/api/dienvienvn/crew/apply', 'POST', {
         job_id: job.id,
         cv_id: cvId,
+        portfolio_id: portfolioId,
         cover_id: cover && cover !== 'write' ? cover : null,
         cover_letter: cover === 'write' ? letter.trim() : ''
       });
@@ -548,20 +568,35 @@ function ApplyPanel({ job, me, setMe, onDone }: { job: PublicCrewJob; me: Me; se
         </div>
       </div>
 
-      <div className="dv-card p-6">
-        <p className="text-[19px] font-semibold">
-          2. CV{job.requires_cv ? <span className="text-[#b00020]"> *</span> : <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]"> (không bắt buộc)</span>}
-        </p>
-        <div className="mt-3 space-y-2">
-          {!job.requires_cv && (
-            <label className={`flex cursor-pointer items-center gap-3 rounded-[14px] border bg-white p-3.5 ${cvId === null ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'}`}>
-              <input type="radio" name="crew-cv" checked={cvId === null} onChange={() => setCvId(null)} className="h-4 w-4 accent-[#1d1d1f]" />
-              <span className="text-[15px]">Không gửi CV</span>
-            </label>
-          )}
-          <FileLibrary kind="cv" items={cvs} onLib={onLib} select={{ value: cvId, onSelect: setCvId }} />
+      {req !== 'none' && (
+        <p className="rounded-[12px] bg-[#fff6e0] px-4 py-3 text-[14px] font-medium text-[#8c5f2a]">{ATTACH_REQUIREMENTS.find(r => r.id === req)?.short} (file PDF).</p>
+      )}
+      {(
+        [
+          { kind: 'cv' as const, n: 2, title: 'CV', items: cvs, value: cvId, set: setCvId, required: cvRequired, none: 'Không gửi CV' },
+          { kind: 'portfolio' as const, n: 3, title: 'Portfolio', items: portfolios, value: portfolioId, set: setPortfolioId, required: portfolioRequired, none: 'Không gửi Portfolio' }
+        ]
+      ).map(b => (
+        <div key={b.kind} className="dv-card p-6">
+          <p className="text-[19px] font-semibold">
+            {b.n}. {b.title}
+            {b.required ? (
+              <span className="text-[#b00020]"> *</span>
+            ) : (
+              <span className="text-[15px] font-normal text-[var(--dv-text-secondary)]">{req === 'either' ? ' (CV hoặc Portfolio)' : ' (không bắt buộc)'}</span>
+            )}
+          </p>
+          <div className="mt-3 space-y-2">
+            {!b.required && (
+              <label className={`flex cursor-pointer items-center gap-3 rounded-[14px] border bg-white p-3.5 ${b.value === null ? 'border-[#1d1d1f]' : 'border-[#e5e5ea]'}`}>
+                <input type="radio" name={`crew-${b.kind}`} checked={b.value === null} onChange={() => b.set(null)} className="h-4 w-4 accent-[#1d1d1f]" />
+                <span className="text-[15px]">{b.none}</span>
+              </label>
+            )}
+            <FileLibrary kind={b.kind} items={b.items} onLib={onLib} select={{ value: b.value, onSelect: b.set }} hideEmpty={!b.required} />
+          </div>
         </div>
-      </div>
+      ))}
 
       {error && <ErrorBox>{error}</ErrorBox>}
       <div className="flex justify-end">
@@ -752,7 +787,7 @@ export function CrewApply({ job }: { job: PublicCrewJob | null }) {
                       Số lượng: <span className="font-semibold text-[var(--dv-text)]">{job.quantity} người</span>
                     </li>
                   ) : null}
-                  <li>{job.requires_cv ? 'Yêu cầu gửi kèm CV (PDF)' : 'Gửi kèm CV và cover letter nếu có'}</li>
+                  <li>{ATTACH_REQUIREMENTS.find(r => r.id === attachRequirementOf(job))?.short}</li>
                 </ul>
                 {cta}
                 <button type="button" onClick={copyLink} className="flex w-full items-center justify-center gap-1.5 text-[14px] font-medium text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]">
@@ -997,7 +1032,7 @@ export function CrewAccount() {
                       {[a.company, `Ứng tuyển ${vnDate(a.created_at)}`, a.open ? '' : 'Tin đã đóng'].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <CrewAttachmentsBlock a={{ cv: a.cv || null, cover_letter: a.cover_letter || null, cover_letter_url: a.cover_letter_url || null }} />
+                  <CrewAttachmentsBlock a={{ cv: a.cv || null, portfolio: a.portfolio || null, cover_letter: a.cover_letter || null, cover_letter_url: a.cover_letter_url || null }} />
                 </li>
               ))}
             </ul>

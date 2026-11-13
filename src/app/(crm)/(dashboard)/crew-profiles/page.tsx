@@ -196,14 +196,14 @@ type AppRow = { id: string; created_at: string; title: string; company: string; 
 
 /** Kho CV, cover letter + các lượt ứng tuyển (kèm CV / cover letter đã nộp) của 1 ứng viên ekip. */
 function CrewFiles({ id }: { id: string }) {
-  const [data, setData] = useState<{ cvs: CvRow[]; covers: CvRow[]; applications: AppRow[] } | null>(null);
+  const [data, setData] = useState<{ cvs: CvRow[]; covers: CvRow[]; portfolios: CvRow[]; applications: AppRow[] } | null>(null);
   const [problem, setProblem] = useState('');
   useEffect(() => {
     authedFetch(`/api/admin/crew-profiles/${id}`)
       .then(async r => {
         const b = await r.json().catch(() => ({}));
         if (!r.ok) return setProblem(b.error || 'Không tải được CV.');
-        setData({ cvs: b.cvs || [], covers: b.covers || [], applications: b.applications || [] });
+        setData({ cvs: b.cvs || [], covers: b.covers || [], portfolios: b.portfolios || [], applications: b.applications || [] });
       })
       .catch(() => setProblem('Mất kết nối mạng.'));
   }, [id]);
@@ -213,10 +213,10 @@ function CrewFiles({ id }: { id: string }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 border-t pt-4">
       <div className="space-y-4">
-        {(['cvs', 'covers'] as const).map(k => (
+        {(['cvs', 'portfolios', 'covers'] as const).map(k => (
           <div key={k}>
             <p className={head}>
-              {k === 'cvs' ? 'Kho CV' : 'Cover letter'} · {data[k].length}
+              {k === 'cvs' ? 'Kho CV' : k === 'portfolios' ? 'Kho Portfolio' : 'Cover letter'} · {data[k].length}
             </p>
             {data[k].length === 0 ? (
               <p className="mt-1.5 text-xs text-muted-foreground">Chưa có.</p>

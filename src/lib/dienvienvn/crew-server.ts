@@ -92,7 +92,7 @@ export async function openJob(db: SupabaseClient, jobId: string): Promise<CrewJo
 }
 
 /** Ứng tuyển một tin. Hồ sơ đã duyệt thì báo NSX ngay; chưa duyệt thì báo khi ACT duyệt hồ sơ. */
-export type CrewApplyExtras = Pick<CrewApplication, 'cv_title' | 'cv_path' | 'cv_link' | 'cover_letter' | 'cover_letter_path'>;
+export type CrewApplyExtras = Pick<CrewApplication, 'cv_title' | 'cv_path' | 'cv_link' | 'cover_letter' | 'cover_letter_path' | 'portfolio_title' | 'portfolio_path'>;
 
 export async function applyCrewToJob(
   db: SupabaseClient,
