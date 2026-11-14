@@ -5,10 +5,9 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { CRM_HOST } from './hosts';
 
 /**
- * Giả lập tài khoản người dùng (chỉ Super Admin).
+ * Giả lập tài khoản (chỉ Super Admin), dùng tài khoản test của CHÍNH Super Admin đó — không giả lập tài khoản người khác.
  * CRM tạo phiên + mã dùng 1 lần → tab dienvienvn.com đổi mã lấy mã phiên → mọi API đọc header này
- * coi như đang là tài khoản được giả lập (thao tác là thật). Không tạo phiên đăng nhập của người dùng,
- * không đổi mật khẩu, không gửi email cho họ. Không giới hạn thời gian: kết thúc khi Super Admin bấm Thoát.
+ * coi như đang là tài khoản test (thao tác là thật, CRM đánh dấu TEST). Không giới hạn thời gian: kết thúc khi bấm Thoát.
  */
 export const IMPERSONATE_HEADER = 'x-dvvn-impersonate';
 export type ImpersonationKind = 'actor' | 'partner' | 'crew';
@@ -89,6 +88,9 @@ export async function findImpersonation(db: SupabaseClient, req: NextRequest): P
   const { data } = await db.from('impersonation_sessions').select(SESSION_COLUMNS).eq('token_hash', sha(token)).maybeSingle();
   const s = data as ImpersonationSession | null;
   if (!s || s.ended_at) return 'ended';
+  // Chỉ giả lập tài khoản test của Super Admin
+  const { data: test } = await db.from('impersonation_test_accounts').select('id').eq('auth_user_id', s.target_user_id).limit(1);
+  if (!test?.length) return 'ended';
   // Người tạo phiên phải vẫn là Super Admin đang hoạt động
   const { data: staff } = await db.from('profiles').select('role, status').ilike('email', s.admin_email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
   if (staff?.[0]?.role !== 'super_admin' || staff?.[0]?.status !== 'active') return 'ended';
@@ -233,16 +235,166 @@ export async function impersonationItems(db: SupabaseClient, s: Pick<Impersonati
   return items;
 }
 
-/** Mã các dòng tạo ra trong lúc giả lập (60 ngày gần nhất) để CRM đánh dấu TEST. */
-export async function impersonationMarks(db: SupabaseClient): Promise<Record<string, string[]>> {
-  const since = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
-  const { data } = await db.from('impersonation_sessions').select('target_user_id, created_at, ended_at').gte('created_at', since).order('created_at', { ascending: false }).limit(60);
-  const marks: Record<string, Set<string>> = {};
-  for (const s of (data || []) as ImpersonationSession[]) {
-    for (const it of await impersonationItems(db, s)) {
-      if (it.action !== 'created') continue;
-      (marks[it.table] ||= new Set()).add(it.id);
+/* ---------------- Tài khoản test của Super Admin ---------------- */
+
+const likeExact = (v: string) => v.trim().toLowerCase().replace(/[\\%_]/g, m => `\\${m}`);
+
+/** Email test: thêm "+dvvn-test-<vai>" vào email của Super Admin → thư gửi tài khoản test vẫn về hộp thư của họ. */
+export function testEmailOf(adminEmail: string, kind: ImpersonationKind): string {
+  const [local, domain] = adminEmail.trim().toLowerCase().split('@');
+  return `${local.split('+')[0]}+dvvn-test-${kind}@${domain}`;
+}
+
+/** Mã tài khoản đăng nhập của mọi tài khoản test (để đánh dấu TEST). */
+export async function testUserIds(db: SupabaseClient): Promise<string[]> {
+  const rows = await ok(db.from('impersonation_test_accounts').select('auth_user_id'));
+  return rows.map(r => String(r.auth_user_id));
+}
+
+/**
+ * Lấy (hoặc tạo lần đầu) tài khoản test của Super Admin cho 1 vai:
+ * - Diễn viên: hồ sơ đã duyệt, không hiện công khai.
+ * - Nhà sản xuất: tài khoản đối tác đã duyệt.
+ * - Ekip: chỉ tạo tài khoản; hồ sơ ekip do Super Admin tự điền (test đúng luồng Form B).
+ */
+export async function ensureTestAccount(
+  db: SupabaseClient,
+  admin: { email: string; name: string; phone?: string | null },
+  kind: ImpersonationKind
+): Promise<{ userId: string; email: string; label: string } | { error: string }> {
+  const email = testEmailOf(admin.email, kind);
+  const name = admin.name || admin.email.split('@')[0];
+  const label = `${name} (TEST)`;
+  const { data: saved, error: savedErr } = await db.from('impersonation_test_accounts').select('auth_user_id').ilike('admin_email', likeExact(admin.email)).eq('kind', kind).maybeSingle();
+  if (savedErr && /impersonation_test_accounts|schema cache/i.test(savedErr.message)) return { error: 'Hệ thống chưa sẵn sàng giả lập (cần chạy migration 20261125_impersonation_test_accounts.sql).' };
+
+  // Tài khoản đăng nhập (không ai biết mật khẩu, chỉ dùng qua giả lập)
+  let userId = (saved?.auth_user_id as string | undefined) || '';
+  if (userId) {
+    const { data } = await db.auth.admin.getUserById(userId);
+    if (!data?.user) userId = '';
+  }
+  if (!userId) {
+    const created = await db.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      password: randomBytes(24).toString('base64url'),
+      user_metadata: { full_name: name, dvvn_test: true, kind: `dienvienvn_${kind === 'partner' ? 'partner' : kind === 'crew' ? 'crew' : 'actor'}` }
+    });
+    if (created.data?.user) userId = created.data.user.id;
+    else {
+      // Đã có tài khoản với email này (lần trước) → dùng lại
+      const { findAuthUser } = await import('@/lib/supabase/account-cleanup');
+      const found = await findAuthUser(db, email);
+      if (!found) return { error: 'Không tạo được tài khoản test.' };
+      userId = found.id;
     }
   }
-  return Object.fromEntries(Object.entries(marks).map(([k, v]) => [k, Array.from(v)]));
+  if (saved) await db.from('impersonation_test_accounts').update({ auth_user_id: userId, email }).ilike('admin_email', likeExact(admin.email)).eq('kind', kind);
+  else await db.from('impersonation_test_accounts').insert({ admin_email: admin.email.toLowerCase(), kind, auth_user_id: userId, email });
+
+  // Hồ sơ theo vai
+  if (kind === 'actor') {
+    const { data: t } = await db.from('talent_profiles').select('id').eq('auth_user_id', userId).limit(1);
+    if (!t?.length) {
+      const { error } = await db.from('talent_profiles').insert({
+        full_name: label,
+        email,
+        phone: admin.phone || '',
+        auth_user_id: userId,
+        submission_source: 'dienvienvn',
+        review_status: 'approved',
+        public_profile: false
+      });
+      if (error) {
+        console.error('[dienvienvn] Không tạo được hồ sơ diễn viên test:', error.message);
+        return { error: 'Không tạo được hồ sơ diễn viên test.' };
+      }
+    }
+  } else if (kind === 'partner') {
+    const { data: p } = await db.from('partner_accounts').select('id').eq('auth_user_id', userId).limit(1);
+    if (!p?.length) {
+      const { error } = await db.from('partner_accounts').insert({
+        email,
+        full_name: label,
+        company: 'DienVienVN TEST',
+        partner_type: 'producer',
+        status: 'active',
+        auth_user_id: userId,
+        created_by: admin.email.toLowerCase(),
+        note: 'Tài khoản test giả lập của Super Admin'
+      });
+      if (error) {
+        console.error('[dienvienvn] Không tạo được tài khoản đối tác test:', error.message);
+        return { error: 'Không tạo được tài khoản nhà sản xuất test.' };
+      }
+    }
+  }
+  return { userId, email, label };
+}
+
+/** Mã các dòng thuộc tài khoản test (hồ sơ test và mọi thứ chúng tạo ra) để CRM đánh dấu TEST. */
+export async function impersonationMarks(db: SupabaseClient): Promise<Record<string, string[]>> {
+  const users = await testUserIds(db);
+  if (!users.length) return {};
+  const ids = (rows: Row[]) => rows.map(r => String(r.id));
+  const [talents, partners, crews] = await Promise.all([
+    ok(db.from('talent_profiles').select('id').in('auth_user_id', users)),
+    ok(db.from('partner_accounts').select('id').in('auth_user_id', users)),
+    ok(db.from('crew_profiles').select('id').in('auth_user_id', users))
+  ]);
+  const [t, p, c] = [ids(talents), ids(partners), ids(crews)];
+  const none = ['00000000-0000-0000-0000-000000000000'];
+  const [apps, projects, jobs, crewApps] = await Promise.all([
+    ok(db.from('project_applications').select('id').in('talent_id', t.length ? t : none)),
+    ok(db.from('casting_projects').select('id').in('partner_id', p.length ? p : none)),
+    ok(db.from('crew_jobs').select('id').in('partner_id', p.length ? p : none)),
+    ok(db.from('crew_applications').select('id').in('crew_profile_id', c.length ? c : none))
+  ]);
+  return {
+    talent_profiles: t,
+    partner_accounts: p,
+    crew_profiles: c,
+    project_applications: ids(apps),
+    casting_projects: ids(projects),
+    crew_jobs: ids(jobs),
+    crew_applications: ids(crewApps)
+  };
+}
+
+/**
+ * Xoá toàn bộ thao tác thật của 1 phiên: dữ liệu tạo mới bị xoá; đánh dấu Chọn / Cân nhắc / Loại được bỏ.
+ * Hồ sơ test đã có từ trước và các chỉnh sửa trên hồ sơ test giữ nguyên.
+ */
+export async function purgeImpersonationItems(db: SupabaseClient, s: Pick<ImpersonationSession, 'target_user_id' | 'created_at' | 'ended_at'>): Promise<{ removed: number; failed: number }> {
+  const items = await impersonationItems(db, s);
+  let removed = 0;
+  let failed = 0;
+  const run = async (q: PromiseLike<{ error: unknown }>) => {
+    const { error } = await q;
+    if (error) failed++;
+    else removed++;
+  };
+  const created = (table: ImpersonationItem['table']) => items.filter(i => i.table === table && i.action === 'created').map(i => i.id);
+  // Bỏ đánh dấu của NSX (lượt ứng tuyển của người khác: chỉ bỏ đánh dấu, không xoá)
+  for (const i of items.filter(x => x.table === 'project_applications' && x.action === 'updated')) {
+    await run(db.from('project_applications').update({ producer_decision: null, producer_decided_at: null }).eq('id', i.id));
+  }
+  for (const id of created('crew_applications')) await run(db.from('crew_applications').delete().eq('id', id));
+  for (const id of created('project_applications')) await run(db.from('project_applications').delete().eq('id', id));
+  for (const id of created('crew_jobs')) await run(db.from('crew_jobs').delete().eq('id', id));
+  for (const id of created('casting_projects')) await run(db.from('casting_projects').delete().eq('id', id));
+  const fileIds = created('crew_cvs');
+  if (fileIds.length) {
+    const files = await ok(db.from('crew_cvs').select('id, file_path').in('id', fileIds));
+    for (const f of files) {
+      await run(db.from('crew_cvs').delete().eq('id', String(f.id)));
+      if (f.file_path) {
+        const { removeFileIfUnused } = await import('./crew-files');
+        await removeFileIfUnused(db, String(f.file_path)).catch(() => undefined);
+      }
+    }
+  }
+  for (const id of created('crew_profiles')) await run(db.from('crew_profiles').delete().eq('id', id));
+  return { removed, failed };
 }

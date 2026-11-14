@@ -7,6 +7,7 @@ import { calculateAge } from '@/lib/utils';
 import { MapPin, Film, Eye, Edit3, IdCard, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
 import { talentPath } from '@/lib/talent-path';
+import { TestBadge, useTestMarks } from '@/components/admin/impersonation';
 
 interface TalentCardProps {
   talent: TalentProfile;
@@ -17,6 +18,7 @@ interface TalentCardProps {
 
 export function TalentCard({ talent, isSelected = false, onToggleSelect, selectable = true }: TalentCardProps) {
   const { can } = useCRM();
+  const isTest = useTestMarks('talent_profiles').has(talent.id);
   const age = calculateAge(talent.dob);
 
   // Key skills highlight
@@ -44,6 +46,8 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
     <div className={`bg-card rounded-2xl border shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col group relative ${
       isSelected 
         ? 'ring-2 ring-brand-500 border-brand-500 shadow-md bg-brand-50/5 dark:bg-brand-950/20' 
+        : isTest
+        ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-50'
         : 'border-border/80 hover:border-brand-500/40'
     }`}>
       {/* Top Image Card */}
@@ -61,6 +65,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         {/* Top Badges */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
           <div className="flex items-center gap-1.5">
+            {isTest && <TestBadge className="h-6 px-2" />}
             {selectable && (
               <button
                 type="button"

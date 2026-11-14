@@ -17,7 +17,7 @@ import {
   ProjectApplication
 } from '@/lib/projects/types';
 import { talentPath } from '@/lib/talent-path';
-import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
+import { TEST_ROW, TestBadge, TestFilter, useTestMarks } from '@/components/admin/impersonation';
 
 interface Props {
   project: CastingProject;
@@ -32,6 +32,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
   const { talents, reviewTalent, refreshTalents, can } = useCRM();
   const canEdit = can('talents:write');
   const testIds = useTestMarks('project_applications');
+  const [onlyTest, setOnlyTest] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
   const [nsxFilter, setNsxFilter] = useState<'all' | 'none' | ProducerDecision>('all');
@@ -47,6 +48,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
     .filter(
       a =>
         a.project_id === project.id &&
+        (!onlyTest || testIds.has(a.id)) &&
         (roleFilter === 'all' || a.role_id === roleFilter) &&
         (statusFilter === 'all' || a.status === statusFilter) &&
         (nsxFilter === 'all' || (nsxFilter === 'none' ? !a.producer_decision : a.producer_decision === nsxFilter))
@@ -125,6 +127,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+        <TestFilter count={applications.filter(a => a.project_id === project.id && testIds.has(a.id)).length} on={onlyTest} onChange={setOnlyTest} />
         <select value={nsxFilter} onChange={e => setNsxFilter(e.target.value as typeof nsxFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none" aria-label="Lọc theo lựa chọn của NSX">
           <option value="all">NSX: tất cả</option>
           {PRODUCER_DECISIONS.map(d => (

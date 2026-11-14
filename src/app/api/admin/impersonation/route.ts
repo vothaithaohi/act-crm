@@ -7,42 +7,31 @@ import {
   ImpersonationKind,
   ImpersonationSession,
   KIND_HOME,
-  KIND_LABEL,
   createImpersonation,
+  ensureTestAccount,
   impersonationItems,
-  impersonationMarks
+  impersonationMarks,
+  purgeImpersonationItems
 } from '@/lib/dienvienvn/impersonation';
 
-// Giả lập tài khoản người dùng trên dienvienvn.com — chỉ Super Admin.
+// Giả lập bằng tài khoản test của chính Super Admin (diễn viên / nhà sản xuất / ekip) — không giả lập tài khoản người khác.
 const ROLES = ['super_admin'];
-const TABLE: Record<ImpersonationKind, { table: string; label: string }> = {
-  actor: { table: 'talent_profiles', label: 'full_name' },
-  partner: { table: 'partner_accounts', label: 'full_name' },
-  crew: { table: 'crew_profiles', label: 'full_name' }
-};
-const schema = z.object({ kind: z.enum(['actor', 'partner', 'crew']), id: z.string().uuid() });
+const schema = z.object({ kind: z.enum(['actor', 'partner', 'crew']) });
 const COLUMNS = 'id, admin_user_id, admin_email, target_user_id, target_kind, target_label, created_at, last_seen_at, ended_at';
 const missing = (m?: string) => /impersonation_sessions|schema cache/i.test(m || '');
+const likeExact = (v: string) => v.trim().toLowerCase().replace(/[\\%_]/g, m => `\\${m}`);
 
 /** Mở phiên giả lập → trả link dùng 1 lần (2 phút) để mở trong tab mới. */
 export async function POST(req: NextRequest) {
   const g = await guardPartnerAdmin(req, ROLES);
   if ('res' in g) return g.res;
   const parsed = schema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: 'Thiếu thông tin tài khoản.' }, { status: 400 });
-  const { kind, id } = parsed.data;
-  const t = TABLE[kind];
-  const { data: row } = await g.db.from(t.table).select(`auth_user_id, email, ${t.label}`).eq('id', id).maybeSingle();
-  const r = row as Record<string, string | null> | null;
-  if (!r) return NextResponse.json({ error: 'Không tìm thấy hồ sơ.' }, { status: 404 });
-  if (!r.auth_user_id) return NextResponse.json({ error: 'Hồ sơ này chưa có tài khoản đăng nhập nên không giả lập được.' }, { status: 400 });
-  // Không giả lập tài khoản của nhân sự CRM
-  if (r.email) {
-    const { data: staff } = await g.db.from('profiles').select('id').ilike('email', r.email.replace(/[\\%_]/g, m => `\\${m}`)).limit(1);
-    if (staff?.length) return NextResponse.json({ error: 'Không giả lập tài khoản của nhân sự CRM.' }, { status: 400 });
-  }
-  const label = String(r[t.label] || r.email || KIND_LABEL[kind]);
-  const res = await createImpersonation(g.db, { id: g.staff.userId || null, email: g.staff.email }, { userId: r.auth_user_id, kind, label });
+  if (!parsed.success) return NextResponse.json({ error: 'Chọn vai cần giả lập.' }, { status: 400 });
+  const kind = parsed.data.kind as ImpersonationKind;
+  const { data: me } = await g.db.from('profiles').select('full_name, phone').ilike('email', likeExact(g.staff.email)).limit(1);
+  const acc = await ensureTestAccount(g.db, { email: g.staff.email, name: String(me?.[0]?.full_name || ''), phone: (me?.[0]?.phone as string | null) || null }, kind);
+  if ('error' in acc) return NextResponse.json({ error: acc.error }, { status: 500 });
+  const res = await createImpersonation(g.db, { id: g.staff.userId || null, email: g.staff.email }, { userId: acc.userId, kind, label: acc.label });
   if ('error' in res) return NextResponse.json({ error: res.error }, { status: 500 });
   const url = `${publicSiteUrl(req.headers)}/gia-lap?code=${encodeURIComponent(res.code)}&next=${encodeURIComponent(KIND_HOME[kind])}`;
   return NextResponse.json({ url, session: res.session });
@@ -70,7 +59,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ sessions: data || [] }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-/** Kết thúc phiên (tab dienvienvn.com sẽ tự thoát ở thao tác kế tiếp) + trả danh sách thao tác thật cần xoá. */
+/** Kết thúc phiên (tab dienvienvn.com tự thoát ở thao tác kế tiếp) + trả danh sách thao tác thật; ?purge=1 xoá luôn các thao tác đó. */
 export async function DELETE(req: NextRequest) {
   const g = await guardPartnerAdmin(req, ROLES);
   if ('res' in g) return g.res;
@@ -85,6 +74,13 @@ export async function DELETE(req: NextRequest) {
     .maybeSingle();
   const { data: row } = data ? { data } : await g.db.from('impersonation_sessions').select(COLUMNS).eq('id', id).maybeSingle();
   if (!row) return NextResponse.json({ error: 'Không tìm thấy phiên.' }, { status: 404 });
+  // ?purge=1: xoá toàn bộ thao tác thật của phiên
+  if (req.nextUrl.searchParams.get('purge') === '1') {
+    const own = String((row as ImpersonationSession).admin_email).toLowerCase() === g.staff.email.toLowerCase();
+    if (!own) return NextResponse.json({ error: 'Chỉ người mở phiên mới xoá được.' }, { status: 403 });
+    const result = await purgeImpersonationItems(g.db, row as ImpersonationSession);
+    return NextResponse.json({ session: row, items: [], ...result });
+  }
   const items = await impersonationItems(g.db, row as ImpersonationSession).catch(() => []);
   return NextResponse.json({ session: row, items });
 }

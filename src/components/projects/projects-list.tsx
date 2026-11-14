@@ -9,7 +9,7 @@ import { getReviewStatus } from '@/lib/types/crm';
 import { PROJECT_STATUS_DETAILS, isDeadlinePassed, projectTypeLabel } from '@/lib/projects/types';
 import { producerLink, useProjects } from '@/lib/projects/use-projects';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
-import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
+import { TEST_ROW, TestBadge, TestFilter, useTestMarks } from '@/components/admin/impersonation';
 
 function vnDate(iso?: string | null) {
   if (!iso) return '';
@@ -21,6 +21,7 @@ export function ProjectsList() {
   const { can, talents } = useCRM();
   const { projects, applications, loading } = useProjects();
   const testIds = useTestMarks('casting_projects');
+  const [onlyTest, setOnlyTest] = React.useState(false);
   const approved = new Set(talents.filter(t => getReviewStatus(t) === 'approved').map(t => t.id));
 
   return (
@@ -45,6 +46,8 @@ export function ProjectsList() {
         )}
       </div>
 
+      <TestFilter count={projects.filter(p => testIds.has(p.id)).length} on={onlyTest} onChange={setOnlyTest} />
+
       {loading ? (
         <div className="p-16 text-center text-xs text-muted-foreground">Đang tải dự án…</div>
       ) : projects.length === 0 ? (
@@ -59,7 +62,7 @@ export function ProjectsList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {projects.map(p => {
+          {projects.filter(p => !onlyTest || testIds.has(p.id)).map(p => {
             const apps = applications.filter(a => a.project_id === p.id);
             const visible = apps.filter(a => a.status !== 'rejected' && approved.has(a.talent_id)).length;
             const status = PROJECT_STATUS_DETAILS[p.status];

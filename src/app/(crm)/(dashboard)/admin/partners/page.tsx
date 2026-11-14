@@ -5,7 +5,7 @@ import { Check, ExternalLink, FolderKanban, Handshake, Loader2, Lock, Mail, Plus
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
-import { ImpersonateButton } from '@/components/admin/impersonation';
+import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
 import { PARTNER_TYPE_LABELS, PartnerAccount, PartnerType } from '@/lib/dienvienvn/partners';
 import { useProjects } from '@/lib/projects/use-projects';
 import { CastingProject } from '@/lib/projects/types';
@@ -27,6 +27,7 @@ function StatusBadge({ p }: { p: PartnerAccount }) {
 export default function AdminPartnersPage() {
   const [partners, setPartners] = useState<PartnerAccount[] | null>(null);
   const [problem, setProblem] = useState('');
+  const testIds = useTestMarks('partner_accounts');
   const [demo, setDemo] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
@@ -152,9 +153,12 @@ export default function AdminPartnersPage() {
               </thead>
               <tbody>
                 {partners.map(p => (
-                  <tr key={p.id} className="border-b last:border-0 align-middle">
+                  <tr key={p.id} className={`border-b last:border-0 align-middle ${testIds.has(p.id) ? TEST_ROW : ''}`}>
                     <td className="px-4 py-3">
-                      <div className="font-semibold">{p.full_name}</div>
+                      <div className="font-semibold flex items-center gap-1.5">
+                        {testIds.has(p.id) && <TestBadge />}
+                        {p.full_name}
+                      </div>
                       <div className="text-xs text-muted-foreground">{p.email}</div>
                       {p.phone && <div className="text-xs text-muted-foreground">{p.phone}</div>}
                       {p.created_by === 'Tự đăng ký' && <div className="text-[10px] font-semibold uppercase tracking-wider text-[#8c5f2a] mt-0.5">Tự đăng ký</div>}
@@ -214,7 +218,6 @@ export default function AdminPartnersPage() {
                             </button>
                           </>
                         )}
-                        <ImpersonateButton kind="partner" id={p.id} disabled={!p.auth_user_id} className="h-8 whitespace-nowrap" />
                         <button
                           title="Chọn các dự án mà đối tác này được xem danh sách ứng viên"
                           disabled={busyId === p.id}

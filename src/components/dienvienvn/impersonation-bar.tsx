@@ -118,6 +118,7 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
   const [items, setItems] = useState<Item[] | null>(null);
   const [phase, setPhase] = useState<'review' | 'ending' | 'ended'>('review');
   const [error, setError] = useState('');
+  const [purged, setPurged] = useState<{ removed: number; failed: number } | null>(null);
 
   useEffect(() => {
     actorFetch('/api/dienvienvn/impersonation')
@@ -128,13 +129,19 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
       .catch(() => setItems([]));
   }, []);
 
-  const end = async () => {
+  const end = async (purge: boolean) => {
+    if (purge && !window.confirm(`Xoá toàn bộ ${(items || []).length} thao tác vừa làm trong phiên giả lập? Không hoàn tác được.`)) return;
     setPhase('ending');
     setError('');
     try {
-      const res = await actorFetch('/api/dienvienvn/impersonation/end', { method: 'POST' });
+      const res = await actorFetch('/api/dienvienvn/impersonation/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purge })
+      });
       const b = await res.json().catch(() => ({}));
       if (Array.isArray(b.items)) setItems(b.items);
+      if (purge) setPurged({ removed: Number(b.removed) || 0, failed: Number(b.failed) || 0 });
       setImpersonation(null);
       setPhase('ended');
     } catch {
@@ -158,7 +165,11 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
           )}
         </div>
 
-        {items === null ? (
+        {purged ? (
+          <p className="mt-3 text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">
+            Đã xoá toàn bộ dữ liệu test của phiên này{purged.failed ? ` (${purged.failed} mục chưa xoá được — kiểm tra lại trong CRM)` : ''}.
+          </p>
+        ) : items === null ? (
           <div className="py-8 text-center">
             <Loader2 className="mx-auto h-5 w-5 animate-spin text-[var(--dv-text-secondary)]" />
           </div>
@@ -169,8 +180,8 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
             <div className="mt-3 flex gap-2 rounded-[12px] bg-[#fef3c7] p-3 text-[14px] leading-[1.45] text-[#78350f]">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                Bạn đã thao tác thật {list.length} mục{forProducer ? `, ${forProducer} mục đang hiện với NSX (link shortlist / trang tuyển dụng)` : ''}. Hãy xoá trong CRM để
-                không làm loãng / hiểu nhầm dữ liệu. Các mục này được đánh dấu <b>TEST</b> trong CRM.
+                Bạn đã thao tác thật {list.length} mục{forProducer ? `, ${forProducer} mục đang hiện với NSX (link shortlist / trang tuyển dụng)` : ''}. Nên xoá để
+                không làm loãng / hiểu nhầm dữ liệu. Nếu giữ lại, các mục này được đánh dấu <b>TEST</b> trong CRM.
               </p>
             </div>
             <ul className="mt-3 divide-y divide-[var(--dv-border,#e5e5ea)]">
@@ -202,10 +213,22 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
               <button type="button" onClick={onClose} className="dv-btn dv-btn-secondary">
                 Tiếp tục giả lập
               </button>
-              <button type="button" onClick={end} disabled={phase === 'ending'} className="dv-btn dv-btn-primary">
-                {phase === 'ending' && <Loader2 className="h-4 w-4 animate-spin" />}
-                Kết thúc giả lập
-              </button>
+              {list.length > 0 ? (
+                <>
+                  <button type="button" onClick={() => end(false)} disabled={phase === 'ending'} className="dv-btn dv-btn-secondary">
+                    Thoát, giữ dữ liệu
+                  </button>
+                  <button type="button" onClick={() => end(true)} disabled={phase === 'ending'} className="dv-btn dv-btn-primary">
+                    {phase === 'ending' && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Xoá toàn bộ & thoát
+                  </button>
+                </>
+              ) : (
+                <button type="button" onClick={() => end(false)} disabled={phase === 'ending'} className="dv-btn dv-btn-primary">
+                  {phase === 'ending' && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Kết thúc giả lập
+                </button>
+              )}
             </>
           )}
         </div>

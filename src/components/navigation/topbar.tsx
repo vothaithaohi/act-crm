@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { ImpersonateMenu } from '@/components/admin/impersonation';
 import { 
   Search, 
   Sparkles, 
@@ -158,6 +159,9 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
                   })}
                 </div>
               )}
+
+              {/* Super Admin: mở dienvienvn.com bằng tài khoản test của chính mình */}
+              <ImpersonateMenu onPicked={() => setIsRoleDropdownOpen(false)} />
 
               {/* Admin Links */}
               {can('users:manage') && (

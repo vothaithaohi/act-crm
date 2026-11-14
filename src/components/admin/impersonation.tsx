@@ -5,7 +5,7 @@ import { AlertTriangle, ExternalLink, Loader2, UserRoundSearch, X } from 'lucide
 import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { useCRM } from '@/lib/store/crm-context';
 
-// Giả lập tài khoản người dùng dienvienvn.com (chỉ Super Admin) + đánh dấu TEST các dữ liệu tạo ra lúc giả lập.
+// Giả lập dienvienvn.com bằng tài khoản test của chính Super Admin + đánh dấu TEST mọi dữ liệu của tài khoản test.
 
 type Kind = 'actor' | 'partner' | 'crew';
 type Session = { id: string; target_kind: Kind; target_label: string | null; created_at: string; last_seen_at: string | null };
@@ -15,7 +15,7 @@ const CHANGED = 'act-impersonation-changed';
 
 /* ---------------- Đánh dấu TEST ---------------- */
 
-export type MarkTable = 'project_applications' | 'casting_projects' | 'crew_jobs' | 'crew_profiles' | 'crew_applications';
+export type MarkTable = 'project_applications' | 'casting_projects' | 'crew_jobs' | 'crew_profiles' | 'crew_applications' | 'talent_profiles' | 'partner_accounts';
 let marksCache: Promise<Record<string, Set<string>>> | null = null;
 let marksAt = 0;
 
@@ -30,7 +30,7 @@ function loadMarks(): Promise<Record<string, Set<string>>> {
   return marksCache;
 }
 
-/** Mã các dòng tạo ra trong lúc Super Admin giả lập tài khoản (để tô nổi + gắn nhãn TEST). */
+/** Mã các dòng thuộc tài khoản test của Super Admin (để tô nổi + gắn nhãn TEST). */
 export function useTestMarks(table: MarkTable): Set<string> {
   const [set, setSet] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -53,10 +53,24 @@ export function useTestMarks(table: MarkTable): Set<string> {
 /** Nền hổ phách cho dòng TEST. */
 export const TEST_ROW = 'bg-amber-50 ring-1 ring-inset ring-amber-300';
 
+/** Nút lọc "Chỉ hiện TEST" (ẩn khi không có dữ liệu test). */
+export function TestFilter({ count, on, onChange }: { count: number; on: boolean; onChange: (v: boolean) => void }) {
+  if (!count && !on) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      className={`h-8 px-3 rounded-full border text-xs font-semibold whitespace-nowrap ${on ? 'bg-amber-400 border-amber-500 text-amber-950' : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'}`}
+    >
+      Chỉ hiện TEST · {count}
+    </button>
+  );
+}
+
 export function TestBadge({ className = '' }: { className?: string }) {
   return (
     <span
-      title="Tạo trong lúc Super Admin giả lập tài khoản — kiểm tra và xoá nếu không cần"
+      title="Dữ liệu test (tài khoản giả lập của Super Admin) — kiểm tra và xoá nếu không cần"
       className={`inline-flex shrink-0 items-center rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-amber-950 ${className}`}
     >
       Test
@@ -64,19 +78,25 @@ export function TestBadge({ className = '' }: { className?: string }) {
   );
 }
 
-/* ---------------- Nút giả lập ---------------- */
+/* ---------------- Mục giả lập trong menu tài khoản ---------------- */
 
-/** Nút "Giả lập tài khoản": chỉ Super Admin thấy. Mở tab dienvienvn.com đăng nhập như tài khoản này. */
-export function ImpersonateButton({ kind, id, disabled, className = '' }: { kind: Kind; id: string; disabled?: boolean; className?: string }) {
+const MENU: { kind: Kind; label: string }[] = [
+  { kind: 'actor', label: 'Diễn viên' },
+  { kind: 'partner', label: 'Nhà sản xuất' },
+  { kind: 'crew', label: 'Ứng viên ekip' }
+];
+
+/** Super Admin mở dienvienvn.com bằng tài khoản test của chính mình theo vai (thao tác là thật, CRM đánh dấu TEST). */
+export function ImpersonateMenu({ onPicked }: { onPicked?: () => void }) {
   const { realRole, viewAsRole } = useCRM();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<Kind | null>(null);
   if (realRole !== 'super_admin' || viewAsRole) return null;
-  const start = async () => {
+  const start = async (kind: Kind) => {
     // Mở tab trước (trình duyệt chặn popup nếu mở sau khi chờ mạng)
     const tab = window.open('about:blank', '_blank');
-    setBusy(true);
+    setBusy(kind);
     try {
-      const res = await authedFetch('/api/admin/impersonation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, id }) });
+      const res = await authedFetch('/api/admin/impersonation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind }) });
       const b = await res.json().catch(() => ({}));
       if (!res.ok || !b.url) {
         tab?.close();
@@ -86,24 +106,33 @@ export function ImpersonateButton({ kind, id, disabled, className = '' }: { kind
       if (tab) tab.location.href = b.url;
       else window.location.href = b.url;
       window.dispatchEvent(new Event(CHANGED));
+      onPicked?.();
     } catch {
       tab?.close();
       alert('Mất kết nối mạng. Vui lòng thử lại.');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
   return (
-    <button
-      type="button"
-      onClick={start}
-      disabled={busy || disabled}
-      title={disabled ? 'Hồ sơ chưa có tài khoản đăng nhập' : 'Mở dienvienvn.com như tài khoản này để test luồng (thao tác là thật)'}
-      className={`inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50 ${className}`}
-    >
-      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserRoundSearch className="h-3.5 w-3.5" />}
-      Giả lập tài khoản
-    </button>
+    <div className="px-2 pt-1.5 pb-1 border-b border-border/60">
+      <p className="px-2.5 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Giả lập tài khoản</p>
+      {MENU.map(m => (
+        <button
+          key={m.kind}
+          type="button"
+          disabled={!!busy}
+          onClick={() => start(m.kind)}
+          className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-60"
+        >
+          <span className="flex items-center gap-2">
+            <UserRoundSearch className="w-3.5 h-3.5 text-amber-600" />
+            {m.label}
+          </span>
+          {busy === m.kind && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -115,7 +144,7 @@ const time = (iso: string) => new Date(iso).toLocaleString('vi-VN', { hour: '2-d
 export function ImpersonationBanner() {
   const { realRole } = useCRM();
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [summary, setSummary] = useState<{ label: string; items: Item[] } | null>(null);
+  const [summary, setSummary] = useState<{ id: string; label: string; items: Item[] } | null>(null);
   const [busy, setBusy] = useState('');
 
   const load = useCallback(() => {
@@ -143,7 +172,7 @@ export function ImpersonationBanner() {
     try {
       const res = await authedFetch(`/api/admin/impersonation?id=${s.id}`, { method: 'DELETE' });
       const b = await res.json().catch(() => ({}));
-      setSummary({ label: s.target_label || KIND[s.target_kind], items: Array.isArray(b.items) ? b.items : [] });
+      setSummary({ id: s.id, label: s.target_label || KIND[s.target_kind], items: Array.isArray(b.items) ? b.items : [] });
       setSessions(list => list.filter(x => x.id !== s.id));
       marksCache = null;
       window.dispatchEvent(new Event(CHANGED));
@@ -169,13 +198,29 @@ export function ImpersonationBanner() {
           </button>
         </div>
       ))}
-      {summary && <SummaryDialog label={summary.label} items={summary.items} onClose={() => setSummary(null)} />}
+      {summary && <SummaryDialog id={summary.id} label={summary.label} items={summary.items} onClose={() => setSummary(null)} />}
     </>
   );
 }
 
-function SummaryDialog({ label, items, onClose }: { label: string; items: Item[]; onClose: () => void }) {
+function SummaryDialog({ id, label, items, onClose }: { id: string; label: string; items: Item[]; onClose: () => void }) {
   const forProducer = items.filter(i => i.visible_to_producer).length;
+  const [purging, setPurging] = useState(false);
+  const [purged, setPurged] = useState<{ removed: number; failed: number } | null>(null);
+  const purge = async () => {
+    if (!window.confirm(`Xoá toàn bộ ${items.length} thao tác của phiên giả lập này? Không hoàn tác được.`)) return;
+    setPurging(true);
+    try {
+      const res = await authedFetch(`/api/admin/impersonation?id=${id}&purge=1`, { method: 'DELETE' });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) return alert(b.error || 'Không xoá được.');
+      setPurged({ removed: Number(b.removed) || 0, failed: Number(b.failed) || 0 });
+      marksCache = null;
+      window.dispatchEvent(new Event(CHANGED));
+    } finally {
+      setPurging(false);
+    }
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-background p-6 shadow-xl">
@@ -185,14 +230,18 @@ function SummaryDialog({ label, items, onClose }: { label: string; items: Item[]
             <X className="h-4 w-4" />
           </button>
         </div>
-        {items.length === 0 ? (
+        {purged ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Đã xoá toàn bộ dữ liệu test của phiên này{purged.failed ? ` (${purged.failed} mục chưa xoá được — kiểm tra lại)` : ''}. Tải lại trang để cập nhật danh sách.
+          </p>
+        ) : items.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">Trong phiên này chưa có thao tác thật nào được lưu.</p>
         ) : (
           <>
             <div className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                Đã thao tác thật {items.length} mục{forProducer ? `, ${forProducer} mục NSX đang thấy (link shortlist / trang tuyển dụng)` : ''}. Hãy kiểm tra và xoá để tránh loãng / hiểu nhầm. Các mục tạo mới được
+                Đã thao tác thật {items.length} mục{forProducer ? `, ${forProducer} mục NSX đang thấy (link shortlist / trang tuyển dụng)` : ''}. Nên xoá để tránh loãng / hiểu nhầm. Nếu giữ lại, các mục này được
                 gắn nhãn <b>TEST</b> trong CRM.
               </p>
             </div>
@@ -212,9 +261,15 @@ function SummaryDialog({ label, items, onClose }: { label: string; items: Item[]
             </ul>
           </>
         )}
-        <div className="mt-5 flex justify-end">
-          <button type="button" onClick={onClose} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background">
-            Đã hiểu
+        <div className="mt-5 flex justify-end gap-2">
+          {!purged && items.length > 0 && (
+            <button type="button" onClick={purge} disabled={purging} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60">
+              {purging && <Loader2 className="h-4 w-4 animate-spin" />}
+              Xoá toàn bộ dữ liệu test
+            </button>
+          )}
+          <button type="button" onClick={purged ? () => window.location.reload() : onClose} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background">
+            {purged ? 'Tải lại trang' : items.length ? 'Giữ lại, xoá sau' : 'Đã hiểu'}
           </button>
         </div>
       </div>

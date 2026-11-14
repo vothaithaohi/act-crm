@@ -9,7 +9,7 @@ import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { useCRM } from '@/lib/store/crm-context';
 import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile, CrewReviewStatus, crewPrimaryRoleText } from '@/lib/dienvienvn/crew-profiles';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
-import { ImpersonateButton, TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
+import { TEST_ROW, TestBadge, TestFilter, useTestMarks } from '@/components/admin/impersonation';
 
 const MIGRATION_HINT = 'Hãy chạy migration 20261115_crew_profiles.sql trong Supabase.';
 
@@ -26,6 +26,7 @@ export default function CrewProfilesPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const testIds = useTestMarks('crew_profiles');
+  const [onlyTest, setOnlyTest] = useState(false);
 
   const load = useCallback(async () => {
     const db = createClient();
@@ -86,6 +87,7 @@ export default function CrewProfilesPage() {
   const shown = (list || []).filter(
     p =>
       (filter === 'all' || p.review_status === filter) &&
+      (!onlyTest || testIds.has(p.id)) &&
       (!needle || [p.full_name, p.display_name, p.public_email, p.public_phone].some(v => (v || '').toLowerCase().includes(needle)))
   );
   // "Chờ duyệt" chỉ còn ở hồ sơ tạo trước khi bỏ bước duyệt
@@ -115,6 +117,7 @@ export default function CrewProfilesPage() {
                 placeholder="Tìm tên, email, SĐT…"
                 className="h-8 w-56 px-3 rounded-full border bg-background text-xs outline-none focus:border-foreground"
               />
+              <TestFilter count={(list || []).filter(p => testIds.has(p.id)).length} on={onlyTest} onChange={setOnlyTest} />
               {tabs.map(k => (
                 <button
                   key={k}
@@ -151,7 +154,6 @@ export default function CrewProfilesPage() {
                       </button>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                        <ImpersonateButton kind="crew" id={p.id} disabled={!p.auth_user_id} className="h-8 whitespace-nowrap" />
                         {canEdit && p.review_status !== 'approved' && (
                           <button onClick={() => review(p, 'approved')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
                             <LockOpen className="w-3.5 h-3.5" /> {p.review_status === 'pending' ? 'Kích hoạt' : 'Mở khoá'}

@@ -13,7 +13,6 @@ import {
   EXTERNAL_PROGRAM_LABELS
 } from '@/lib/types/crm';
 import { SubmissionReviewPanel } from '@/components/talents/submission-review-panel';
-import { ImpersonateButton } from '@/components/admin/impersonation';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
@@ -204,8 +203,6 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
               </button>
             )}
           </div>
-
-          {talent.auth_user_id && <ImpersonateButton kind="actor" id={talent.id} className="py-2" />}
 
           {can('talents:write') && (
             <Link

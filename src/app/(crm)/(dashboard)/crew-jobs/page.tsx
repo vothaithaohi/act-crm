@@ -10,7 +10,7 @@ import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, crewJobPath, parseCrewJobBatch
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
-import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
+import { TEST_ROW, TestBadge, TestFilter, useTestMarks } from '@/components/admin/impersonation';
 import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
 
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
@@ -30,6 +30,7 @@ export default function CrewJobsPage() {
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const testJobs = useTestMarks('crew_jobs');
+  const [onlyTest, setOnlyTest] = useState(false);
   // Ứng viên ekip theo tin (bảng crew_applications có sau migration 20261115_crew_profiles.sql)
   const [applicants, setApplicants] = useState<Map<string, { id: string; profile: CrewProfile; applied_at: string }[]>>(new Map());
   const [viewing, setViewing] = useState<CrewJob | null>(null);
@@ -109,7 +110,7 @@ export default function CrewJobsPage() {
     return true;
   };
 
-  const shown = (jobs || []).filter(j => filter === 'all' || j.status === filter);
+  const shown = (jobs || []).filter(j => (filter === 'all' || j.status === filter) && (!onlyTest || testJobs.has(j.id)));
   const pending = (jobs || []).filter(j => j.status === 'draft').length;
 
   return (
@@ -145,6 +146,7 @@ export default function CrewJobsPage() {
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
+              <TestFilter count={(jobs || []).filter(j => testJobs.has(j.id)).length} on={onlyTest} onChange={setOnlyTest} />
               {(['all', 'draft', 'open', 'closed'] as const).map(k => (
                 <button
                   key={k}
