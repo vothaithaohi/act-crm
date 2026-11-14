@@ -291,10 +291,16 @@ export function ProducerApplicants({
   // Nhóm theo vai, đúng thứ tự vai trong dự án (NSX xem lần lượt từng vai)
   const known = new Set(project.roles.map(r => r.id));
   const groups = project.roles
-    .map(r => ({ id: r.id, name: r.name, need: [roleSummary(r), r.quantity ? `cần ${r.quantity} người` : null].filter(Boolean).join(' · '), items: list.filter(a => a.application.role_id === r.id) }))
+    .map(r => ({
+      id: r.id,
+      name: r.name,
+      need: [roleSummary(r), r.quantity ? `cần ${r.quantity} người` : null].filter(Boolean).join(' · '),
+      description: (r.description || '').trim(),
+      items: list.filter(a => a.application.role_id === r.id)
+    }))
     .filter(g => g.items.length > 0);
   const other = list.filter(a => !known.has(a.application.role_id));
-  if (other.length) groups.push({ id: 'other', name: 'Vai khác', need: '', items: other });
+  if (other.length) groups.push({ id: 'other', name: 'Vai khác', need: '', description: '', items: other });
 
   const opened = openId ? applicants.find(a => a.application.id === openId) || null : null;
   const copyPicked = async () => {
@@ -485,6 +491,7 @@ export function ProducerApplicants({
                 {g.need && <p className="text-[15px] text-[var(--dv-text-secondary)]">{g.need}</p>}
                 <span className="ml-auto text-[14px] text-[var(--dv-text-tertiary)]">{g.items.length} ứng viên</span>
               </div>
+              {g.description && <RoleDescription text={g.description} />}
               {mode === 'grid' ? (
                 <ul className="grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 print:grid-cols-3 print:gap-3">
                   {g.items.map(a => (
@@ -1103,5 +1110,28 @@ function ContactButton({ code, href, compact = false }: { code: string; href?: s
         </span>
       )}
     </span>
+  );
+}
+
+/** Mô tả vai dưới tên vai: tối đa 3 dòng + "Xem thêm"; bản in hiện đầy đủ. */
+function RoleDescription({ text }: { text: string }) {
+  const ref = React.useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (el && !open) setLong(el.scrollHeight > el.clientHeight + 1);
+  }, [text, open]);
+  return (
+    <div className="-mt-1 mb-5 max-w-[70ch]">
+      <p ref={ref} className={`whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)] ${open ? '' : 'line-clamp-3 print:line-clamp-none'}`}>
+        {text}
+      </p>
+      {(long || open) && (
+        <button type="button" onClick={() => setOpen(o => !o)} className="mt-1 text-[14px] font-medium text-[var(--dv-text)] underline underline-offset-2 print:hidden">
+          {open ? 'Thu gọn' : 'Xem thêm'}
+        </button>
+      )}
+    </div>
   );
 }
