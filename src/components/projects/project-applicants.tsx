@@ -17,6 +17,7 @@ import {
   ProjectApplication
 } from '@/lib/projects/types';
 import { talentPath } from '@/lib/talent-path';
+import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
 
 interface Props {
   project: CastingProject;
@@ -30,6 +31,7 @@ interface Props {
 export function ProjectApplicants({ project, applications, onStatus, onBulkStatus, onRemove, onAdd }: Props) {
   const { talents, reviewTalent, refreshTalents, can } = useCRM();
   const canEdit = can('talents:write');
+  const testIds = useTestMarks('project_applications');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
   const [nsxFilter, setNsxFilter] = useState<'all' | 'none' | ProducerDecision>('all');
@@ -204,7 +206,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
             const review = t ? getReviewStatus(t) : null;
             const age = t ? calculateAge(t.dob) : null;
             return (
-              <div key={a.id} className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center gap-3 ${selected.has(a.id) ? 'border-slate-900 bg-muted/40' : ''}`}>
+              <div key={a.id} className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center gap-3 ${selected.has(a.id) ? 'border-slate-900 bg-muted/40' : testIds.has(a.id) ? TEST_ROW : ''}`}>
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {canEdit && (
                     <input
@@ -223,6 +225,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
                   </div>
                   <div className="min-w-0 space-y-0.5">
                     <div className="flex flex-wrap items-center gap-1.5">
+                      {testIds.has(a.id) && <TestBadge />}
                       {t ? (
                         <Link href={talentPath(t)} className="font-bold text-sm hover:text-brand-600 truncate">
                           {t.full_name}

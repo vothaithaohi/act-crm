@@ -9,6 +9,7 @@ import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { useCRM } from '@/lib/store/crm-context';
 import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile, CrewReviewStatus, crewPrimaryRoleText } from '@/lib/dienvienvn/crew-profiles';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
+import { ImpersonateButton, TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
 
 const MIGRATION_HINT = 'Hãy chạy migration 20261115_crew_profiles.sql trong Supabase.';
 
@@ -24,6 +25,7 @@ export default function CrewProfilesPage() {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const testIds = useTestMarks('crew_profiles');
 
   const load = useCallback(async () => {
     const db = createClient();
@@ -128,10 +130,11 @@ export default function CrewProfilesPage() {
             ) : (
               <div className="rounded-2xl border bg-card divide-y">
                 {shown.map(p => (
-                  <div key={p.id} className="p-4">
+                  <div key={p.id} className={`p-4 ${testIds.has(p.id) ? TEST_ROW : ''}`}>
                     <div className="flex flex-col md:flex-row md:items-center gap-3">
                       <button type="button" onClick={() => setOpen(o => (o === p.id ? null : p.id))} className="min-w-0 flex-1 text-left">
                         <div className="flex flex-wrap items-center gap-2">
+                          {testIds.has(p.id) && <TestBadge />}
                           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${CREW_REVIEW_STATUS[p.review_status].badge}`}>
                             {CREW_REVIEW_STATUS[p.review_status].label}
                           </span>
@@ -148,6 +151,7 @@ export default function CrewProfilesPage() {
                       </button>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {busyId === p.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        <ImpersonateButton kind="crew" id={p.id} disabled={!p.auth_user_id} className="h-8 whitespace-nowrap" />
                         {canEdit && p.review_status !== 'approved' && (
                           <button onClick={() => review(p, 'approved')} disabled={busyId === p.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
                             <LockOpen className="w-3.5 h-3.5" /> {p.review_status === 'pending' ? 'Kích hoạt' : 'Mở khoá'}

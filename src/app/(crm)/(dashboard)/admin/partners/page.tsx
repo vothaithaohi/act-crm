@@ -5,6 +5,7 @@ import { Check, ExternalLink, FolderKanban, Handshake, Loader2, Lock, Mail, Plus
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
+import { ImpersonateButton } from '@/components/admin/impersonation';
 import { PARTNER_TYPE_LABELS, PartnerAccount, PartnerType } from '@/lib/dienvienvn/partners';
 import { useProjects } from '@/lib/projects/use-projects';
 import { CastingProject } from '@/lib/projects/types';
@@ -213,6 +214,7 @@ export default function AdminPartnersPage() {
                             </button>
                           </>
                         )}
+                        <ImpersonateButton kind="partner" id={p.id} disabled={!p.auth_user_id} className="h-8 whitespace-nowrap" />
                         <button
                           title="Chọn các dự án mà đối tác này được xem danh sách ứng viên"
                           disabled={busyId === p.id}

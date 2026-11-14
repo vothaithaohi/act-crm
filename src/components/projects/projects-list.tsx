@@ -9,6 +9,7 @@ import { getReviewStatus } from '@/lib/types/crm';
 import { PROJECT_STATUS_DETAILS, isDeadlinePassed, projectTypeLabel } from '@/lib/projects/types';
 import { producerLink, useProjects } from '@/lib/projects/use-projects';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
+import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
 
 function vnDate(iso?: string | null) {
   if (!iso) return '';
@@ -19,6 +20,7 @@ function vnDate(iso?: string | null) {
 export function ProjectsList() {
   const { can, talents } = useCRM();
   const { projects, applications, loading } = useProjects();
+  const testIds = useTestMarks('casting_projects');
   const approved = new Set(talents.filter(t => getReviewStatus(t) === 'approved').map(t => t.id));
 
   return (
@@ -63,8 +65,9 @@ export function ProjectsList() {
             const status = PROJECT_STATUS_DETAILS[p.status];
             const expired = p.status === 'open' && isDeadlinePassed(p.deadline);
             return (
-              <div key={p.id} className="bg-card rounded-2xl border p-5 space-y-3 hover:border-brand-500/40 transition-colors">
+              <div key={p.id} className={`bg-card rounded-2xl border p-5 space-y-3 hover:border-brand-500/40 transition-colors ${testIds.has(p.id) ? TEST_ROW : ''}`}>
                 <div className="flex flex-wrap items-center gap-2">
+                  {testIds.has(p.id) && <TestBadge />}
                   <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-white">{p.code}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.badgeClass}`}>{status.label}</span>
                   {p.partner_id && (

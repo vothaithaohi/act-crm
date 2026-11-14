@@ -10,6 +10,7 @@ import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, crewJobPath, parseCrewJobBatch
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
+import { TEST_ROW, TestBadge, useTestMarks } from '@/components/admin/impersonation';
 import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
 
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
@@ -28,6 +29,7 @@ export default function CrewJobsPage() {
   const [filter, setFilter] = useState<'all' | CrewJobStatus>('all');
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const testJobs = useTestMarks('crew_jobs');
   // Ứng viên ekip theo tin (bảng crew_applications có sau migration 20261115_crew_profiles.sql)
   const [applicants, setApplicants] = useState<Map<string, { id: string; profile: CrewProfile; applied_at: string }[]>>(new Map());
   const [viewing, setViewing] = useState<CrewJob | null>(null);
@@ -158,9 +160,10 @@ export default function CrewJobsPage() {
             ) : (
               <div className="rounded-2xl border bg-card divide-y">
                 {shown.map(j => (
-                  <div key={j.id} className="p-4 flex flex-col md:flex-row md:items-center gap-3">
+                  <div key={j.id} className={`p-4 flex flex-col md:flex-row md:items-center gap-3 ${testJobs.has(j.id) ? TEST_ROW : ''}`}>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        {testJobs.has(j.id) && <TestBadge />}
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${CREW_JOB_STATUS[j.status].badge}`}>{CREW_JOB_STATUS[j.status].label}</span>
                         {j.partner_id && <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8c5f2a]">Đối tác đăng</span>}
                       </div>
@@ -238,6 +241,7 @@ export default function CrewJobsPage() {
 function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { id: string; profile: CrewProfile; applied_at: string }[]; onClose: () => void }) {
   // CV / cover letter đã nộp (link xem tạm do máy chủ tạo)
   const [files, setFiles] = useState<Record<string, CrewAttachments> | null>(null);
+  const testApps = useTestMarks('crew_applications');
   useEffect(() => {
     authedFetch(`/api/admin/crew-applications?job_id=${encodeURIComponent(job.id)}`)
       .then(r => r.json())
@@ -262,7 +266,8 @@ function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { id: str
         ) : (
           <div className="space-y-3">
             {list.map(({ id, profile, applied_at }) => (
-              <div key={id} className="rounded-xl border p-4 space-y-2">
+              <div key={id} className={`rounded-xl border p-4 space-y-2 ${testApps.has(id) ? TEST_ROW : ''}`}>
+                {testApps.has(id) && <TestBadge className="mr-2" />}
                 <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${CREW_REVIEW_STATUS[profile.review_status].badge}`}>
                   Tài khoản: {CREW_REVIEW_STATUS[profile.review_status].label}
                 </span>

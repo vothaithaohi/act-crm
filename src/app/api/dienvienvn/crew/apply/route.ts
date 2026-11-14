@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
     cover_letter_path: cover?.file_path || null,
     // Chỉ gửi cột portfolio khi có (tin cũ / chưa chạy migration 20261123 vẫn ứng tuyển được)
     ...(portfolio ? { portfolio_title: portfolio.title, portfolio_path: portfolio.file_path } : {})
-  });
+  // Super Admin đang giả lập: lượt ứng tuyển là thật nhưng không gửi email báo nhà tuyển dụng
+  }, !who.impersonated);
   if (applied === 'failed') return NextResponse.json({ error: 'Không gửi được ứng tuyển. Vui lòng thử lại.' }, { status: 500 });
   return NextResponse.json({ applied, review_status: who.crew.review_status });
 }

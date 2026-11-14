@@ -28,7 +28,7 @@ export async function requireStaff(req: NextRequest): Promise<NextResponse | nul
   return null;
 }
 
-export type StaffIdentity = { email: string; role: string };
+export type StaffIdentity = { email: string; role: string; userId?: string };
 
 /**
  * Như requireStaff nhưng trả về email & vai trò của nhân sự, và chỉ cho các vai trò trong `roles`.
@@ -53,5 +53,5 @@ export async function requireStaffRole(req: NextRequest, roles: string[]): Promi
   const profile = profiles?.[0];
   if (!profile || profile.status !== 'active') return NextResponse.json({ error: 'Tài khoản không có quyền truy cập.' }, { status: 403 });
   if (!roles.includes(profile.role)) return NextResponse.json({ error: 'Vai trò của bạn không có quyền thực hiện thao tác này.' }, { status: 403 });
-  return { email, role: profile.role };
+  return { email, role: profile.role, userId: data.user.id };
 }

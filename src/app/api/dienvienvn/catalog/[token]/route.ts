@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { IMPERSONATE_HEADER } from '@/lib/dienvienvn/impersonation';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { toProducerTalent } from '@/lib/projects/producer';
 import { approvedTalents, getPartner, logPartnerView } from '@/lib/dienvienvn/partner-server';
@@ -34,11 +35,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   }
 
   let full = false;
-  if (req.headers.get('authorization')) {
+  if (req.headers.get('authorization') || req.headers.get(IMPERSONATE_HEADER)) {
     const partner = await getPartner(req, db);
     if (!(partner instanceof NextResponse)) {
       full = true;
-      logPartnerView(db, partner.id, { source: 'shortlist' });
+      if (!req.headers.get(IMPERSONATE_HEADER)) logPartnerView(db, partner.id, { source: 'shortlist' });
     }
   }
 

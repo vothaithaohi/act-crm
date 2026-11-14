@@ -1,5 +1,6 @@
 import 'server-only';
 import { mailAuthLink } from './auth-mail';
+import { requestUser } from './impersonation';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { SHORTLIST_STATUSES, buildProducerView, toProducerTalent } from '@/lib/projects/producer';
@@ -19,13 +20,10 @@ const likeExact = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`);
  * Trả NextResponse lỗi nếu chưa đăng nhập, không phải đối tác, hoặc tài khoản đã bị khoá.
  */
 export async function getPartner(req: NextRequest, db: SupabaseClient): Promise<PartnerAccount | NextResponse> {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!token) return NextResponse.json({ error: 'Vui lòng đăng nhập.', authRequired: true }, { status: 401 });
-
-  const { data, error } = await db.auth.getUser(token);
-  if (error || !data?.user) {
-    return NextResponse.json({ error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', authRequired: true }, { status: 401 });
-  }
+  // Đang giả lập (Super Admin) → tài khoản được giả lập; không → tài khoản đăng nhập
+  const who = await requestUser(req, db);
+  if (who instanceof NextResponse) return who;
+  const data = { user: who.user };
   let partner = await findPartnerForUser(db, data.user);
   // Super Admin: vào thẳng cổng đối tác (không cần đăng ký / chờ duyệt / bị khoá) để test luồng
   if ((!partner || partner.status !== 'active') && (await isSuperAdminUser(db, data.user))) {

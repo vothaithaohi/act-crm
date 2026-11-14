@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, LogOut } from 'lucide-react';
-import { signOutAndGo } from '@/lib/dienvienvn/actor-auth';
+import { getImpersonation, signOutAndGo } from '@/lib/dienvienvn/actor-auth';
 
 /** Nút đăng xuất: đổi ngay sang "Đang đăng xuất…", xong thì tải lại trang đích. */
 export function LogoutButton({ to, className = '', icon = true }: { to: string; className?: string; icon?: boolean }) {
@@ -12,6 +12,7 @@ export function LogoutButton({ to, className = '', icon = true }: { to: string; 
       type="button"
       disabled={busy}
       onClick={async () => {
+        if (getImpersonation()) return void signOutAndGo(to);
         setBusy(true);
         await signOutAndGo(to);
       }}

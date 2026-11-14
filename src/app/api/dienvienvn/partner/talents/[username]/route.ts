@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { IMPERSONATE_HEADER } from '@/lib/dienvienvn/impersonation';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { approvedTalents, getPartner, logPartnerView, toPartnerTalent } from '@/lib/dienvienvn/partner-server';
 import { USERNAME_PATTERN } from '@/lib/dienvienvn/hosts';
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
   const { data } = await approvedTalents(db).eq(isId ? 'id' : 'username', key).limit(1);
   const talent = (data?.[0] as TalentProfile | undefined) || null;
   if (!talent) return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
-  logPartnerView(db, partner.id, { talent_id: talent.id, source: 'portal_profile' });
+  if (!req.headers.get(IMPERSONATE_HEADER)) logPartnerView(db, partner.id, { talent_id: talent.id, source: 'portal_profile' });
 
   return NextResponse.json(
     { mode: 'live', talent: toPartnerTalent(talent) },

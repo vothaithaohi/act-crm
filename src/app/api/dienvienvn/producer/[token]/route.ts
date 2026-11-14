@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { IMPERSONATE_HEADER } from '@/lib/dienvienvn/impersonation';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { buildProducerView } from '@/lib/projects/producer';
 import { CastingProject, ProjectApplication, producerTokenFromParam } from '@/lib/projects/types';
@@ -54,12 +55,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   // Đối tác đã đăng nhập và được gắn với dự án → xem đầy đủ; còn lại chỉ thông tin công khai
   let full = false;
-  if (req.headers.get('authorization')) {
+  if (req.headers.get('authorization') || req.headers.get(IMPERSONATE_HEADER)) {
     const partner = await getPartner(req, db);
     if (!(partner instanceof NextResponse)) {
       // Mọi đối tác đã được DienVienVN duyệt (đang hoạt động) đều xem đầy đủ, không cần gắn với dự án
       full = true;
-      logPartnerView(db, partner.id, { project_id: project.id, source: 'shortlist' });
+      if (!req.headers.get(IMPERSONATE_HEADER)) logPartnerView(db, partner.id, { project_id: project.id, source: 'shortlist' });
     }
   }
 

@@ -8,6 +8,7 @@ import { Topbar } from '@/components/navigation/topbar';
 import { LeadDialog } from '@/components/leads/lead-dialog';
 import { useCRM } from '@/lib/store/crm-context';
 import { ROLE_DETAILS } from '@/lib/types/crm';
+import { ImpersonationBanner } from '@/components/admin/impersonation';
 
 export default function DashboardLayout({
   children,
@@ -61,6 +62,7 @@ export default function DashboardLayout({
             </button>
           </div>
         )}
+        <ImpersonationBanner />
         <Topbar onOpenNewLead={() => setIsNewLeadOpen(true)} />
         <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
           {children}

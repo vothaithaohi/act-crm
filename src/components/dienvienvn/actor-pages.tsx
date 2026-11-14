@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Check, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LogOut, Pencil, UserRound } from 'lucide-react';
-import { actorClient, actorFetch, isNetworkError, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { actorClient, actorFetch, getImpersonation, isNetworkError, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { PublicProject, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
@@ -351,6 +351,7 @@ export function SetPassword() {
     setError('');
     if (password.length < MIN_PASSWORD) return setError(`Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`);
     if (password !== confirm) return setError('Hai mật khẩu chưa khớp nhau.');
+    if (getImpersonation()) return setError('Đang giả lập tài khoản: không đổi mật khẩu của người dùng.');
     setBusy(true);
     const c = actorClient()!;
     if (pending.current) {

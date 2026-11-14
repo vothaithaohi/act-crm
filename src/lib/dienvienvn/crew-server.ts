@@ -8,6 +8,7 @@ import { CrewApplication, CrewProfile, crewPrimaryRoleText } from './crew-profil
 import { SENIORITY_LEVELS, labelOf } from './crew-taxonomy';
 import { sendMail } from './mailer';
 import { mailAuthLink } from './auth-mail';
+import { requestUser } from './impersonation';
 import { authUserInUse } from '@/lib/supabase/account-cleanup';
 
 export const CREW_MISSING = 'Hệ thống chưa sẵn sàng (cần chạy migration 20261115_crew_profiles.sql).';
@@ -22,26 +23,24 @@ export async function findCrewByEmail(db: SupabaseClient, email: string): Promis
 }
 
 /** Người dùng đang đăng nhập (Bearer token) và hồ sơ ekip gắn với tài khoản đó (nếu có). */
-export async function getCrewUser(req: NextRequest, db: SupabaseClient): Promise<{ user: User; crew: CrewProfile | null } | NextResponse> {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!token) return NextResponse.json({ error: 'Vui lòng đăng nhập.', authRequired: true }, { status: 401 });
-  const { data, error } = await db.auth.getUser(token);
-  if (error || !data?.user) {
-    return NextResponse.json({ error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', authRequired: true }, { status: 401 });
-  }
-  const user = data.user;
+export async function getCrewUser(req: NextRequest, db: SupabaseClient): Promise<{ user: User; crew: CrewProfile | null; impersonated?: boolean } | NextResponse> {
+  // Đang giả lập (Super Admin) → tài khoản được giả lập; không → tài khoản đăng nhập
+  const who = await requestUser(req, db);
+  if (who instanceof NextResponse) return who;
+  const user = who.user;
+  const impersonated = !!who.impersonation;
   const { data: byId } = await db.from('crew_profiles').select('*').eq('auth_user_id', user.id).limit(1);
-  if (byId?.[0]) return { user, crew: byId[0] as CrewProfile };
+  if (byId?.[0]) return { user, crew: byId[0] as CrewProfile, impersonated };
   // Gắn theo email chỉ khi email đã được chứng minh (không phải tài khoản tự đặt mật khẩu)
   const email = (user.email || '').trim().toLowerCase();
   if (email && user.email_confirmed_at && !isSelfSignup(user)) {
     const found = await findCrewByEmail(db, email);
     if (found && !found.auth_user_id) {
       await db.from('crew_profiles').update({ auth_user_id: user.id }).eq('id', found.id);
-      return { user, crew: { ...found, auth_user_id: user.id } };
+      return { user, crew: { ...found, auth_user_id: user.id }, impersonated };
     }
   }
-  return { user, crew: null };
+  return { user, crew: null, impersonated };
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -99,7 +98,9 @@ export async function applyCrewToJob(
   crew: CrewProfile,
   job: CrewJob,
   headers: Headers,
-  extras: Partial<CrewApplyExtras> = {}
+  extras: Partial<CrewApplyExtras> = {},
+  /** false: không gửi email báo nhà tuyển dụng (lượt ứng tuyển tạo khi Super Admin giả lập) */
+  notify = true
 ): Promise<'applied' | 'already' | 'failed'> {
   const { data, error } = await db.from('crew_applications').insert({ job_id: job.id, crew_profile_id: crew.id, ...extras }).select('*').single();
   if (error) {
@@ -107,7 +108,7 @@ export async function applyCrewToJob(
     console.error('[dienvienvn] Ứng tuyển ekip lỗi:', error.message);
     return 'failed';
   }
-  if (crew.review_status === 'approved') await notifyApplications(db, [data as CrewApplication], headers);
+  if (notify && crew.review_status === 'approved') await notifyApplications(db, [data as CrewApplication], headers);
   return 'applied';
 }
 

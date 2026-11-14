@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { TalentProfile } from '@/lib/types/crm';
 import { publicSiteUrl } from './hosts';
+import { requestUser } from './impersonation';
 
 /** Trang đặt mật khẩu mà email mời / quên mật khẩu trỏ tới. */
 export const SET_PASSWORD_PATH = '/tao-mat-khau';
 
-export type ActorContext = { user: User; talent: TalentProfile | null };
+export type ActorContext = { user: User; talent: TalentProfile | null; impersonated?: boolean };
 
 /**
  * Tài khoản tự đặt mật khẩu khi nộp hồ sơ / đăng ký đối tác: email CHƯA được chứng minh là của người đó.
@@ -66,13 +67,10 @@ export async function reclaimSelfSignup(db: SupabaseClient, user: User, redirect
  * Trả NextResponse lỗi nếu chưa đăng nhập / phiên hết hạn.
  */
 export async function getActor(req: NextRequest, db: SupabaseClient): Promise<ActorContext | NextResponse> {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!token) return NextResponse.json({ error: 'Vui lòng đăng nhập.', authRequired: true }, { status: 401 });
-
-  const { data, error } = await db.auth.getUser(token);
-  if (error || !data?.user) {
-    return NextResponse.json({ error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', authRequired: true }, { status: 401 });
-  }
+  // Đang giả lập (Super Admin) → tài khoản được giả lập; không → tài khoản đăng nhập
+  const who = await requestUser(req, db);
+  if (who instanceof NextResponse) return who;
+  const data = { user: who.user };
 
   const { data: rows } = await db
     .from('talent_profiles')
@@ -83,7 +81,7 @@ export async function getActor(req: NextRequest, db: SupabaseClient): Promise<Ac
   let talent: TalentProfile | null = (rows?.[0] as TalentProfile) || null;
   // Super Admin test luồng diễn viên: dùng hồ sơ nộp bằng chính email của mình (email nhân sự không được gắn tài khoản)
   if (!talent && data.user.email && (await isSuperAdminUser(db, data.user))) talent = await findTalentByEmail(db, data.user.email);
-  return { user: data.user, talent };
+  return { user: data.user, talent, impersonated: !!who.impersonation };
 }
 
 /** Tìm hồ sơ theo email (không phân biệt hoa thường, so khớp chính xác). */
