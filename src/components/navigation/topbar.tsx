@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ImpersonateMenu } from '@/components/admin/impersonation';
+import { BrevoSyncMenu } from '@/components/admin/brevo-sync';
 import { 
   Search, 
   Sparkles, 
@@ -162,6 +163,9 @@ export function Topbar({ onOpenNewLead }: TopbarProps) {
 
               {/* Super Admin: mở dienvienvn.com bằng tài khoản test của chính mình */}
               <ImpersonateMenu onPicked={() => setIsRoleDropdownOpen(false)} />
+
+              {/* Super Admin: đồng bộ email người dùng dienvienvn.com sang Brevo */}
+              <BrevoSyncMenu />
 
               {/* Admin Links */}
               {can('users:manage') && (

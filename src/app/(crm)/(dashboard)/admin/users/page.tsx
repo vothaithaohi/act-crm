@@ -22,7 +22,6 @@ import { useCRM } from '@/lib/store/crm-context';
 import { Profile, UserRole, ROLE_DETAILS } from '@/lib/types/crm';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
-import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
 /** Gợi ý mật khẩu ngẫu nhiên 10 ký tự (bỏ các ký tự dễ nhầm như 0/O, 1/l). */
@@ -136,8 +135,6 @@ export default function AdminUsersPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-        <BrevoSyncButton />
         <button
           onClick={openCreateModal}
           className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -145,7 +142,6 @@ export default function AdminUsersPage() {
           <UserPlus className="w-4 h-4" />
           <span>+ Thêm Nhân Viên Mới</span>
         </button>
-        </div>
       </div>
 
       {/* Team Members Table */}
@@ -483,39 +479,5 @@ export default function AdminUsersPage() {
       )}
     </div>
     </PermissionGuard>
-  );
-}
-
-/** Super Admin: đưa toàn bộ email đã đăng ký (diễn viên, NSX, ekip) sang danh bạ Brevo. Đăng ký mới được tự đưa sang. */
-function BrevoSyncButton() {
-  const { realRole, viewAsRole } = useCRM();
-  const [busy, setBusy] = useState(false);
-  if (realRole !== 'super_admin' || viewAsRole) return null;
-  const run = async () => {
-    if (!window.confirm('Đưa toàn bộ email diễn viên, nhà sản xuất, ekip đã đăng ký sang 3 danh sách trên Brevo? (Email đã có sẽ được cập nhật, không bị trùng)')) return;
-    setBusy(true);
-    try {
-      const res = await authedFetch('/api/admin/brevo-sync', { method: 'POST' });
-      const b = await res.json().catch(() => ({}));
-      if (b.mode === 'demo') return toast.info('Chế độ demo không đồng bộ Brevo.');
-      if (!res.ok && res.status !== 207) return toast.error(b.error || 'Không đồng bộ được.');
-      const msg = `Diễn viên ${b.actor || 0} · NSX ${b.partner || 0} · Ekip ${b.crew || 0}`;
-      if (b.errors?.length) toast.warning('Đồng bộ chưa hết', { description: `${msg}. ${b.errors.join(' ')}` });
-      else toast.success('Đã đồng bộ sang Brevo', { description: msg });
-    } catch {
-      toast.error('Mất kết nối mạng. Vui lòng thử lại.');
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={run}
-      disabled={busy}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-muted disabled:opacity-50"
-    >
-      {busy ? 'Đang đồng bộ…' : 'Đồng bộ email sang Brevo'}
-    </button>
   );
 }

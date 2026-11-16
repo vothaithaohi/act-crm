@@ -3,7 +3,8 @@ import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 import { BrevoContact, importBrevoContacts } from '@/lib/dienvienvn/brevo';
 import { isTestAccount } from '@/lib/dienvienvn/test-accounts';
 
-// Super Admin: đưa toàn bộ email đã đăng ký (diễn viên, NSX, ekip) sang 3 danh sách Brevo. Bỏ tài khoản test.
+// Super Admin: đưa toàn bộ email đã đăng ký (diễn viên, NSX, ekip — kể cả tài khoản ekip chưa điền hồ sơ) sang 3 danh sách Brevo.
+// Không gồm nhân sự CRM, bỏ tài khoản test. Email trùng chỉ tính 1 lần (hồ sơ ekip đứng trước nên giữ được SĐT / tên trong hồ sơ).
 type Row = Record<string, string | null>;
 
 async function all(q: () => PromiseLike<{ data: unknown[] | null; error: unknown }>): Promise<Row[]> {
@@ -33,6 +34,17 @@ export async function POST(req: NextRequest) {
   const actor = talents.map(t => ({ email: t.email || '', name: t.full_name, phone: t.phone })).filter(notTest);
   const partner = partners.map(p => ({ email: p.email || '', name: p.full_name, phone: p.phone })).filter(notTest);
   const crew = crews.map(c => ({ email: c.public_email || '', name: c.full_name, phone: c.public_phone })).filter(notTest);
+  // Tài khoản ekip đã đăng ký nhưng chưa điền hồ sơ ekip (chỉ có tài khoản đăng nhập)
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data?.users?.length) break;
+    for (const u of data.users) {
+      if (u.user_metadata?.kind !== 'dienvienvn_crew' || !u.email) continue;
+      const c = { email: u.email, name: (u.user_metadata?.full_name as string | undefined) || null, phone: null };
+      if (notTest(c)) crew.push(c);
+    }
+    if (data.users.length < 1000) break;
+  }
   const [a, p, c] = [await importBrevoContacts('actor', actor), await importBrevoContacts('partner', partner), await importBrevoContacts('crew', crew)];
   const errors = [a.error, p.error, c.error].filter(Boolean);
   return NextResponse.json({ ok: !errors.length, actor: a.count, partner: p.count, crew: c.count, errors }, { status: errors.length ? 207 : 200 });
