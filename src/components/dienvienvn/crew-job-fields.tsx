@@ -489,7 +489,7 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
 
       {/* 2. Thông tin dự án */}
       <section className={ui.section}>
-        <p className={ui.title}>2. Thông tin dự án</p>
+        <p className={ui.title}>2. Thông tin dự án (không bắt buộc)</p>
         <div className={field}>
           <FieldLabel cls={ui.label} htmlFor="cj-project">Tên dự án</FieldLabel>
           <input id="cj-project" className={ui.input} value={value.project_name} onChange={e => set({ project_name: e.target.value })} />
@@ -500,7 +500,7 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
         </div>
         <div className="space-y-4">
           <div className={field}>
-            <FieldLabel cls={ui.label} required htmlFor="cj-ptype">Loại hình dự án (chọn được nhiều)</FieldLabel>
+            <FieldLabel cls={ui.label} htmlFor="cj-ptype">Loại hình dự án (chọn được nhiều)</FieldLabel>
             {sel('project_type', 'cj-ptype', 'Chọn loại hình dự án')}
           </div>
           <div className={field}>

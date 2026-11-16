@@ -121,7 +121,8 @@ export const crewJobSchema = z
     // 2. Thông tin dự án
     project_name: text(160),
     project_hidden: z.boolean().optional().default(false),
-    project_type: multiOf(JOB_OPTIONS.project_type, 'Vui lòng chọn ít nhất 1 loại hình dự án'),
+    // Cả mục thông tin dự án không bắt buộc (nhiều việc ekip không gắn với dự án phim)
+    project_type: multiOf(JOB_OPTIONS.project_type, null),
     project_phase: multiOf(JOB_OPTIONS.project_phase, null),
     // 3. Vị trí & yêu cầu chuyên môn
     department: enumOf([...DEPARTMENTS, { id: OTHER_ID }], 'Vui lòng chọn phân nhóm chuyên môn'),
