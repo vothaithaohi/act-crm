@@ -380,10 +380,10 @@ function CrewJobModal({ draft, onSave, onDone }: { draft: Draft; onSave: (d: Dra
     onDone();
   };
   const cls = 'w-full h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-foreground';
-  const label = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
+  const label = 'block text-xs font-semibold text-foreground mb-1';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-card rounded-2xl border shadow-2xl p-6 space-y-4">
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-card rounded-2xl border shadow-2xl p-6 pb-0 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">{d.id ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h2>
           <button onClick={onClose} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-muted" aria-label="Đóng">
@@ -401,7 +401,8 @@ function CrewJobModal({ draft, onSave, onDone }: { draft: Draft; onSave: (d: Dra
           </select>
         </div>
         <CrewJobFields variant="crm" multi={!d.id} value={d.form} onChange={form => setD(x => ({ ...x, form }))} />
-        <div className="flex justify-end gap-2 pt-1">
+        {/* Thanh nút luôn hiện ở đáy form */}
+        <div className="sticky bottom-0 z-10 -mx-6 flex justify-end gap-2 border-t bg-card px-6 py-3">
           {!d.id && <DraftStatus state={nap.state} className="mr-auto self-center text-[11px] text-muted-foreground" />}
           <button onClick={onClose} className="h-10 px-4 rounded-lg border text-xs font-semibold hover:bg-muted">
             {d.id ? 'Huỷ' : 'Đóng'}
@@ -428,7 +429,7 @@ function CrewJobModal({ draft, onSave, onDone }: { draft: Draft; onSave: (d: Dra
             }}
             className="h-10 inline-flex items-center gap-2 px-4 rounded-lg bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold disabled:opacity-50"
           >
-            {busy && <Loader2 className="w-4 h-4 animate-spin" />} Lưu
+            {busy && <Loader2 className="w-4 h-4 animate-spin" />} {d.id ? 'Lưu' : 'Đăng tin'}
           </button>
         </div>
       </div>

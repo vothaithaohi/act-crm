@@ -1102,7 +1102,8 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
             {error}
           </p>
         )}
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+        {/* Thanh nút luôn hiện ở đáy màn hình (máy tính); điện thoại: các nút xếp cuối form */}
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:sticky sm:bottom-4 sm:z-20 sm:flex-row sm:items-center sm:justify-end sm:rounded-[18px] sm:border sm:border-[#e5e5ea] sm:bg-white/95 sm:px-5 sm:py-3 sm:shadow-[0_8px_24px_rgba(0,0,0,0.08)] sm:backdrop-blur">
           {!editing && <DraftStatus state={nap.state} className="text-center text-[13px] text-[var(--dv-text-secondary)] sm:mr-auto sm:text-left" />}
           <button
             type="button"

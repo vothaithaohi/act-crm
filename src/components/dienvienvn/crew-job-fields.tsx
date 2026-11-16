@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { CREW_MAX_POSITIONS, type CrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { ATTACH_REQUIREMENTS, AttachRequirement, attachRequirementOf } from '@/lib/dienvienvn/crew-profiles';
 import { DEPARTMENT_OPTIONS, JOB_MULTI_FIELDS, JOB_OPTIONS, JobOtherField, OTHER_ID, Option, departmentOf, splitIds } from '@/lib/dienvienvn/crew-taxonomy';
@@ -126,9 +126,9 @@ const UI: Record<Variant, { input: string; label: string; section: string; title
   },
   crm: {
     input: 'w-full h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-brand-500',
-    label: 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1',
+    label: 'block text-xs font-semibold text-foreground mb-1',
     section: 'rounded-xl border p-4 space-y-4',
-    title: 'text-sm font-bold',
+    title: 'text-[15px] font-semibold',
     hint: 'mt-1 text-[11px] text-muted-foreground',
     check: 'h-4 w-4'
   }
@@ -191,7 +191,18 @@ function JdBox({ id, cls, value, onChange }: { id: string; cls: string; value: s
   );
 }
 
-/** Chọn nhiều: các lựa chọn là thẻ bấm (bấm để chọn / bỏ chọn); chọn "Khác (tự ghi)" thì hiện ô ghi. Giá trị lưu dạng "a,b". */
+/** "Theo ngày quay (Day-rate / On-set gig)" → chính "Theo ngày quay", phụ "Day-rate / On-set gig". */
+function splitLabel(label: string): { main: string; sub: string; tag: string } {
+  const i = label.indexOf(' (');
+  const main = i > 0 ? label.slice(0, i) : label;
+  const sub = i > 0 ? label.slice(i + 2).replace(/\)\s*$/, '') : '';
+  return { main, sub, tag: main.split(' / ')[0] };
+}
+
+/**
+ * Chọn nhiều dạng ô thả xuống: ô gọn bằng các ô nhập khác, mục đã chọn hiện thành nhãn nhỏ (bấm × để bỏ);
+ * bấm vào mở danh sách có ô tick (danh sách dài có ô tìm). Chọn "Khác (tự ghi)" thì hiện ô ghi. Giá trị lưu dạng "a,b".
+ */
 function MultiChips({
   id,
   field,
@@ -199,7 +210,8 @@ function MultiChips({
   others,
   onPick,
   onOther,
-  ui
+  ui,
+  placeholder = 'Chọn'
 }: {
   id: string;
   field: JobOtherField;
@@ -208,34 +220,115 @@ function MultiChips({
   onPick: (x: string) => void;
   onOther: (text: string) => void;
   ui: { input: string };
+  placeholder?: string;
 }) {
   const picked = splitIds(v);
+  const options = JOB_OPTIONS[field];
+  const [open, setOpen] = React.useState(false);
+  const [q, setQ] = React.useState('');
+  const box = React.useRef<HTMLDivElement>(null);
   const toggle = (optId: string) => onPick((picked.includes(optId) ? picked.filter(x => x !== optId) : [...picked, optId]).join(','));
+  const label = (optId: string) => options.find(o => o.id === optId)?.label || optId;
+
+  // Bấm ra ngoài / Esc: đóng danh sách
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const fold = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+  const shown = q.trim() ? options.filter(o => fold(o.label).includes(fold(q.trim()))) : options;
+  const searchable = options.length > 6;
+
   return (
-    <div id={id} role="group" className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {JOB_OPTIONS[field].map(o => {
-          const on = picked.includes(o.id);
-          return (
+    <div ref={box}>
+      {/* Mũi tên và danh sách bám theo ô chọn (không tính ô "Khác" bên dưới) */}
+      <div className="relative">
+      <div
+        id={id}
+        role="combobox"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        tabIndex={0}
+        onClick={() => setOpen(o => !o)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className={`${ui.input} !flex !h-auto cursor-pointer flex-wrap items-center gap-1.5 !py-1.5 !pr-9`}
+        // Cao bằng các ô nhập cùng form (dienvienvn.com 48px, CRM 40px)
+        style={{ minHeight: ui.input.includes('dv-input') ? 48 : 40 }}
+      >
+        {picked.length === 0 && <span className="text-[#a1a1a6]">{placeholder}</span>}
+        {picked.map(pid => (
+          <span key={pid} className="inline-flex max-w-full items-center gap-1 rounded-md bg-[#f0f0f2] py-0.5 pl-2 pr-1 text-[0.86em] leading-[1.5] text-[#1d1d1f]">
+            <span className="truncate">{pid === OTHER_ID ? (others[field] || '').trim() || 'Khác' : splitLabel(label(pid)).tag}</span>
             <button
-              key={o.id}
               type="button"
-              aria-pressed={on}
-              onClick={() => toggle(o.id)}
-              className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-left text-[14px] leading-[1.3] transition-colors ${
-                on ? 'border-[#1d1d1f] bg-[#1d1d1f] text-white' : 'border-[#d2d2d7] bg-white text-[#1d1d1f] hover:border-[#1d1d1f]'
-              }`}
+              aria-label={`Bỏ chọn ${splitLabel(label(pid)).main}`}
+              onClick={e => {
+                e.stopPropagation();
+                toggle(pid);
+              }}
+              className="rounded px-1 text-[#86868b] hover:bg-black/10 hover:text-[#1d1d1f]"
             >
-              {on && <Check className="h-3.5 w-3.5 shrink-0" />}
-              {o.label}
+              ×
             </button>
-          );
-        })}
+          </span>
+        ))}
+        <ChevronDown className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6e6e73] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </div>
+      {open && (
+        <div role="listbox" aria-multiselectable="true" className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-[12px] border border-[#d2d2d7] bg-white p-1.5 text-[#1d1d1f] shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
+          {searchable && (
+            <input
+              autoFocus
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Tìm…"
+              aria-label="Tìm lựa chọn"
+              className="mb-1 w-full border-0 border-b border-[#eee] bg-transparent px-2.5 py-2 text-[14px] outline-none"
+            />
+          )}
+          <div className="max-h-[260px] overflow-y-auto">
+            {shown.map(o => {
+              const on = picked.includes(o.id);
+              const l = splitLabel(o.label);
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="option"
+                  aria-selected={on}
+                  onClick={() => toggle(o.id)}
+                  className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-left text-[14px] leading-[1.3] hover:bg-[#f5f5f7]"
+                >
+                  <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${on ? 'border-[#1d1d1f] bg-[#1d1d1f] text-white' : 'border-[#c7c7cc]'}`}>
+                    {on && <Check className="h-3 w-3" strokeWidth={3} />}
+                  </span>
+                  <span className="min-w-0 flex-1">{l.main}</span>
+                  {l.sub && <span className="max-w-[45%] shrink-0 truncate text-right text-[12px] text-[#86868b]">{l.sub}</span>}
+                </button>
+              );
+            })}
+            {shown.length === 0 && <p className="px-2.5 py-2 text-[13px] text-[#86868b]">Không có lựa chọn phù hợp.</p>}
+          </div>
+        </div>
+      )}
       </div>
       {picked.includes(OTHER_ID) && (
         <input
           id={`${id}-other`}
-          className={ui.input}
+          className={`${ui.input} mt-2`}
           value={others[field] || ''}
           maxLength={120}
           onChange={e => onOther(e.target.value)}
@@ -361,7 +454,7 @@ function PositionCard({
       )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_180px]">
         <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor={id('senior')}>Cấp độ kinh nghiệm kỳ vọng (chọn được nhiều)</FieldLabel>
+          <FieldLabel cls={ui.label} required htmlFor={id('senior')}>Cấp độ kinh nghiệm</FieldLabel>
           <MultiChips
             ui={ui}
             id={id('senior')}
@@ -370,6 +463,7 @@ function PositionCard({
             others={value.other_values}
             onPick={x => set({ seniority_level: x })}
             onOther={t => setOther('seniority_level', t)}
+            placeholder="Chọn cấp độ"
           />
         </div>
         <div className={field}>
@@ -388,35 +482,33 @@ function PositionCard({
         <FieldLabel cls={ui.label} htmlFor={id('jd')}>Mô tả công việc (JD)</FieldLabel>
         <JdBox id={id('jd')} cls={ui.input} value={value.description} onChange={v => set({ description: v })} />
       </div>
-      <div className={field}>
-        <FieldLabel cls={ui.label} required htmlFor={id('stype')}>Cách tính thù lao</FieldLabel>
-        <OtherSelect
-          ui={ui}
-          id={id('stype')}
-          field="salary_type"
-          v={value.salary_type}
-          others={value.other_values}
-          onPick={x => set({ salary_type: x })}
-          onOther={t => setOther('salary_type', t)}
-          placeholder="Chọn cách tính"
-        />
-      </div>
-      {!negotiable && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor={id('smin')}>Mức tối thiểu</FieldLabel>
-            <input id={id('smin')} inputMode="numeric" className={ui.input} value={value.salary_min} onChange={e => set({ salary_min: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 1500000" />
-          </div>
-          <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor={id('smax')}>Mức tối đa</FieldLabel>
-            <input id={id('smax')} inputMode="numeric" className={ui.input} value={value.salary_max} onChange={e => set({ salary_max: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 2500000" />
-          </div>
-          <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor={id('cur')}>Đơn vị tiền tệ</FieldLabel>
-            <input id={id('cur')} className={ui.input} value="VND" readOnly />
-          </div>
+      <div className={`grid grid-cols-1 gap-4 ${negotiable ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+        <div className={field}>
+          <FieldLabel cls={ui.label} required htmlFor={id('stype')}>Cách tính thù lao</FieldLabel>
+          <OtherSelect
+            ui={ui}
+            id={id('stype')}
+            field="salary_type"
+            v={value.salary_type}
+            others={value.other_values}
+            onPick={x => set({ salary_type: x })}
+            onOther={t => setOther('salary_type', t)}
+            placeholder="Chọn cách tính"
+          />
         </div>
-      )}
+        {!negotiable && (
+          <>
+            <div className={field}>
+              <FieldLabel cls={ui.label} htmlFor={id('smin')}>Mức tối thiểu (VND)</FieldLabel>
+              <input id={id('smin')} inputMode="numeric" className={ui.input} value={value.salary_min} onChange={e => set({ salary_min: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 1500000" />
+            </div>
+            <div className={field}>
+              <FieldLabel cls={ui.label} htmlFor={id('smax')}>Mức tối đa (VND)</FieldLabel>
+              <input id={id('smax')} inputMode="numeric" className={ui.input} value={value.salary_max} onChange={e => set({ salary_max: e.target.value.replace(/\D/g, '').slice(0, 12) })} placeholder="VD: 2500000" />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -437,6 +529,7 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
         others={others}
         onPick={x => set({ [f]: x } as Partial<CrewFormA>)}
         onOther={t => setOther(f, t)}
+        placeholder={placeholder}
       />
     ) : (
     <OtherSelect
@@ -456,65 +549,84 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
 
   const field = 'space-y-1.5';
   const grid = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
+  // Mục dự án: thu gọn khi chưa có thông tin, tin / bản nháp đã có thông tin thì mở sẵn
+  const hasProject = !!(value.project_name.trim() || value.project_hidden || value.project_type || value.project_phase);
+  const [projectOpen, setProjectOpen] = React.useState(hasProject);
+  React.useEffect(() => {
+    if (hasProject) setProjectOpen(true);
+  }, [hasProject]);
 
   return (
     <div className="space-y-4">
-      {/* 1. Thông tin đơn vị tuyển dụng */}
+      {/* Đơn vị tuyển dụng */}
       <section className={ui.section}>
-        <p className={ui.title}>1. Thông tin đơn vị tuyển dụng</p>
-        <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor="cj-company">Tên đơn vị tuyển dụng</FieldLabel>
-          <input id="cj-company" className={ui.input} value={value.company_name} onChange={e => set({ company_name: e.target.value })} placeholder="Production House, Agency hoặc tên NSX / Đạo diễn độc lập" />
-        </div>
-        <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor="cj-ctype">Loại hình đơn vị</FieldLabel>
-          {sel('company_type', 'cj-ctype', 'Chọn loại hình đơn vị')}
-        </div>
-        <div>
-          <p className={ui.label}>
-            Thông tin liên hệ nhận hồ sơ<span className="text-[#b00020]"> *</span>
-          </p>
-          <div className={`${grid} mt-1.5`}>
-            <div className={field}>
-              <FieldLabel cls={ui.label} required htmlFor="cj-email">Email nhận CV/Showreel</FieldLabel>
-              <input id="cj-email" type="email" inputMode="email" className={ui.input} value={value.contact_email} onChange={e => set({ contact_email: e.target.value })} placeholder="tuyendung@congty.vn" />
-            </div>
-            <div className={field}>
-              <FieldLabel cls={ui.label} required htmlFor="cj-phone">Số điện thoại / Zalo</FieldLabel>
-              <input id="cj-phone" type="tel" inputMode="tel" className={ui.input} value={value.contact_phone} onChange={e => set({ contact_phone: e.target.value })} placeholder="0901 234 567" />
-            </div>
+        <p className={ui.title}>Đơn vị tuyển dụng</p>
+        <div className={grid}>
+          <div className={field}>
+            <FieldLabel cls={ui.label} required htmlFor="cj-company">Tên đơn vị tuyển dụng</FieldLabel>
+            <input id="cj-company" className={ui.input} value={value.company_name} onChange={e => set({ company_name: e.target.value })} placeholder="Production House, Agency, NSX / Đạo diễn" />
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} required htmlFor="cj-ctype">Loại hình đơn vị</FieldLabel>
+            {sel('company_type', 'cj-ctype', 'Chọn loại hình đơn vị')}
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} required htmlFor="cj-email">Email nhận CV / Showreel</FieldLabel>
+            <input id="cj-email" type="email" inputMode="email" className={ui.input} value={value.contact_email} onChange={e => set({ contact_email: e.target.value })} placeholder="tuyendung@congty.vn" />
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} required htmlFor="cj-phone">Số điện thoại / Zalo</FieldLabel>
+            <input id="cj-phone" type="tel" inputMode="tel" className={ui.input} value={value.contact_phone} onChange={e => set({ contact_phone: e.target.value })} placeholder="0901 234 567" />
           </div>
         </div>
       </section>
 
-      {/* 2. Thông tin dự án */}
-      <section className={ui.section}>
-        <p className={ui.title}>2. Thông tin dự án (không bắt buộc)</p>
-        <div className={field}>
-          <FieldLabel cls={ui.label} htmlFor="cj-project">Tên dự án</FieldLabel>
-          <input id="cj-project" className={ui.input} value={value.project_name} onChange={e => set({ project_name: e.target.value })} />
-          <label className="mt-2 flex cursor-pointer items-center gap-2 text-[14px]">
-            <input type="checkbox" className={ui.check} checked={value.project_hidden} onChange={e => set({ project_hidden: e.target.checked })} />
-            Dự án bảo mật / Giữ kín tên
-          </label>
-        </div>
-        <div className="space-y-4">
-          <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-ptype">Loại hình dự án (chọn được nhiều)</FieldLabel>
-            {sel('project_type', 'cj-ptype', 'Chọn loại hình dự án')}
+      {/* Thông tin dự án: không bắt buộc, mặc định thu gọn */}
+      {!projectOpen ? (
+        <button
+          type="button"
+          onClick={() => setProjectOpen(true)}
+          className={`flex w-full items-center justify-between gap-3 border border-dashed text-left font-semibold transition-colors ${
+            variant === 'dv' ? 'rounded-[18px] border-[#c7c7cc] bg-white px-6 py-5 text-[17px] hover:border-[#1d1d1f]' : 'rounded-xl px-4 py-3.5 text-sm hover:bg-muted/50'
+          }`}
+        >
+          <span className="inline-flex items-center gap-2">
+            <Plus className="h-4 w-4" /> Thêm thông tin dự án
+          </span>
+          <span className={`font-normal ${variant === 'dv' ? 'text-[14px] text-[var(--dv-text-secondary)]' : 'text-xs text-muted-foreground'}`}>Không bắt buộc</span>
+        </button>
+      ) : (
+        <section className={ui.section}>
+          <div>
+            <p className={ui.title}>Thông tin dự án</p>
+            <p className={ui.hint}>Không bắt buộc. Bỏ qua nếu việc không gắn với một dự án phim.</p>
           </div>
           <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-phase">Giai đoạn dự án đang tuyển (chọn được nhiều)</FieldLabel>
-            {sel('project_phase', 'cj-phase', 'Chọn giai đoạn')}
+            <FieldLabel cls={ui.label} htmlFor="cj-project">Tên dự án</FieldLabel>
+            <input id="cj-project" className={ui.input} value={value.project_name} onChange={e => set({ project_name: e.target.value })} placeholder="VD: Phim điện ảnh “Mùa Hè”" />
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-[14px]">
+              <input type="checkbox" className={ui.check} checked={value.project_hidden} onChange={e => set({ project_hidden: e.target.checked })} />
+              Giữ kín tên dự án
+            </label>
           </div>
-        </div>
-      </section>
+          <div className={grid}>
+            <div className={field}>
+              <FieldLabel cls={ui.label} htmlFor="cj-ptype">Loại hình dự án</FieldLabel>
+              {sel('project_type', 'cj-ptype', 'Chọn loại hình')}
+            </div>
+            <div className={field}>
+              <FieldLabel cls={ui.label} htmlFor="cj-phase">Giai đoạn đang tuyển</FieldLabel>
+              {sel('project_phase', 'cj-phase', 'Chọn giai đoạn')}
+            </div>
+          </div>
+        </section>
+      )}
 
-      {/* 3. Vị trí & yêu cầu chuyên môn (một dự án tuyển được nhiều vị trí) */}
+      {/* Vị trí & yêu cầu chuyên môn (một dự án tuyển được nhiều vị trí) */}
       <section className={ui.section}>
         <div>
-          <p className={ui.title}>3. Vị trí, yêu cầu chuyên môn &amp; thù lao</p>
-          {multi && <p className={ui.hint}>Một dự án tuyển được nhiều vị trí. Mỗi vị trí hiện thành một tin riêng trên trang tuyển dụng.</p>}
+          <p className={ui.title}>Vị trí, yêu cầu &amp; thù lao</p>
+          {multi && <p className={ui.hint}>Mỗi vị trí hiện thành một tin riêng trên trang tuyển dụng.</p>}
         </div>
         {positions.map((p, i) => (
           <PositionCard
@@ -536,36 +648,52 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
             <Plus className="h-4 w-4" /> Thêm vị trí
           </button>
         )}
-        <div className="space-y-1.5">
-          <FieldLabel cls={ui.label} htmlFor="cj-attach">Yêu cầu hồ sơ đính kèm (file PDF)</FieldLabel>
-          <select
-            id="cj-attach"
-            className={ui.input}
-            value={value.attach_requirement}
-            onChange={e => {
-              const v = e.target.value as AttachRequirement;
-              set({ attach_requirement: v, requires_cv: v !== 'none' });
-            }}
-          >
-            {ATTACH_REQUIREMENTS.map(o => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+        <div className={grid}>
+          <div className="space-y-1.5">
+            <FieldLabel cls={ui.label} htmlFor="cj-attach">Hồ sơ đính kèm (file PDF)</FieldLabel>
+            <select
+              id="cj-attach"
+              className={ui.input}
+              value={value.attach_requirement}
+              onChange={e => {
+                const v = e.target.value as AttachRequirement;
+                set({ attach_requirement: v, requires_cv: v !== 'none' });
+              }}
+            >
+              {ATTACH_REQUIREMENTS.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </section>
 
-      {/* 4. Thời gian & hình thức làm việc */}
+      {/* Thời gian & hình thức làm việc */}
       <section className={ui.section}>
-        <p className={ui.title}>4. Thời gian &amp; hình thức làm việc</p>
-        <div className={field}>
-          <FieldLabel cls={ui.label} required htmlFor="cj-emp">Hình thức hợp đồng (chọn được nhiều)</FieldLabel>
-          {sel('employment_type', 'cj-emp', 'Chọn hình thức')}
+        <p className={ui.title}>Thời gian &amp; hình thức làm việc</p>
+        <div className={grid}>
+          <div className={field}>
+            <FieldLabel cls={ui.label} required htmlFor="cj-emp">Hình thức hợp đồng</FieldLabel>
+            {sel('employment_type', 'cj-emp', 'Chọn hình thức')}
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} htmlFor="cj-city">Thành phố</FieldLabel>
+            {sel('city', 'cj-city', 'Chọn thành phố')}
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} htmlFor="cj-mode">Chế độ làm việc</FieldLabel>
+            {sel('work_mode', 'cj-mode', 'Chọn chế độ')}
+          </div>
+          <div className={field}>
+            <FieldLabel cls={ui.label} htmlFor="cj-locd">Địa điểm cụ thể / Đi quay xa</FieldLabel>
+            <input id="cj-locd" className={ui.input} value={value.location_detail} onChange={e => set({ location_detail: e.target.value })} placeholder="VD: Quay tại Đà Lạt 5 ngày" />
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-start">Ngày bắt đầu làm việc</FieldLabel>
+            <FieldLabel cls={ui.label} htmlFor="cj-start">Ngày bắt đầu</FieldLabel>
             <input id="cj-start" type="date" className={ui.input} value={value.start_date} onChange={e => set({ start_date: e.target.value })} />
           </div>
           <div className={field}>
@@ -577,22 +705,7 @@ export function CrewJobFields({ value, onChange, variant = 'dv', multi = false }
             <input id="cj-days" inputMode="numeric" className={ui.input} value={value.shooting_days} onChange={e => set({ shooting_days: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="Nếu là On-set" />
           </div>
         </div>
-        <div className="space-y-4">
-          <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-city">Thành phố (chọn được nhiều)</FieldLabel>
-            {sel('city', 'cj-city', 'Chọn thành phố')}
-          </div>
-          <div className={field}>
-            <FieldLabel cls={ui.label} htmlFor="cj-mode">Chế độ làm việc (chọn được nhiều)</FieldLabel>
-            {sel('work_mode', 'cj-mode', 'Chọn chế độ')}
-          </div>
-        </div>
-        <div className={field}>
-          <FieldLabel cls={ui.label} htmlFor="cj-locd">Địa điểm cụ thể / Đi quay xa</FieldLabel>
-          <input id="cj-locd" className={ui.input} value={value.location_detail} onChange={e => set({ location_detail: e.target.value })} placeholder="VD: Quay tại Đà Lạt 5 ngày" />
-        </div>
       </section>
-
     </div>
   );
 }
