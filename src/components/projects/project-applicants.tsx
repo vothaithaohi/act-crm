@@ -33,6 +33,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
   const canEdit = can('talents:write');
   const testIds = useTestMarks('project_applications');
   const [onlyTest, setOnlyTest] = useState(false);
+  const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
   const [nsxFilter, setNsxFilter] = useState<'all' | 'none' | ProducerDecision>('all');
@@ -53,7 +54,8 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
         (statusFilter === 'all' || a.status === statusFilter) &&
         (nsxFilter === 'all' || (nsxFilter === 'none' ? !a.producer_decision : a.producer_decision === nsxFilter))
     )
-    .map(a => ({ a, t: talentById.get(a.talent_id) }));
+    .map(a => ({ a, t: talentById.get(a.talent_id) }))
+    .filter(r => matchesQuery(r.t, query));
 
   // Hồ sơ vừa nộp/ứng tuyển sau khi mở CRM có thể chưa có trong danh sách đã tải → tải lại một lần
   const missingKey = rows.filter(r => !r.t).map(r => r.a.talent_id).sort().join(',');
@@ -127,6 +129,14 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Tìm tên, SĐT, email…"
+          aria-label="Tìm ứng viên theo tên, số điện thoại, email"
+          className="w-full sm:w-56 px-3 py-2 rounded-lg border bg-background text-xs outline-none focus:border-foreground"
+        />
         <TestFilter count={applications.filter(a => a.project_id === project.id && testIds.has(a.id)).length} on={onlyTest} onChange={setOnlyTest} />
         <select value={nsxFilter} onChange={e => setNsxFilter(e.target.value as typeof nsxFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none" aria-label="Lọc theo lựa chọn của NSX">
           <option value="all">NSX: tất cả</option>
@@ -369,4 +379,19 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
       </p>
     </section>
   );
+}
+
+/** Bỏ dấu, chữ thường: "Đậu Thảo" → "dau thao". */
+const fold = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+/** Chỉ giữ số, +84 / 84 đầu số → 0. */
+const digits = (v: string) => v.replace(/\D/g, '').replace(/^84(?=\d{9}$)/, '0');
+
+/** Tìm theo tên (không dấu cũng được), số điện thoại (bỏ khoảng trắng / dấu chấm), email. */
+function matchesQuery(t: { full_name?: string | null; phone?: string | null; email?: string | null } | undefined, query: string): boolean {
+  const q = fold(query);
+  if (!q) return true;
+  if (!t) return false;
+  if ([t.full_name, t.email].some(v => !!v && fold(v).includes(q))) return true;
+  const qd = digits(query);
+  return qd.length >= 3 && !!t.phone && digits(t.phone).includes(qd);
 }
