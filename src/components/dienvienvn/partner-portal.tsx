@@ -19,6 +19,7 @@ import { LoginGate } from './actor-pages';
 import { CREW_JOB_STATUS, CrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from './crew-job-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from './crew-profile-view';
+import { DraftStatus, useCrewJobDraft } from './crew-job-draft';
 import type { CrewAttachments } from '@/lib/dienvienvn/crew-profiles';
 import { LogoutButton } from './logout-button';
 import type { CrewApplicantView } from '@/lib/dienvienvn/crew-server';
@@ -913,6 +914,14 @@ function PartnerCrewJobsSection() {
   const href = useDvvnHref();
   const api = usePartnerApi<{ jobs: (CrewJob & { applicant_count?: number })[] }>('/api/dienvienvn/partner/crew-jobs');
   const jobs = api.data?.jobs || [];
+  const draftApi = usePartnerApi<{ drafts?: { id: string; title: string; updated_at: string }[] }>('/api/dienvienvn/partner/crew-job-drafts');
+  const [removed, setRemoved] = useState<string[]>([]);
+  const drafts = (draftApi.data?.drafts || []).filter(d => !removed.includes(d.id));
+  const removeDraft = async (id: string, title: string) => {
+    if (!window.confirm(`Xoá bản nháp "${title}"?`)) return;
+    setRemoved(list => [...list, id]);
+    await actorFetch(`/api/dienvienvn/partner/crew-job-drafts?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => undefined);
+  };
   return (
     <section className="mb-12">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -926,8 +935,26 @@ function PartnerCrewJobsSection() {
           <Plus className="h-4 w-4" /> Đăng tin tuyển ekip
         </Link>
       </div>
-      {jobs.length > 0 && (
+      {(jobs.length > 0 || drafts.length > 0) && (
         <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {drafts.map(d => (
+            <li key={d.id} className="flex h-full flex-col rounded-[18px] border border-dashed border-[#d2d2d7] bg-white p-5">
+              <span className="w-fit rounded-full bg-[var(--dv-bg-alt)] px-2 py-0.5 text-[12px] font-semibold">Bản nháp</span>
+              <p className="mt-2 text-[17px] font-semibold leading-[1.3]">{d.title}</p>
+              <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">
+                Lưu lúc {new Date(d.updated_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+              </p>
+              <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+                {/* Tải hẳn trang để form đọc đúng mã bản nháp trên đường dẫn */}
+                <a href={href(`/doi-tac/tuyen-dung/moi?nhap=${d.id}`)} className="dv-link text-[14px]">
+                  Tiếp tục điền <ChevronRight className="h-4 w-4" />
+                </a>
+                <button type="button" onClick={() => removeDraft(d.id, d.title)} aria-label="Xoá bản nháp" className="rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </li>
+          ))}
           {jobs.map(j => (
             <li key={j.id} className="flex h-full flex-col rounded-[18px] bg-white p-5">
               <span
@@ -1005,11 +1032,19 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
   const [form, setForm] = useState<CrewFormA | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Làm tiếp bản nháp: /doi-tac/tuyen-dung/moi?nhap=<id>
+  const [draftId] = useState(() => (typeof window !== 'undefined' && !editing ? new URLSearchParams(window.location.search).get('nhap') : null));
+  const nap = useCrewJobDraft({ endpoint: '/api/dienvienvn/partner/crew-job-drafts', fetcher: actorFetch, form, enabled: !editing, initialId: draftId });
 
   useEffect(() => {
     if (!api.data || form) return;
-    setForm(crewFormFrom(api.data.job, api.data.company || ''));
-  }, [api.data, form]);
+    const base = crewFormFrom(api.data.job, api.data.company || '');
+    if (!draftId) return setForm(base);
+    actorFetch(`/api/dienvienvn/partner/crew-job-drafts?id=${encodeURIComponent(draftId)}`)
+      .then(r => r.json())
+      .then(b => setForm(b.draft?.form ? { ...base, ...(b.draft.form as Partial<CrewFormA>) } : base))
+      .catch(() => setForm(base));
+  }, [api.data, form, draftId]);
 
   const next = editing ? href(`/doi-tac/tuyen-dung/${jobId}/sua`) : href('/doi-tac/tuyen-dung/moi');
   if (!api.data) return <Gate {...api} next={next} />;
@@ -1039,6 +1074,8 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.id) return setError(body.error || 'Không lưu được. Vui lòng thử lại.');
+      // Đã gửi tin: bỏ bản nháp
+      if (!editing) await nap.discard();
       router.push(href('/doi-tac?tin=da-gui'));
     } catch {
       setError('Mất kết nối mạng. Vui lòng thử lại.');
@@ -1065,10 +1102,23 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
             {error}
           </p>
         )}
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Link href={href('/doi-tac')} className="dv-btn dv-btn-secondary">
-            Huỷ
-          </Link>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+          {!editing && <DraftStatus state={nap.state} className="text-center text-[13px] text-[var(--dv-text-secondary)] sm:mr-auto sm:text-left" />}
+          <button
+            type="button"
+            onClick={async () => {
+              await nap.flush();
+              router.push(href('/doi-tac'));
+            }}
+            className="dv-btn dv-btn-secondary"
+          >
+            {editing ? 'Huỷ' : 'Đóng'}
+          </button>
+          {!editing && (
+            <button type="button" onClick={() => void nap.save()} disabled={busy || nap.state.status === 'saving'} className="dv-btn dv-btn-secondary">
+              Lưu nháp
+            </button>
+          )}
           <button type="button" onClick={submit} disabled={busy} className="dv-btn dv-btn-primary">
             {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
             {editing ? 'Lưu thay đổi' : 'Gửi DienVienVN duyệt'}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { BriefcaseBusiness, Check, ExternalLink, Link2, Loader2, Pencil, Plus, Trash2, UsersRound, X } from 'lucide-react';
+import { BriefcaseBusiness, Check, ExternalLink, FilePen, Link2, Loader2, Pencil, Plus, Trash2, UsersRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { createClient } from '@/lib/supabase/client';
@@ -9,6 +9,7 @@ import { useCRM } from '@/lib/store/crm-context';
 import { CREW_JOB_STATUS, CrewJob, CrewJobStatus, crewJobPath, parseCrewJobBatch, toCrewJobColumns } from '@/lib/dienvienvn/crew-jobs';
 import { CrewFormA, CrewJobFields, crewFormFrom, crewFormPayload } from '@/components/dienvienvn/crew-job-fields';
 import { CrewAttachmentsBlock, CrewProfileDetails } from '@/components/dienvienvn/crew-profile-view';
+import { DraftStatus, useCrewJobDraft } from '@/components/dienvienvn/crew-job-draft';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
 import { TEST_ROW, TestBadge, TestFilter, useTestMarks } from '@/components/admin/impersonation';
 import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile } from '@/lib/dienvienvn/crew-profiles';
@@ -16,7 +17,9 @@ import { CREW_REVIEW_STATUS, CrewAttachments, CrewProfile } from '@/lib/dienvien
 const PUBLIC_URL = 'https://www.dienvienvn.com/tuyen-dung';
 const MIGRATION_HINT = 'Hãy chạy migration 20261109_crew_jobs.sql, 20261113_crew_jobs_form_a.sql và 20261114_crew_jobs_multi_role.sql trong Supabase.';
 
-type Draft = { id?: string; status: CrewJobStatus; form: CrewFormA };
+/** draftId: đang làm tiếp từ bản nháp */
+type Draft = { id?: string; status: CrewJobStatus; form: CrewFormA; draftId?: string };
+type DraftRow = { id: string; title: string; created_by: string | null; updated_by: string | null; updated_at: string };
 const emptyDraft = (): Draft => ({ status: 'open', form: crewFormFrom(null, 'ACT Academy') });
 
 /** Tin tuyển ekip: duyệt tin đối tác đăng, ACT tự đăng / sửa / đóng tin. Hiện công khai tại dienvienvn.com/tuyen-dung. */
@@ -26,7 +29,9 @@ export default function CrewJobsPage() {
   const canEdit = can('talents:write');
   const [jobs, setJobs] = useState<CrewJob[] | null>(null);
   const [problem, setProblem] = useState('');
-  const [filter, setFilter] = useState<'all' | CrewJobStatus>('all');
+  const [filter, setFilter] = useState<'all' | CrewJobStatus | 'nhap'>('all');
+  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [draftProblem, setDraftProblem] = useState('');
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const testJobs = useTestMarks('crew_jobs');
@@ -110,6 +115,38 @@ export default function CrewJobsPage() {
     return true;
   };
 
+  const loadDrafts = useCallback(async () => {
+    try {
+      const res = await authedFetch('/api/admin/crew-job-drafts', { cache: 'no-store' });
+      const b = await res.json().catch(() => ({}));
+      setDrafts(Array.isArray(b.drafts) ? b.drafts : []);
+      setDraftProblem(b.error || '');
+    } catch {
+      /* bỏ qua */
+    }
+  }, []);
+  useEffect(() => {
+    if (canEdit) void loadDrafts();
+  }, [canEdit, loadDrafts]);
+
+  const openDraft = async (row: DraftRow) => {
+    setBusyId(row.id);
+    try {
+      const res = await authedFetch(`/api/admin/crew-job-drafts?id=${row.id}`, { cache: 'no-store' });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok || !b.draft) return toast.error(b.error || 'Không mở được bản nháp.');
+      setEditing({ status: 'open', form: { ...crewFormFrom(null, 'ACT Academy'), ...(b.draft.form as Partial<CrewFormA>) }, draftId: row.id });
+    } finally {
+      setBusyId(null);
+    }
+  };
+  const removeDraft = async (row: DraftRow) => {
+    if (!window.confirm(`Xoá bản nháp "${row.title}"?`)) return;
+    setDrafts(list => list.filter(x => x.id !== row.id));
+    await authedFetch(`/api/admin/crew-job-drafts?id=${row.id}`, { method: 'DELETE' }).catch(() => undefined);
+    toast.success('Đã xoá bản nháp.');
+  };
+
   const shown = (jobs || []).filter(j => (filter === 'all' || j.status === filter) && (!onlyTest || testJobs.has(j.id)));
   const pending = (jobs || []).filter(j => j.status === 'draft').length;
 
@@ -156,8 +193,46 @@ export default function CrewJobsPage() {
                   {k === 'all' ? `Tất cả · ${jobs.length}` : `${CREW_JOB_STATUS[k].label} · ${jobs.filter(j => j.status === k).length}`}
                 </button>
               ))}
+              {canEdit && (
+                <button
+                  onClick={() => setFilter('nhap')}
+                  className={`h-8 px-3 rounded-full border text-xs font-semibold ${filter === 'nhap' ? 'bg-[#1d1d1f] text-white border-[#1d1d1f]' : 'hover:bg-muted'}`}
+                >
+                  Bản nháp · {drafts.length}
+                </button>
+              )}
             </div>
-            {shown.length === 0 ? (
+            {filter === 'nhap' ? (
+              draftProblem ? (
+                <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 text-sm text-destructive">{draftProblem}</div>
+              ) : drafts.length === 0 ? (
+                <div className="p-12 rounded-2xl border bg-card text-center text-sm text-muted-foreground">Chưa có bản nháp nào.</div>
+              ) : (
+                <div className="rounded-2xl border bg-card divide-y">
+                  {drafts.map(row => (
+                    <div key={row.id} className="p-4 flex flex-col md:flex-row md:items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Bản nháp</span>
+                        <p className="mt-1 font-semibold">{row.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Lưu lúc {new Date(row.updated_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                          {row.updated_by ? ` · ${row.updated_by}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {busyId === row.id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        <button onClick={() => openDraft(row)} disabled={busyId === row.id} className="h-8 inline-flex items-center gap-1 px-2.5 rounded-lg bg-[#1d1d1f] text-white text-xs font-semibold">
+                          <FilePen className="w-3.5 h-3.5" /> Tiếp tục
+                        </button>
+                        <button title="Xoá bản nháp" onClick={() => removeDraft(row)} className="h-8 w-8 inline-flex items-center justify-center rounded-lg border hover:bg-destructive/10 hover:text-destructive">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : shown.length === 0 ? (
               <div className="p-12 rounded-2xl border bg-card text-center text-sm text-muted-foreground">Chưa có tin tuyển dụng nào.</div>
             ) : (
               <div className="rounded-2xl border bg-card divide-y">
@@ -235,7 +310,16 @@ export default function CrewJobsPage() {
       </div>
 
       {viewing && <ApplicantsModal job={viewing} list={applicants.get(viewing.id) || []} onClose={() => setViewing(null)} />}
-      {editing && <CrewJobModal draft={editing} onClose={() => setEditing(null)} onSave={async d => (await save(d)) && setEditing(null)} />}
+      {editing && (
+        <CrewJobModal
+          draft={editing}
+          onSave={save}
+          onDone={() => {
+            setEditing(null);
+            if (canEdit) void loadDrafts();
+          }}
+        />
+      )}
     </PermissionGuard>
   );
 }
@@ -286,9 +370,15 @@ function ApplicantsModal({ job, list, onClose }: { job: CrewJob; list: { id: str
   );
 }
 
-function CrewJobModal({ draft, onClose, onSave }: { draft: Draft; onClose: () => void; onSave: (d: Draft) => Promise<unknown> }) {
+function CrewJobModal({ draft, onSave, onDone }: { draft: Draft; onSave: (d: Draft) => Promise<boolean>; onDone: () => void }) {
   const [d, setD] = useState<Draft>(draft);
   const [busy, setBusy] = useState(false);
+  // Tin mới: tự lưu nháp khi đang nhập; sửa tin đã đăng thì không
+  const nap = useCrewJobDraft({ endpoint: '/api/admin/crew-job-drafts', fetcher: authedFetch, form: d.form, enabled: !d.id, initialId: draft.draftId });
+  const onClose = async () => {
+    await nap.flush();
+    onDone();
+  };
   const cls = 'w-full h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-foreground';
   const label = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
   return (
@@ -312,15 +402,29 @@ function CrewJobModal({ draft, onClose, onSave }: { draft: Draft; onClose: () =>
         </div>
         <CrewJobFields variant="crm" multi={!d.id} value={d.form} onChange={form => setD(x => ({ ...x, form }))} />
         <div className="flex justify-end gap-2 pt-1">
+          {!d.id && <DraftStatus state={nap.state} className="mr-auto self-center text-[11px] text-muted-foreground" />}
           <button onClick={onClose} className="h-10 px-4 rounded-lg border text-xs font-semibold hover:bg-muted">
-            Huỷ
+            {d.id ? 'Huỷ' : 'Đóng'}
           </button>
+          {!d.id && (
+            <button
+              disabled={busy || nap.state.status === 'saving'}
+              onClick={async () => {
+                if (await nap.save()) toast.success('Đã lưu nháp. Mở lại ở tab "Bản nháp".');
+              }}
+              className="h-10 px-4 rounded-lg border text-xs font-semibold hover:bg-muted disabled:opacity-50"
+            >
+              Lưu nháp
+            </button>
+          )}
           <button
             disabled={busy}
             onClick={async () => {
               setBusy(true);
-              await onSave(d);
+              const ok = await onSave(d);
+              if (ok) await nap.discard();
               setBusy(false);
+              if (ok) onDone();
             }}
             className="h-10 inline-flex items-center gap-2 px-4 rounded-lg bg-[#1d1d1f] hover:bg-black text-white text-xs font-semibold disabled:opacity-50"
           >
