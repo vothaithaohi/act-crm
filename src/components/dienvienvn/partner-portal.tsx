@@ -8,7 +8,7 @@ import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/acto
 import { ageFromDob, bodyMarkLabel, ROLE_WILLINGNESS_OPTIONS } from '@/lib/dienvienvn/casting-form';
 import { PARTNER_TYPE_LABELS, PartnerProjectSummary, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
 import type { ProducerView } from '@/lib/projects/producer';
-import { PROJECT_TYPES, ProjectRole, RoleGender, projectTypeLabel } from '@/lib/projects/types';
+import { CASTING_MODES, PROJECT_TYPES, ProjectRole, RoleGender, projectTypeLabel } from '@/lib/projects/types';
 import { ABROAD, ALL_PROVINCES } from '@/lib/dienvienvn/provinces';
 import { CheckOption, Field, SelectInput, TextInput } from './form-fields';
 import { ProducerApplicants } from './producer-board';
@@ -627,6 +627,7 @@ type ProjectForm = {
   roles: ProjectRole[];
   selftape_required: boolean;
   selftape_brief: string;
+  casting_mode: string;
 };
 
 const newRoleId = () => Math.random().toString(36).slice(2, 10);
@@ -642,6 +643,7 @@ const blankForm = (): ProjectForm => ({
   compensation: '',
   deadline: '',
   roles: [blankRole()],
+  casting_mode: '',
   selftape_required: false,
   selftape_brief: ''
 });
@@ -746,6 +748,16 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
                 {PROJECT_TYPES.map(t => (
                   <option key={t.id} value={t.id}>
                     {t.label}
+                  </option>
+                ))}
+              </SelectInput>
+            </Field>
+            <Field label="Hình thức casting" htmlFor="pp-mode">
+              <SelectInput id="pp-mode" value={form.casting_mode} onChange={e => set({ casting_mode: e.target.value })}>
+                <option value="">Chưa xác định</option>
+                {CASTING_MODES.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
                   </option>
                 ))}
               </SelectInput>

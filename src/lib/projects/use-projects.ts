@@ -103,7 +103,15 @@ export function useProjects() {
     const record = { ...project, updated_at: now, created_at: project.created_at || now };
     const supabase = createClient();
     if (supabase) {
-      const { error } = await supabase.from('casting_projects').upsert(record);
+      let { error } = await supabase.from('casting_projects').upsert(record);
+      // Chưa chạy migration 20261127 (chưa có cột nhãn): lưu tạm không kèm nhãn
+      if (error && /source|casting_mode/.test(error.message)) {
+        const { source: _s, casting_mode: _m, ...rest } = record;
+        void _s;
+        void _m;
+        ({ error } = await supabase.from('casting_projects').upsert(rest));
+        if (!error) toast.warning('Đã lưu dự án nhưng chưa lưu được nhãn Nguồn / Hình thức casting', { description: 'Hãy chạy migration 20261127_project_labels_proposal.sql.' });
+      }
       if (error) {
         toast.error('Không lưu được dự án', {
           description: error.code === '23505' ? `Mã dự án ${project.code} đã tồn tại, hãy đổi mã khác.` : error.message

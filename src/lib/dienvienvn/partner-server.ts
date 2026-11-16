@@ -295,7 +295,8 @@ function partnerProjectForm(p: CastingProject) {
     deadline: p.deadline || '',
     roles: p.roles || [],
     selftape_required: p.selftape_required,
-    selftape_brief: p.selftape_brief || ''
+    selftape_brief: p.selftape_brief || '',
+    casting_mode: p.casting_mode || ''
   };
 }
 

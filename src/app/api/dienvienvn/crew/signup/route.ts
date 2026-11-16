@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { inviteCrewAccount } from '@/lib/dienvienvn/crew-server';
+import { syncBrevoContact } from '@/lib/dienvienvn/brevo';
 
 const schema = z.object({
   full_name: z.string().trim().min(2, 'Vui lòng nhập họ tên.').max(120),
@@ -29,5 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email này đã có tài khoản DienVienVN. Vui lòng đăng nhập để dùng tài khoản ekip.', exists: true }, { status: 409 });
   }
   if (result === 'failed') return NextResponse.json({ error: 'Không gửi được email xác nhận. Vui lòng thử lại sau ít phút.' }, { status: 500 });
+  // Đưa email sang danh bạ Brevo (danh sách Ekip)
+  await syncBrevoContact('crew', { email: parsed.data.email, name: parsed.data.full_name });
   return NextResponse.json({ ok: true });
 }

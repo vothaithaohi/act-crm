@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { syncBrevoContact } from '@/lib/dienvienvn/brevo';
 import { z } from 'zod';
 import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
@@ -122,6 +123,8 @@ export async function POST(req: NextRequest) {
   // → gửi email (chỉ chủ hộp thư mới vào được tài khoản đó)
   // Diễn viên nhận email xác thực và tự tạo mật khẩu qua link (không đặt mật khẩu khi nộp hồ sơ)
   const accountCreated = false; // giữ trường trả về cho giao diện cũ
+  // Đưa email sang danh bạ Brevo (danh sách Diễn viên)
+  await syncBrevoContact('actor', { email: String(record.email || ''), name: String(record.full_name || ''), phone: (record.phone as string | null) || null });
   const account = await sendAccountEmail(supabase, record as unknown as TalentProfile, req.headers);
   const emailSent = account === 'invited' || account === 'reset';
 

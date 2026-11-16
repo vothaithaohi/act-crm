@@ -3,8 +3,9 @@ import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { producerTokenFromParam } from '@/lib/projects/types';
 import { clientIp, isBlocked, recordHit } from '@/lib/dienvienvn/rate-limit';
 import { parseDecisionBody, saveProducerDecision } from '@/lib/projects/producer-decision';
+import { getPartner } from '@/lib/dienvienvn/partner-server';
 
-// NSX đánh dấu Chọn / Cân nhắc / Loại trên link shortlist (ai có link là NSX của dự án). ACT xem lại trong CRM.
+// NSX đánh dấu Chọn / Cân nhắc / Loại trên link shortlist. Chỉ đối tác đã đăng nhập (tài khoản đang hoạt động). ACT xem lại trong CRM.
 const NOT_FOUND = 'Link không hợp lệ hoặc đã bị thu hồi.';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (!/^[0-9a-z]{6,128}$/i.test(token)) {
     recordHit(`nsx-fail:${ip}`);
     return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
+  }
+  // Chưa đăng nhập đối tác: không được chọn (link gửi cho ai cũng xem được)
+  const partner = await getPartner(req, db);
+  if (partner instanceof NextResponse) {
+    return NextResponse.json({ error: 'Vui lòng đăng nhập tài khoản đối tác để chọn diễn viên.', authRequired: true }, { status: 401 });
   }
   const input = parseDecisionBody(await req.json().catch(() => null));
   if (!input) return NextResponse.json({ error: 'Dữ liệu không hợp lệ.' }, { status: 400 });

@@ -2,13 +2,18 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Send, Video, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, Send, Share2, Video, X } from 'lucide-react';
 import {
   ProjectRole,
   PublicProject,
+  castingModeLabel,
   isAcceptingApplications,
+  findRoleBySlug,
+  sourceLabel,
   projectPathName,
   projectTypeLabel,
+  roleImages,
+  roleSlug,
   roleSummary
 } from '@/lib/projects/types';
 import { applyToRole, fetchPublicProject } from '@/lib/projects/public-client';
@@ -20,7 +25,47 @@ import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
 
-export function ProjectDetail({ projectId }: { projectId: string }) {
+/** Chia sẻ link: điện thoại mở bảng chia sẻ của máy (Zalo, Messenger…); máy tính sao chép link. Trả true khi đã sao chép. */
+async function shareLink(url: string, title: string): Promise<boolean> {
+  const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+  if (touch && navigator.share) {
+    try {
+      await navigator.share({ title, url });
+      return false;
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return false;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    window.prompt('Sao chép link:', url);
+    return false;
+  }
+  return true;
+}
+
+/** Nút "Chia sẻ": bấm xong đổi thành "Đã sao chép link" trong 2 giây. */
+function ShareButton({ url, title, label = 'Chia sẻ', className = '' }: { url: () => string; title: string; label?: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        if (await shareLink(url(), title)) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      }}
+      className={className}
+    >
+      {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+      {copied ? 'Đã sao chép link' : label}
+    </button>
+  );
+}
+
+export function ProjectDetail({ projectId, roleParam }: { projectId: string; roleParam?: string }) {
   const href = useDvvnHref();
   const [project, setProject] = useState<PublicProject | null | undefined>(undefined);
   const [error, setError] = useState('');
@@ -36,6 +81,14 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         setProject(null);
       });
   }, [projectId]);
+
+  // Link vai (/du-an/ten-du-an/ten-vai): cuộn tới vai đó
+  const focusRole = project && roleParam ? findRoleBySlug(project.roles, roleParam) : null;
+  useEffect(() => {
+    if (!focusRole) return;
+    const t = setTimeout(() => document.getElementById(`vai-${focusRole.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    return () => clearTimeout(t);
+  }, [focusRole]);
 
   if (project === undefined) {
     return (
@@ -64,6 +117,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   }
 
   const open = isAcceptingApplications(project);
+  const projectPath = projectPathName(project.display_name, project.code) || project.id;
   const facts = [
     { label: 'Địa điểm quay', value: project.location ? provinceLabel(project.location) : null },
     { label: 'Thời gian quay', value: project.shooting_time },
@@ -86,6 +140,19 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             {project.production_company && (
               <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">{project.production_company}</p>
             )}
+            {/* Nhãn: dự án từ đâu, casting thế nào */}
+            {(project.source || project.casting_mode) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {project.source && <span className="rounded-full bg-white px-3 py-1 text-[14px] font-medium">{sourceLabel(project.source)}</span>}
+                {project.casting_mode && <span className="rounded-full bg-white px-3 py-1 text-[14px] font-medium">{castingModeLabel(project.casting_mode)}</span>}
+              </div>
+            )}
+            <ShareButton
+              url={() => `${window.location.origin}${href(`/du-an/${projectPath}`)}`}
+              title={project.display_name}
+              label="Chia sẻ dự án"
+              className="dv-btn dv-btn-secondary mt-4 !h-10 !py-0 text-[15px]"
+            />
           </header>
 
           {/* Hết hạn / đã đóng: không để người xem kẹt lại, dẫn tới dự án khác và đăng nhập / nộp hồ sơ */}
@@ -159,13 +226,27 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           ) : (
             <ul className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
               {project.roles.map(r => (
-                <li key={r.id} className="flex flex-col rounded-[18px] bg-white p-6">
+                <li
+                  key={r.id}
+                  id={`vai-${r.id}`}
+                  className={`flex scroll-mt-24 flex-col rounded-[18px] bg-white p-6 ${focusRole?.id === r.id ? 'ring-2 ring-[#1d1d1f]' : ''}`}
+                >
+                  {roleImages(r).length > 0 && (
+                    <div className={`-mx-2 -mt-2 mb-4 grid gap-1.5 ${roleImages(r).length === 1 ? 'grid-cols-1' : roleImages(r).length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                      {roleImages(r).map(u => (
+                        <a key={u} href={u} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[12px] bg-[var(--dv-bg-alt)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={u} alt={`Ảnh tham khảo vai ${r.name}`} loading="lazy" className={`w-full object-cover ${roleImages(r).length === 1 ? 'aspect-[16/9]' : 'aspect-[3/4]'}`} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">{r.name}</p>
                   <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">
                     {[roleSummary(r), r.quantity ? `Cần ${r.quantity} người` : null].filter(Boolean).join(' · ')}
                   </p>
                   {r.description && <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.47]">{r.description}</p>}
-                  <div className="mt-auto pt-6">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
                     <button
                       type="button"
                       disabled={!open}
@@ -174,6 +255,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                     >
                       Ứng tuyển vai này
                     </button>
+                    <ShareButton
+                      url={() => `${window.location.origin}${href(`/du-an/${projectPath}/${roleSlug(r, project.roles)}`)}`}
+                      title={`Vai ${r.name} – ${project.display_name}`}
+                      label="Chia sẻ vai"
+                      className="dv-btn dv-btn-secondary w-full sm:w-auto"
+                    />
                   </div>
                 </li>
               ))}

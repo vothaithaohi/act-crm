@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Check, Copy, ExternalLink, HelpCircle, Loader2, Lock, Mail, Phone, Play, Printer, Video, X } from 'lucide-react';
 import { ProducerApplicant, ProducerView } from '@/lib/projects/producer';
 import { fetchProducerView, saveProducerDecision } from '@/lib/projects/public-client';
-import { PRODUCER_DECISIONS, ProducerDecision, projectTypeLabel, roleSummary } from '@/lib/projects/types';
+import { PRODUCER_DECISIONS, ProducerDecision, projectTypeLabel, roleImages, roleSummary } from '@/lib/projects/types';
 import type { PublicTalent } from '@/lib/dienvienvn/public-talents';
 import type { PartnerTalent } from '@/lib/dienvienvn/partners';
 import { experienceGroups, skillGroups, trainingList } from '@/lib/dienvienvn/talent-sections';
@@ -88,8 +88,8 @@ export function ProducerBoard({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối
-                  tác DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác — sau khi được duyệt, bạn xem được số điện thoại và email.
+                  <span className="font-semibold text-[var(--dv-text)]">Chọn / Cân nhắc / Loại diễn viên, số đo và thông tin liên hệ</span> chỉ dành cho
+                  đối tác DienVienVN. Đăng nhập tài khoản đối tác để chọn diễn viên; chưa có tài khoản thì đăng ký — sau khi được duyệt, bạn dùng được đầy đủ.
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
@@ -102,7 +102,8 @@ export function ProducerBoard({ token }: { token: string }) {
               </div>
             </div>
           )}
-          <ProducerApplicants view={view} contactHref={view.limited ? signupHref : undefined} decisionTarget={{ token }} />
+          {/* Chọn / Cân nhắc / Loại: chỉ đối tác đã đăng nhập */}
+          <ProducerApplicants view={view} contactHref={view.limited ? signupHref : undefined} decisionTarget={view.limited ? undefined : { token }} />
           <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
             Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.
           </p>
@@ -296,11 +297,12 @@ export function ProducerApplicants({
       name: r.name,
       need: [roleSummary(r), r.quantity ? `cần ${r.quantity} người` : null].filter(Boolean).join(' · '),
       description: (r.description || '').trim(),
+      images: roleImages(r),
       items: list.filter(a => a.application.role_id === r.id)
     }))
     .filter(g => g.items.length > 0);
   const other = list.filter(a => !known.has(a.application.role_id));
-  if (other.length) groups.push({ id: 'other', name: 'Vai khác', need: '', description: '', items: other });
+  if (other.length) groups.push({ id: 'other', name: 'Vai khác', need: '', description: '', images: [], items: other });
 
   const opened = openId ? applicants.find(a => a.application.id === openId) || null : null;
   const copyPicked = async () => {
@@ -492,6 +494,16 @@ export function ProducerApplicants({
                 <span className="ml-auto text-[14px] text-[var(--dv-text-tertiary)]">{g.items.length} ứng viên</span>
               </div>
               {g.description && <RoleDescription text={g.description} />}
+              {g.images.length > 0 && (
+                <div className="-mt-1 mb-5 flex gap-2">
+                  {g.images.map(u => (
+                    <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-24 w-[72px] overflow-hidden rounded-[10px] bg-white print:h-20 print:w-16">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={u} alt={`Ảnh tham khảo vai ${g.name}`} className="h-full w-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
               {mode === 'grid' ? (
                 <ul className="grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 print:grid-cols-3 print:gap-3">
                   {g.items.map(a => (

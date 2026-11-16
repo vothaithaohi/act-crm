@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { syncBrevoContact } from '@/lib/dienvienvn/brevo';
 import { z } from 'zod';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { isStaffEmail } from '@/lib/dienvienvn/actor-server';
@@ -77,6 +78,8 @@ export async function POST(req: NextRequest) {
   }
   // Gửi ngay email xác thực + tạo mật khẩu (mẫu "Hồ sơ đối tác của bạn đã được gửi")
   const result = await sendPartnerEmail(db, created as PartnerAccount, req.headers);
+  // Đưa email sang danh bạ Brevo (danh sách Nhà sản xuất)
+  await syncBrevoContact('partner', { email: input.email, name: input.full_name, phone: input.phone });
   if (result === 'failed') console.error('[dienvienvn] Đăng ký đối tác: chưa gửi được email xác thực cho', input.email);
   return NextResponse.json(OK);
 }

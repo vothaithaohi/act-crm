@@ -220,3 +220,61 @@ export async function signOutAndGo(path: string) {
   await signOutActor();
   window.location.replace(path);
 }
+
+/* ---------------- Vai của tài khoản đang đăng nhập ---------------- */
+
+export type AccountRole = 'actor' | 'partner' | 'crew';
+
+/**
+ * Tài khoản đang đăng nhập là diễn viên, đối tác (NSX) hay ekip — để menu làm nổi đúng mục và đổi nút chính.
+ * Hỏi máy chủ 1 lần mỗi phiên trình duyệt rồi nhớ lại. null: chưa đăng nhập / chưa xác định.
+ */
+const roleRequests = new Map<string, Promise<AccountRole | null>>();
+
+export function useAccountRole(): AccountRole | null {
+  const session = useActorSession();
+  const imp = useImpersonation();
+  const [role, setRole] = useState<AccountRole | null>(null);
+  const userId = session.status === 'signed-in' ? session.session.user.id : null;
+  const metaKind = session.status === 'signed-in' ? (session.session.user.user_metadata?.kind as string | undefined) : undefined;
+
+  useEffect(() => {
+    if (!userId) return setRole(null);
+    if (imp) return setRole(imp.kind);
+    const key = `dvvn-role:${userId}`;
+    try {
+      const cached = window.sessionStorage.getItem(key) as AccountRole | null;
+      if (cached === 'actor' || cached === 'partner' || cached === 'crew') return setRole(cached);
+    } catch {
+      /* bỏ qua */
+    }
+    // Đoán trước theo loại tài khoản lúc đăng ký, máy chủ trả lời thì cập nhật
+    setRole(metaKind === 'dienvienvn_partner' ? 'partner' : metaKind === 'dienvienvn_crew' ? 'crew' : null);
+    let cancelled = false;
+    // Nhiều chỗ cùng hỏi (menu, hộp nhắc Zalo…) → chỉ gọi máy chủ 1 lần
+    let req = roleRequests.get(userId);
+    if (!req) {
+      req = actorFetch('/api/dienvienvn/me')
+        .then(async res => ({ ok: res.ok, b: await res.json().catch(() => ({})) }))
+        .then(({ ok, b }): AccountRole | null => (b.partner ? 'partner' : b.crew ? 'crew' : ok && b.profile ? 'actor' : null));
+      roleRequests.set(userId, req);
+      req.finally(() => setTimeout(() => roleRequests.delete(userId), 5000)).catch(() => undefined);
+    }
+    req
+      .then(r => {
+        if (cancelled || !r) return;
+        setRole(r);
+        try {
+          window.sessionStorage.setItem(key, r);
+        } catch {
+          /* bỏ qua */
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, imp?.kind, metaKind, imp]);
+
+  return role;
+}

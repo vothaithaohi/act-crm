@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check, ExternalLink, Loader2, Plus, Trash2, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCRM } from '@/lib/store/crm-context';
+import { createClient } from '@/lib/supabase/client';
 import { REVIEW_STATUS_DETAILS, getReviewStatus } from '@/lib/types/crm';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import {
@@ -29,11 +30,37 @@ interface Props {
 }
 
 export function ProjectApplicants({ project, applications, onStatus, onBulkStatus, onRemove, onAdd }: Props) {
-  const { talents, reviewTalent, refreshTalents, can } = useCRM();
+  const { talents, reviewTalent, refreshTalents, can, currentUser } = useCRM();
   const canEdit = can('talents:write');
   const testIds = useTestMarks('project_applications');
   const [onlyTest, setOnlyTest] = useState(false);
   const [query, setQuery] = useState('');
+  // Task 59: "Đã thêm vào proposal" (slide đề xuất ACT gửi đối tác) — đánh dấu tay, chỉ nội bộ CRM
+  const [proposalFilter, setProposalFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [proposalOverride, setProposalOverride] = useState<Map<string, boolean>>(new Map());
+  const inProposal = (a: ProjectApplication) => proposalOverride.get(a.id) ?? !!a.in_proposal;
+  const setProposal = async (ids: string[], value: boolean): Promise<boolean> => {
+    if (!ids.length) return true;
+    const db = createClient();
+    setProposalOverride(m => new Map([...Array.from(m), ...ids.map(id => [id, value] as [string, boolean])]));
+    if (!db) return true;
+    for (let i = 0; i < ids.length; i += 200) {
+      const { error } = await db
+        .from('project_applications')
+        .update({ in_proposal: value, proposal_added_at: value ? new Date().toISOString() : null, proposal_added_by: value ? currentUser?.email || null : null })
+        .in('id', ids.slice(i, i + 200));
+      if (error) {
+        setProposalOverride(m => {
+          const next = new Map(m);
+          ids.forEach(id => next.delete(id));
+          return next;
+        });
+        toast.error('Không lưu được đánh dấu proposal', { description: /in_proposal|proposal_/.test(error.message) ? 'Hãy chạy migration 20261127_project_labels_proposal.sql.' : error.message });
+        return false;
+      }
+    }
+    return true;
+  };
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
   const [nsxFilter, setNsxFilter] = useState<'all' | 'none' | ProducerDecision>('all');
@@ -50,6 +77,7 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
       a =>
         a.project_id === project.id &&
         (!onlyTest || testIds.has(a.id)) &&
+        (proposalFilter === 'all' || (proposalFilter === 'yes' ? inProposal(a) : !inProposal(a))) &&
         (roleFilter === 'all' || a.role_id === roleFilter) &&
         (statusFilter === 'all' || a.status === statusFilter) &&
         (nsxFilter === 'all' || (nsxFilter === 'none' ? !a.producer_decision : a.producer_decision === nsxFilter))
@@ -138,6 +166,11 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
           className="w-full sm:w-56 px-3 py-2 rounded-lg border bg-background text-xs outline-none focus:border-foreground"
         />
         <TestFilter count={applications.filter(a => a.project_id === project.id && testIds.has(a.id)).length} on={onlyTest} onChange={setOnlyTest} />
+        <select value={proposalFilter} onChange={e => setProposalFilter(e.target.value as typeof proposalFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none" aria-label="Lọc theo proposal">
+          <option value="all">Proposal: tất cả</option>
+          <option value="yes">Đã thêm vào proposal ({applications.filter(a => a.project_id === project.id && inProposal(a)).length})</option>
+          <option value="no">Chưa thêm vào proposal</option>
+        </select>
         <select value={nsxFilter} onChange={e => setNsxFilter(e.target.value as typeof nsxFilter)} className="px-3 py-2 rounded-lg border bg-background text-xs outline-none" aria-label="Lọc theo lựa chọn của NSX">
           <option value="all">NSX: tất cả</option>
           {PRODUCER_DECISIONS.map(d => (
@@ -190,6 +223,28 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
             Chọn tất cả ({rows.length})
           </label>
           <span className="text-muted-foreground">· đã chọn {selectedInView.length}</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={selectedInView.length === 0}
+              onClick={async () => {
+                if (await setProposal(selectedInView, true)) toast.success(`Đã đánh dấu ${selectedInView.length} ứng viên vào proposal`);
+              }}
+              className="px-2.5 py-1.5 rounded-lg border border-violet-300 bg-violet-50 text-violet-900 font-semibold hover:bg-violet-100 disabled:opacity-40"
+            >
+              + Proposal
+            </button>
+            <button
+              type="button"
+              disabled={selectedInView.length === 0}
+              onClick={async () => {
+                if (await setProposal(selectedInView, false)) toast.success(`Đã bỏ ${selectedInView.length} ứng viên khỏi proposal`);
+              }}
+              className="px-2.5 py-1.5 rounded-lg border font-semibold hover:bg-muted disabled:opacity-40"
+            >
+              Bỏ proposal
+            </button>
+          </div>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-muted-foreground">Chuyển sang</span>
             <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value as ApplicationStatus)} className="px-2.5 py-1.5 rounded-lg border bg-background text-xs outline-none">
@@ -283,6 +338,20 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold"
                     >
                       <Check className="w-3.5 h-3.5" /> Duyệt hồ sơ
+                    </button>
+                  )}
+                  {(canEdit || inProposal(a)) && (
+                    <button
+                      type="button"
+                      disabled={!canEdit}
+                      aria-pressed={inProposal(a)}
+                      title={inProposal(a) ? 'Đã thêm vào slide đề xuất (proposal) — bấm để bỏ' : 'Đánh dấu đã thêm vào slide đề xuất (proposal) gửi đối tác'}
+                      onClick={() => setProposal([a.id], !inProposal(a))}
+                      className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold ${
+                        inProposal(a) ? 'border-violet-400 bg-violet-600 text-white hover:bg-violet-700' : 'border-dashed text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {inProposal(a) ? '✓ Proposal' : '+ Proposal'}
                     </button>
                   )}
                   <select

@@ -5,6 +5,7 @@ import { BasePathProvider } from '@/components/dienvienvn/base-path';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
 import { TalentDrawerProvider } from '@/components/dienvienvn/talent-drawer';
 import { ImpersonationBar } from '@/components/dienvienvn/impersonation-bar';
+import { CommunityPrompt } from '@/components/dienvienvn/community-prompt';
 import './dienvienvn.css';
 
 /** Google Analytics 4 của DienVienVN (chỉ chạy trên tên miền dienvienvn.com). */
@@ -51,6 +52,7 @@ export default async function DienVienVNLayout({ children }: { children: React.R
       <div className="dv-root">
         <TalentDrawerProvider>{children}</TalentDrawerProvider>
         <ImpersonationBar />
+        <CommunityPrompt />
       </div>
       {onPublicDomain && GA_ID && (
         <>

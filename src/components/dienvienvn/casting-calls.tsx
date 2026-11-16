@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Loader2, MapPin, SlidersHorizontal, UserRound, X } from 'lucide-react';
-import { PROJECT_TYPES, ProjectRole, PublicProject, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
+import { Banknote, Building2, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Loader2, MapPin, MonitorPlay, SlidersHorizontal, UserRound, X } from 'lucide-react';
+import { PROJECT_TYPES, ProjectRole, PublicProject, castingModeLabel, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, sourceLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
@@ -39,6 +39,8 @@ function CallTags({ c }: { c: Call }) {
       {p.location && <Tag icon={MapPin}>{provinceLabel(p.location)}</Tag>}
       {ageText(r) && <Tag icon={UserRound}>{ageText(r)} tuổi</Tag>}
       <Tag icon={Clapperboard}>{projectTypeLabel(p.project_type)}</Tag>
+      {p.casting_mode && <Tag icon={MonitorPlay}>{castingModeLabel(p.casting_mode)}</Tag>}
+      {p.source && <Tag icon={Building2}>{sourceLabel(p.source)}</Tag>}
     </div>
   );
 }

@@ -18,7 +18,29 @@ export interface ProjectRole {
   age_max?: number | null;
   quantity?: number | null;
   description?: string;
+  /** Ảnh tham khảo feel & look của vai (tối đa ROLE_MAX_IMAGES) */
+  images?: string[];
 }
+
+export const ROLE_MAX_IMAGES = 3;
+
+/** Phần đường dẫn của vai: /du-an/ten-du-an/<ten-vai>. Trùng tên trong cùng dự án → thêm số thứ tự. */
+export function roleSlug(role: Pick<ProjectRole, 'id' | 'name'>, roles: Pick<ProjectRole, 'id' | 'name'>[]): string {
+  const index = Math.max(0, roles.findIndex(r => r.id === role.id));
+  const base = slugifyVi(role.name || '') || `vai-${index + 1}`;
+  const dupBefore = roles.slice(0, index).filter(r => (slugifyVi(r.name || '') || '') === base).length;
+  return dupBefore ? `${base}-${dupBefore + 1}` : base;
+}
+
+/** Tìm vai theo đường dẫn (hoặc mã vai). */
+export function findRoleBySlug<T extends Pick<ProjectRole, 'id' | 'name'>>(roles: T[], param: string): T | null {
+  const key = decodeURIComponent(param).trim().toLowerCase();
+  return roles.find(r => r.id === key || roleSlug(r, roles) === key) || null;
+}
+
+/** Ảnh vai hợp lệ (chỉ link https, tối đa ROLE_MAX_IMAGES). */
+export const roleImages = (r: Pick<ProjectRole, 'images'>): string[] =>
+  (Array.isArray(r.images) ? r.images : []).filter(u => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, ROLE_MAX_IMAGES);
 
 export interface CastingProject {
   id: string;
@@ -42,6 +64,10 @@ export interface CastingProject {
   hide_contacts: boolean;
   /** Đối tác đã đăng dự án này trong cổng đối tác (null = ACT tạo trong CRM) */
   partner_id?: string | null;
+  /** Nguồn dự án (null: suy ra từ partner_id) */
+  source?: ProjectSource | null;
+  /** Hình thức casting */
+  casting_mode?: CastingMode | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -59,9 +85,30 @@ export interface ProjectApplication {
   /** Lựa chọn của NSX trên link shortlist / cổng đối tác */
   producer_decision?: ProducerDecision | null;
   producer_decided_at?: string | null;
+  /** Đã đưa vào slide đề xuất (proposal) gửi đối tác — chỉ nội bộ CRM */
+  in_proposal?: boolean | null;
+  proposal_added_at?: string | null;
+  proposal_added_by?: string | null;
   created_at?: string;
   updated_at?: string;
 }
+
+export type ProjectSource = 'act' | 'community' | 'partner';
+export type CastingMode = 'online' | 'offline' | 'hybrid';
+export const PROJECT_SOURCES: { id: ProjectSource; label: string }[] = [
+  { id: 'act', label: 'Dự án của ACT' },
+  { id: 'community', label: 'Dự án cộng đồng' },
+  { id: 'partner', label: 'Dự án đối tác' }
+];
+export const CASTING_MODES: { id: CastingMode; label: string }[] = [
+  { id: 'online', label: 'Casting online' },
+  { id: 'offline', label: 'Casting offline' },
+  { id: 'hybrid', label: 'Casting online & offline' }
+];
+/** Nguồn dự án: đã chọn, không thì đối tác đăng → "đối tác", còn lại → "ACT". */
+export const projectSource = (p: Pick<CastingProject, 'source' | 'partner_id'>): ProjectSource => p.source || (p.partner_id ? 'partner' : 'act');
+export const sourceLabel = (s?: ProjectSource | null) => PROJECT_SOURCES.find(x => x.id === s)?.label || '';
+export const castingModeLabel = (m?: CastingMode | null) => CASTING_MODES.find(x => x.id === m)?.label || '';
 
 export type ProducerDecision = 'pick' | 'maybe' | 'reject';
 
@@ -89,6 +136,8 @@ export interface PublicProject {
   selftape_required: boolean;
   selftape_brief: string | null;
   status: ProjectStatus;
+  source: ProjectSource;
+  casting_mode: CastingMode | null;
 }
 
 export const PROJECT_TYPES: { id: string; label: string }[] = [
@@ -147,7 +196,9 @@ export function toPublicProject(p: CastingProject): PublicProject {
     roles: Array.isArray(p.roles) ? p.roles : [],
     selftape_required: !!p.selftape_required,
     selftape_brief: p.selftape_brief || null,
-    status: p.status
+    status: p.status,
+    source: projectSource(p),
+    casting_mode: p.casting_mode || null
   };
 }
 

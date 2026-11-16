@@ -12,7 +12,9 @@ export const partnerRoleSchema = z.object({
   age_min: age,
   age_max: age,
   quantity: z.number().int().min(1).max(999).nullable().optional().default(1),
-  description: text(2000)
+  description: text(2000),
+  // Ảnh tham khảo của vai (ACT thêm trong CRM): giữ nguyên khi đối tác sửa dự án
+  images: z.array(z.string().trim().url().max(500).refine(u => u.startsWith('https://'))).max(3).optional().default([])
 });
 
 export const partnerProjectSchema = z.object({
@@ -34,7 +36,8 @@ export const partnerProjectSchema = z.object({
     .default(null),
   roles: z.array(partnerRoleSchema).min(1, 'Cần ít nhất một vai').max(60),
   selftape_required: z.boolean().default(false),
-  selftape_brief: text(2000)
+  selftape_brief: text(2000),
+  casting_mode: z.enum(['online', 'offline', 'hybrid']).or(z.literal('')).optional().default('')
 });
 
 export type PartnerProjectInput = z.infer<typeof partnerProjectSchema>;
@@ -59,10 +62,13 @@ export function toProjectColumns(input: PartnerProjectInput) {
       age_min: r.age_min ?? null,
       age_max: r.age_max ?? null,
       quantity: r.quantity ?? 1,
-      description: (r.description || '').trim()
+      description: (r.description || '').trim(),
+      ...(r.images?.length ? { images: r.images } : {})
     })),
     selftape_required: input.selftape_required,
-    selftape_brief: orNull(input.selftape_brief)
+    selftape_brief: orNull(input.selftape_brief),
+    // Chỉ gửi khi có chọn (máy chủ chưa chạy migration nhãn vẫn lưu được dự án)
+    ...(input.casting_mode ? { casting_mode: input.casting_mode } : {})
   };
 }
 

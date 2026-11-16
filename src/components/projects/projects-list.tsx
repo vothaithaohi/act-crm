@@ -2,12 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Clapperboard, Copy, EyeOff, Plus, Users } from 'lucide-react';
+import { Clapperboard, Copy, EyeOff, Link2, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCRM } from '@/lib/store/crm-context';
 import { getReviewStatus } from '@/lib/types/crm';
-import { PROJECT_STATUS_DETAILS, isDeadlinePassed, projectTypeLabel } from '@/lib/projects/types';
-import { producerLink, useProjects } from '@/lib/projects/use-projects';
+import { CASTING_MODES, CastingMode, PROJECT_SOURCES, PROJECT_STATUS_DETAILS, ProjectSource, castingModeLabel, isDeadlinePassed, projectSource, projectTypeLabel, sourceLabel } from '@/lib/projects/types';
+import { producerLink, publicProjectLink, useProjects } from '@/lib/projects/use-projects';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { TEST_ROW, TestBadge, TestFilter, useTestMarks } from '@/components/admin/impersonation';
 
@@ -22,6 +22,9 @@ export function ProjectsList() {
   const { projects, applications, loading } = useProjects();
   const testIds = useTestMarks('casting_projects');
   const [onlyTest, setOnlyTest] = React.useState(false);
+  const [source, setSource] = React.useState<'all' | ProjectSource>('all');
+  const [mode, setMode] = React.useState<'all' | 'none' | CastingMode>('all');
+  const selectCls = 'h-8 px-3 rounded-full border bg-background text-xs font-semibold outline-none';
   const approved = new Set(talents.filter(t => getReviewStatus(t) === 'approved').map(t => t.id));
 
   return (
@@ -46,7 +49,26 @@ export function ProjectsList() {
         )}
       </div>
 
-      <TestFilter count={projects.filter(p => testIds.has(p.id)).length} on={onlyTest} onChange={setOnlyTest} />
+      <div className="flex flex-wrap items-center gap-2">
+        <select className={selectCls} value={source} onChange={e => setSource(e.target.value as typeof source)} aria-label="Lọc theo nguồn dự án">
+          <option value="all">Mọi nguồn</option>
+          {PROJECT_SOURCES.map(o => (
+            <option key={o.id} value={o.id}>
+              {o.label} · {projects.filter(p => projectSource(p) === o.id).length}
+            </option>
+          ))}
+        </select>
+        <select className={selectCls} value={mode} onChange={e => setMode(e.target.value as typeof mode)} aria-label="Lọc theo hình thức casting">
+          <option value="all">Mọi hình thức</option>
+          {CASTING_MODES.map(o => (
+            <option key={o.id} value={o.id}>
+              {o.label} · {projects.filter(p => p.casting_mode === o.id).length}
+            </option>
+          ))}
+          <option value="none">Chưa chọn hình thức</option>
+        </select>
+        <TestFilter count={projects.filter(p => testIds.has(p.id)).length} on={onlyTest} onChange={setOnlyTest} />
+      </div>
 
       {loading ? (
         <div className="p-16 text-center text-xs text-muted-foreground">Đang tải dự án…</div>
@@ -62,7 +84,14 @@ export function ProjectsList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {projects.filter(p => !onlyTest || testIds.has(p.id)).map(p => {
+          {projects
+            .filter(
+              p =>
+                (!onlyTest || testIds.has(p.id)) &&
+                (source === 'all' || projectSource(p) === source) &&
+                (mode === 'all' || (mode === 'none' ? !p.casting_mode : p.casting_mode === mode))
+            )
+            .map(p => {
             const apps = applications.filter(a => a.project_id === p.id);
             const visible = apps.filter(a => a.status !== 'rejected' && approved.has(a.talent_id)).length;
             const status = PROJECT_STATUS_DETAILS[p.status];
@@ -78,6 +107,8 @@ export function ProjectsList() {
                       {p.status === 'draft' ? 'Đối tác đăng · chờ duyệt' : 'Đối tác đăng'}
                     </span>
                   )}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-muted text-foreground/80">{sourceLabel(projectSource(p))}</span>
+                  {p.casting_mode && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-50 text-sky-800 border-sky-200">{castingModeLabel(p.casting_mode)}</span>}
                   {expired && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-300">Quá hạn nộp</span>}
                   {p.hide_title && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -118,6 +149,24 @@ export function ProjectsList() {
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted"
                   >
                     <Copy className="w-3.5 h-3.5" /> Link NSX
+                  </button>
+                  {/* Link công khai cho diễn viên (dự án nháp chưa hiện trên dienvienvn.com) */}
+                  <button
+                    type="button"
+                    disabled={p.status === 'draft'}
+                    title={p.status === 'draft' ? 'Dự án nháp chưa công khai' : 'Sao chép link dự án trên dienvienvn.com'}
+                    onClick={async () => {
+                      const url = publicProjectLink(p);
+                      try {
+                        await navigator.clipboard.writeText(url);
+                        toast.success('Đã sao chép link công khai', { description: url });
+                      } catch {
+                        window.prompt('Sao chép link công khai:', url);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Link2 className="w-3.5 h-3.5" /> Link công khai{p.status === 'draft' ? ' · chưa công khai' : ''}
                   </button>
                 </div>
               </div>

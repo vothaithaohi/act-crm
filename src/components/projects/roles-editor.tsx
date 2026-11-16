@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Copy, ListPlus, Plus, Trash2 } from 'lucide-react';
-import { ProjectRole, RoleGender, genderLabel } from '@/lib/projects/types';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, ImagePlus, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ProjectRole, ROLE_MAX_IMAGES, RoleGender, genderLabel } from '@/lib/projects/types';
+import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-foreground transition-colors';
 const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
@@ -240,6 +241,7 @@ export function RolesEditor({ roles, onChange, canEdit }: { roles: ProjectRole[]
                       onChange={e => setRole(r.id, { description: e.target.value })}
                     />
                   </div>
+                  <RoleImagesField images={r.images || []} disabled={!canEdit} onChange={images => setRole(r.id, { images })} />
                 </div>
               )}
             </li>
@@ -291,6 +293,65 @@ function NumberField({ label, value, disabled, onChange }: { label: string; valu
           onChange(digits ? Number(digits) : null);
         }}
       />
+    </div>
+  );
+}
+
+/** Ảnh tham khảo feel & look của vai (tối đa {ROLE_MAX_IMAGES} ảnh): hiện trên trang dự án, link NSX và ảnh xem trước khi chia sẻ link vai. */
+function RoleImagesField({ images, onChange, disabled }: { images: string[]; onChange: (images: string[]) => void; disabled: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const add = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setError('');
+    setBusy(true);
+    const next = [...images];
+    try {
+      for (const f of Array.from(files).slice(0, ROLE_MAX_IMAGES - next.length)) next.push(await uploadPublicImage(f, 'role'));
+      onChange(next);
+    } catch (e) {
+      if (next.length > images.length) onChange(next);
+      setError(e instanceof Error ? e.message : 'Không tải được ảnh lên.');
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+  return (
+    <div>
+      <label className={labelCls}>Ảnh tham khảo (feel &amp; look) · tối đa {ROLE_MAX_IMAGES} ảnh</label>
+      <div className="flex flex-wrap gap-2">
+        {images.map((u, i) => (
+          <div key={u} className="relative h-24 w-[72px] overflow-hidden rounded-lg border bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={u} alt="" className="h-full w-full object-cover" />
+            {!disabled && (
+              <button
+                type="button"
+                aria-label="Xoá ảnh"
+                onClick={() => onChange(images.filter((_, j) => j !== i))}
+                className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))}
+        {!disabled && images.length < ROLE_MAX_IMAGES && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex h-24 w-[72px] flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-[11px] font-semibold text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+            {busy ? 'Đang tải' : 'Thêm ảnh'}
+          </button>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => add(e.target.files)} />
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

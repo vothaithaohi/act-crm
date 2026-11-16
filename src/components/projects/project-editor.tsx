@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Copy, ExternalLink, EyeOff, RefreshCw, Save, Trash2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  CASTING_MODES,
+  CastingMode,
+  PROJECT_SOURCES,
+  ProjectSource,
+  projectSource,
   CastingProject,
   PROJECT_STATUS_DETAILS,
   PROJECT_TYPES,
@@ -295,6 +300,31 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
                 <option key={s} value={s}>
                   {PROJECT_STATUS_DETAILS[s].label}
                   {s === 'open' ? ' (hiện trên web)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Nhãn hiện trên trang công khai: dự án từ đâu và casting thế nào */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Nguồn dự án</label>
+            <select className={inputCls} value={projectSource(p)} disabled={!canEdit} onChange={e => set({ source: e.target.value as ProjectSource })}>
+              {PROJECT_SOURCES.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Hình thức casting</label>
+            <select className={inputCls} value={p.casting_mode || ''} disabled={!canEdit} onChange={e => set({ casting_mode: (e.target.value || null) as CastingMode | null })}>
+              <option value="">Chưa xác định</option>
+              {CASTING_MODES.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
                 </option>
               ))}
             </select>

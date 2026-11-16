@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Check, ChevronDown, ChevronRight, Clapperboard, Menu, X } from 'lucide-react';
 import { CASTING_STEPS } from '@/lib/dienvienvn/casting-form';
-import { useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { useAccountRole, useActorSession } from '@/lib/dienvienvn/actor-auth';
+import { usePathname } from 'next/navigation';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { TalentLink } from './talent-drawer';
 import { useDvvnHref } from './base-path';
@@ -78,12 +79,95 @@ function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active
   );
 }
 
+/** Nhóm Zalo cộng đồng DienVienVN. */
+export const ZALO_GROUP_URL = 'https://zalo.me/g/2sw5ctnin8252otszc3s';
+const CONTACT_LINKS: { label: string; desc: string; href?: string }[] = [
+  { label: 'Nhóm Zalo cộng đồng', desc: 'Hỗ trợ và nhận thông tin casting nhanh', href: ZALO_GROUP_URL },
+  { label: 'Fanpage', desc: 'Đang cập nhật' }
+];
+
+/** Menu "Liên hệ": nhóm Zalo cộng đồng, fanpage (đang cập nhật). */
+function ContactDropdown({ linkCls }: { linkCls: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button type="button" onClick={() => setOpen(o => !o)} onFocus={() => setOpen(true)} aria-expanded={open} aria-haspopup="menu" className={`${linkCls} inline-flex items-center gap-1 ${open ? '!text-black' : ''}`}>
+        Liên hệ <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3">
+          <div role="menu" className="w-[280px] rounded-[18px] border border-black/[0.06] bg-white p-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)]">
+            {CONTACT_LINKS.map(c =>
+              c.href ? (
+                <a key={c.label} role="menuitem" href={c.href} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="block rounded-[12px] px-4 py-3 hover:bg-[var(--dv-bg-alt)]">
+                  <span className="block text-[15px] font-semibold text-[#1d1d1f]">{c.label}</span>
+                  <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{c.desc}</span>
+                </a>
+              ) : (
+                <div key={c.label} role="menuitem" aria-disabled="true" className="block rounded-[12px] px-4 py-3">
+                  <span className="block text-[15px] font-semibold text-[#1d1d1f]/40">{c.label}</span>
+                  <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-tertiary)]">{c.desc}</span>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Nút "Đăng ký" ở trang đăng nhập: chọn đăng ký diễn viên / nhà sản xuất / ekip. */
+function SignupDropdown() {
+  const href = useDvvnHref();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onDown = (e: MouseEvent) => !(e.target as HTMLElement).closest('[data-signup-menu]') && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [open]);
+  const items = [
+    { href: href('/nop-ho-so'), label: 'Diễn viên', desc: 'Nộp hồ sơ, ứng tuyển các vai đang casting' },
+    { href: href('/doi-tac/dang-ky'), label: 'Nhà sản xuất', desc: 'Đăng casting, xem hồ sơ và liên hệ diễn viên' },
+    { href: href('/ekip/dang-ky'), label: 'Ekip', desc: 'Tạo hồ sơ ekip, ứng tuyển việc làm' }
+  ];
+  return (
+    <div className="relative" data-signup-menu>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="menu" className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
+        Đăng ký <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-[280px] rounded-[18px] border border-black/[0.06] bg-white p-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)]">
+          {items.map(i => (
+            <Link key={i.label} role="menuitem" href={i.href} onClick={() => setOpen(false)} className="block rounded-[12px] px-4 py-3 hover:bg-[var(--dv-bg-alt)]">
+              <span className="block text-[15px] font-semibold text-[#1d1d1f]">{i.label}</span>
+              <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{i.desc}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** compact: cao 44px như thanh đầu trang cũ (các trang bên trong có thanh công cụ dính ngay dưới menu). */
-export function LandingNav({ audience, onAudience, compact = false }: { audience: NavAudience; onAudience: (a: Audience) => void; compact?: boolean }) {
+export function LandingNav({ audience: pageAudience, onAudience, compact = false }: { audience: NavAudience; onAudience: (a: Audience) => void; compact?: boolean }) {
   const href = useDvvnHref();
   const session = useActorSession();
   const [open, setOpen] = useState(false);
   const signedIn = session.status === 'signed-in';
+  // Đã đăng nhập: làm nổi mục và nút chính theo vai của tài khoản; chưa đăng nhập: theo trang đang xem
+  const role = useAccountRole();
+  // (Trang chủ: mục đang chọn là phần nội dung đang xem nên giữ theo trang; các trang bên trong theo vai)
+  const roleAudience: NavAudience | null = role === 'partner' ? 'hiring' : role === 'crew' ? 'crew' : role === 'actor' ? 'talent' : null;
+  const audience: NavAudience = compact && roleAudience ? roleAudience : pageAudience;
+  const onLogin = /\/dang-nhap\/?$/.test(usePathname() || '');
   const go = (a: Audience) => {
     onAudience(a);
     setOpen(false);
@@ -115,16 +199,24 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
               Dự án đang casting
             </Link>
           )}
+          <ContactDropdown linkCls={linkCls} />
         </div>
         <div className="flex items-center gap-2">
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} className="hidden px-2 text-[14px] text-black/75 hover:text-black sm:inline">
             {signedIn ? 'Tài khoản' : 'Đăng nhập'}
           </Link>
-          {audience === 'talent' ? (
+          {role === 'actor' ? (
+            <Link href={href('/du-an')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
+              Dự án đang casting
+            </Link>
+          ) : !signedIn && onLogin ? (
+            // Trang đăng nhập: không đẩy sang nộp hồ sơ diễn viên, cho chọn đăng ký theo vai
+            <SignupDropdown />
+          ) : (roleAudience || audience) === 'talent' ? (
             <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
               Nộp hồ sơ
             </Link>
-          ) : audience === 'crew' ? (
+          ) : (roleAudience || audience) === 'crew' ? (
             // Đã đăng nhập: "Tài khoản" bên cạnh đã mở trang hồ sơ → nút chính mở danh sách việc làm
             <Link href={href(signedIn ? '/ekip' : '/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
               {signedIn ? 'Việc làm ekip' : 'Đăng ký ekip'}
@@ -175,6 +267,22 @@ export function LandingNav({ audience, onAudience, compact = false }: { audience
               Dự án đang casting
             </Link>
           )}
+          <div className="border-b border-[#f0f0f2] py-3.5">
+            <p className="text-[17px] font-semibold">Liên hệ</p>
+            <div className="mt-1.5 space-y-0.5">
+              {CONTACT_LINKS.map(c =>
+                c.href ? (
+                  <a key={c.label} href={c.href} target="_blank" rel="noopener noreferrer" className="block py-1.5 pl-3 text-[15px] text-black/75">
+                    {c.label}
+                  </a>
+                ) : (
+                  <p key={c.label} className="py-1.5 pl-3 text-[15px] text-black/40">
+                    {c.label} · {c.desc}
+                  </p>
+                )
+              )}
+            </div>
+          </div>
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} onClick={() => setOpen(false)} className={`${mobileCls} border-0`}>
             {signedIn ? 'Tài khoản' : 'Đăng nhập'}
           </Link>
