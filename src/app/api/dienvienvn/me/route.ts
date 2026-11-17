@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
       review_status: getReviewStatus(talent),
       username: talent.username || null,
       public_profile: !!talent.public_profile,
+      public_locked: !!talent.public_locked,
       selftapes: cleanSelfTapes(talent.selftapes),
       updated_at: talent.updated_at || null
     },
@@ -135,6 +136,10 @@ export async function PATCH(req: NextRequest) {
 
   // Diễn viên tự ẩn / hiện lại hồ sơ trên trang công khai (hồ sơ vẫn dùng cho casting)
   if (typeof body?.public_profile === 'boolean' && body.username === undefined) {
+    // ACT đã khoá hiển thị công khai: diễn viên không tự bật lại được
+    if (body.public_profile && talent.public_locked) {
+      return NextResponse.json({ error: 'DienVienVN đang tạm ẩn hồ sơ của bạn khỏi trang công khai. Vui lòng liên hệ DienVienVN nếu cần hiện lại.' }, { status: 403 });
+    }
     const { error } = await db.from('talent_profiles').update({ public_profile: body.public_profile, updated_at: new Date().toISOString() }).eq('id', talent.id);
     if (error) return NextResponse.json({ error: 'Không lưu được. Vui lòng thử lại.' }, { status: 500 });
     return NextResponse.json({ ok: true, public_profile: body.public_profile });

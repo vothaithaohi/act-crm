@@ -325,7 +325,10 @@ export async function runAiTalentJob(db: SupabaseClient, jobId: string, input: A
     if (!profile.found) {
       return finish({ status: 'failed', usage, error: `Không xác định được diễn viên${input.name ? ` "${input.name}"` : ' từ các link đã gửi'}. ${profile.notes || 'Hãy thêm link tham khảo hoặc ghi chú để AI phân biệt.'}` });
     }
-    const { data, error } = await db.from('talent_profiles').insert(toTalentRow(profile, input, by)).select('id').single();
+    // Hồ sơ AI tạo: khoá hiển thị công khai (chỉ ACT bật khi diễn viên / agency đồng ý). Chưa có cột khoá thì lưu không kèm.
+    const row = toTalentRow(profile, input, by);
+    let { data, error } = await db.from('talent_profiles').insert({ ...row, public_locked: true }).select('id').single();
+    if (error && /public_locked/.test(error.message)) ({ data, error } = await db.from('talent_profiles').insert(row).select('id').single());
     if (error || !data) {
       console.error('[ai-talent] Không lưu được hồ sơ:', error?.message);
       return finish({ status: 'failed', usage, error: /ai_generated|ai_profile|submission_source/.test(error?.message || '') ? AI_JOBS_MISSING : 'Không lưu được hồ sơ. Vui lòng thử lại.' });

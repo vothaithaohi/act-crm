@@ -2,14 +2,12 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ExternalLink, Globe, Loader2, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Loader2, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { authedFetch } from '@/lib/supabase/authed-fetch';
-import { createClient } from '@/lib/supabase/client';
 import { useCRM } from '@/lib/store/crm-context';
 import { talentPath } from '@/lib/talent-path';
 import type { TalentProfile } from '@/lib/types/crm';
-import { RESERVED_USERNAMES, USERNAME_PATTERN } from '@/lib/dienvienvn/hosts';
 
 // AI tạo hồ sơ diễn viên từ tên / link (Super Admin, Casting). Hồ sơ vào trạng thái Chờ duyệt, nhãn AI tạo,
 // chỉ trong CRM; bật công khai từng hồ sơ khi diễn viên / agency đã đồng ý.
@@ -261,57 +259,10 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
   );
 }
 
-/** Đường dẫn công khai từ tên: "Kathy Uyên (Lê ...)" → kathy-uyen; trùng thì thêm số. */
-async function freeUsername(db: NonNullable<ReturnType<typeof createClient>>, name: string): Promise<string | null> {
-  const base = name
-    .split(' (')[0]
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/gi, 'd')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 34);
-  if (base.length < 3) return null;
-  for (let i = 0; i < 20; i++) {
-    const u = i ? `${base}-${i + 1}` : base;
-    if (!USERNAME_PATTERN.test(u) || RESERVED_USERNAMES.has(u)) continue;
-    const { data } = await db.from('talent_profiles').select('id').eq('username', u).limit(1);
-    if (!data?.length) return u;
-  }
-  return null;
-}
-
 /** Khung trên trang hồ sơ AI tạo: tiểu sử, thông tin chưa chắc chắn, nguồn; bật / tắt công khai. */
 export function AiTalentPanel({ talent }: { talent: TalentProfile }) {
-  const { refreshTalents, can } = useCRM();
-  const allowed = useCanUseAi() && can('talents:write');
-  const [busy, setBusy] = useState(false);
   const info = talent.ai_profile;
   if (talent.submission_source !== 'ai' && !talent.ai_generated) return null;
-  const approved = talent.review_status === 'approved';
-  const isPublic = !!talent.public_profile && !!talent.username;
-
-  const togglePublic = async () => {
-    const db = createClient();
-    if (!db) return toast.error('Cần kết nối Supabase.');
-    if (!isPublic && !window.confirm(`Bật công khai hồ sơ ${talent.full_name} trên dienvienvn.com? Chỉ bật khi diễn viên hoặc agency đã đồng ý.`)) return;
-    setBusy(true);
-    try {
-      const patch: Record<string, unknown> = { public_profile: !isPublic, updated_at: new Date().toISOString() };
-      if (!isPublic && !talent.username) {
-        const u = await freeUsername(db, talent.full_name);
-        if (!u) return void toast.error('Không tạo được đường dẫn công khai từ tên này. Hãy đặt username trong phần sửa hồ sơ.');
-        patch.username = u;
-      }
-      const { error } = await db.from('talent_profiles').update(patch).eq('id', talent.id);
-      if (error) return void toast.error('Không lưu được', { description: error.message });
-      toast.success(isPublic ? 'Đã tắt công khai, hồ sơ chỉ còn trong CRM.' : 'Đã bật công khai.');
-      await refreshTalents();
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="bg-card rounded-2xl border border-violet-200 p-4 sm:p-5 shadow-xs space-y-3">
@@ -322,21 +273,6 @@ export function AiTalentPanel({ talent }: { talent: TalentProfile }) {
             {info?.created_at ? `Tạo lúc ${time(info.created_at)}` : ''}
             {info?.created_by ? ` · ${info.created_by}` : ''} · Kiểm tra nguồn trước khi duyệt
           </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className={`inline-flex items-center gap-1 font-semibold ${isPublic ? 'text-emerald-700' : 'text-muted-foreground'}`}>
-            <Globe className="w-3.5 h-3.5" /> {isPublic ? `Công khai: dienvienvn.com/${talent.username}` : 'Chỉ trong CRM'}
-          </span>
-          {allowed && (
-            <button
-              onClick={togglePublic}
-              disabled={busy || (!isPublic && !approved)}
-              title={!isPublic && !approved ? 'Duyệt hồ sơ trước khi bật công khai' : undefined}
-              className="px-2.5 py-1.5 rounded-lg border font-semibold hover:bg-muted disabled:opacity-50"
-            >
-              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isPublic ? 'Tắt công khai' : 'Bật công khai'}
-            </button>
-          )}
         </div>
       </div>
 

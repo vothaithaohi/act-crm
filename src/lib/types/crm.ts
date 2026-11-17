@@ -329,6 +329,8 @@ export interface TalentProfile {
   username?: string | null;
   /** Diễn viên đồng ý hiển thị hồ sơ trên trang công khai. */
   public_profile?: boolean | null;
+  /** ACT khoá: ẩn khỏi trang công khai, diễn viên không tự bật lại được */
+  public_locked?: boolean | null;
   /** Hồ sơ do AI tạo từ tên / link (chỉ trong CRM cho đến khi bật công khai). */
   ai_generated?: boolean | null;
   /** Tiểu sử, nguồn tham khảo, điểm chưa chắc chắn… AI tìm được */

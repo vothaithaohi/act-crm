@@ -14,6 +14,7 @@ import {
 } from '@/lib/types/crm';
 import { SubmissionReviewPanel } from '@/components/talents/submission-review-panel';
 import { AiTalentPanel } from '@/components/talents/ai-talent';
+import { PublicVisibilityControl } from '@/components/talents/public-visibility';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
@@ -125,7 +126,7 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                 <>
                   {' • '}
                   <span className="font-mono text-foreground">@{talent.username}</span>
-                  {talent.public_profile && talent.review_status === 'approved' ? (
+                  {talent.public_profile && !talent.public_locked && talent.review_status === 'approved' ? (
                     <>
                       {' • '}
                       <a href={`https://www.dienvienvn.com/${talent.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#8c5f2a] hover:underline">
@@ -143,24 +144,14 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
                         Xem như nhà sản xuất ↗
                       </a>
                     </>
-                  ) : (
-                    <>
-                      {' • '}
-                      <span
-                        className="text-muted-foreground"
-                        title={
-                          talent.public_profile
-                            ? 'Trang dienvienvn.com/' + talent.username + ' sẽ mở ngay khi hồ sơ được duyệt.'
-                            : 'Diễn viên đã tự ẩn hồ sơ khỏi trang công khai — trang dienvienvn.com/' + talent.username + ' không mở. Chỉ diễn viên tự hiện lại được trong tài khoản.'
-                        }
-                      >
-                        {talent.public_profile ? 'Công khai sau khi duyệt' : 'Diễn viên đã ẩn'}
-                      </span>
-                    </>
-                  )}
+                  ) : null}
                 </>
               )}
             </p>
+            {/* Hiện / ẩn (khoá) hồ sơ trên dienvienvn.com */}
+            <div className="mt-1.5">
+              <PublicVisibilityControl talent={talent} />
+            </div>
           </div>
         </div>
 

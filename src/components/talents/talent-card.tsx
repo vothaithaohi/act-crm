@@ -7,6 +7,7 @@ import { calculateAge } from '@/lib/utils';
 import { MapPin, Film, Eye, Edit3, IdCard, HeartHandshake, Mic, GraduationCap, Check } from 'lucide-react';
 import { useCRM } from '@/lib/store/crm-context';
 import { talentPath } from '@/lib/talent-path';
+import { PublicEyeButton } from '@/components/talents/public-visibility';
 import { TestBadge, useTestMarks } from '@/components/admin/impersonation';
 
 interface TalentCardProps {
@@ -62,8 +63,11 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
+        {/* Bấm vào ảnh / tên: mở trang hồ sơ (ô chọn và nhãn phía trên vẫn bấm riêng được) */}
+        <Link href={talentPath(talent)} className="absolute inset-0 z-[5]" aria-label={`Mở hồ sơ ${talent.full_name}`} />
+
         {/* Top Badges */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-1.5 z-10">
           <div className="flex items-center gap-1.5">
             {isTest && <TestBadge className="h-6 px-2" />}
             {selectable && (
@@ -96,7 +100,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
 
           {/* Highest ACT Level Badge */}
           {highestLevel && (
-            <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-md border ${
+            <span className={`whitespace-nowrap text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full backdrop-blur-md shadow-md border ${
               highestLevel === 'ACT4'
                 ? 'act-gold-bg text-black border-[#c9a063]/60 ring-1 ring-white/20'
                 : highestLevel === 'ACT3'
@@ -111,8 +115,11 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         </div>
 
         {/* Hồ sơ tự nộp từ dienvienvn.com */}
+        <div className="absolute top-10 left-3 z-10 flex items-center gap-1">
+          {/* Hiện / ẩn (khoá) hồ sơ trên dienvienvn.com */}
+          <PublicEyeButton talent={talent} compact />
         {(talent.submission_source === 'dienvienvn' || talent.submission_source === 'ai') && (
-          <div className="absolute top-10 left-3 z-10 flex items-center gap-1">
+          <>
             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs ${talent.submission_source === 'ai' ? 'bg-violet-600 text-white' : 'bg-white/90 text-slate-900'}`}>
               {talent.submission_source === 'ai' ? 'AI tạo' : 'DienVienVN'}
             </span>
@@ -121,8 +128,9 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
                 {REVIEW_STATUS_DETAILS[getReviewStatus(talent)].label}
               </span>
             )}
-          </div>
+          </>
         )}
+        </div>
 
         {/* Cities Badge */}
         {talent.willing_work_cities && talent.willing_work_cities.length > 0 && (
@@ -222,7 +230,7 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         <div className="pt-2 border-t flex items-center gap-2">
           <Link
             href={talentPath(talent)}
-            className="flex-1 h-9 inline-flex items-center justify-center gap-1.5 px-3 bg-brand-500 hover:bg-black text-white rounded-lg text-xs font-semibold leading-none whitespace-nowrap shadow-xs transition-colors"
+            className="flex-1 min-w-0 h-9 inline-flex items-center justify-center gap-1.5 px-3 bg-brand-500 hover:bg-black text-white rounded-lg text-xs font-semibold leading-none whitespace-nowrap shadow-xs transition-colors"
           >
             <Eye className="w-4 h-4 shrink-0" />
             <span>Xem</span>
