@@ -3,16 +3,20 @@ import { z } from 'zod';
 import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
 import { AI_JOBS_MISSING, AI_KEY_MISSING, runAiTalentJob } from '@/lib/dienvienvn/ai-talent';
 
-// AI tạo hồ sơ diễn viên từ tên / link — chỉ Super Admin và Casting. Chạy nền 1–2 phút; CRM hỏi tiến trình bằng GET.
+// AI tạo hồ sơ diễn viên từ tên và / hoặc link (đọc link, tìm thêm nguồn, đối chứng) — chỉ Super Admin và Casting.
+// Chạy nền 2–3 phút; CRM hỏi tiến trình bằng GET.
 export const maxDuration = 300;
 const ROLES = ['super_admin', 'casting'];
 const COLUMNS = 'id, created_by, input, status, talent_id, error, created_at, updated_at';
-const schema = z.object({
-  name: z.string().trim().min(2, 'Nhập tên diễn viên.').max(120),
-  links: z.array(z.string().trim().url('Link chưa đúng định dạng.').max(500)).max(5, 'Tối đa 5 link.').default([]),
-  note: z.string().trim().max(1000).default(''),
-  force: z.boolean().default(false)
-});
+// Nhập tên hoặc dán link (chỉ cần một trong hai)
+const schema = z
+  .object({
+    name: z.string().trim().max(120).default(''),
+    links: z.array(z.string().trim().url('Link chưa đúng định dạng.').max(500)).max(5, 'Tối đa 5 link.').default([]),
+    note: z.string().trim().max(1000).default(''),
+    force: z.boolean().default(false)
+  })
+  .refine(v => v.name.length >= 2 || v.links.length > 0, { message: 'Nhập tên diễn viên hoặc dán ít nhất 1 link.' });
 const likeExact = (v: string) => v.replace(/[\\%_]/g, m => `\\${m}`);
 const missing = (m?: string) => /ai_profile_jobs|schema cache/i.test(m || '');
 
@@ -25,7 +29,7 @@ export async function POST(req: NextRequest) {
   const { name, links, note, force } = parsed.data;
 
   // Tránh tạo trùng: tên đã có trong kho → hỏi lại trước
-  if (!force) {
+  if (!force && name) {
     const { data: dup } = await g.db.from('talent_profiles').select('id, full_name, username, submission_source, review_status').ilike('full_name', `%${likeExact(name)}%`).limit(5);
     if (dup?.length) return NextResponse.json({ duplicates: dup });
   }

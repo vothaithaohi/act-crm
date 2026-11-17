@@ -32,6 +32,13 @@ function useCanUseAi() {
   return AI_ROLES.includes((viewAsRole || realRole || '') as string);
 }
 
+const hostOf = (u?: string) => {
+  try {
+    return u ? new URL(u).hostname.replace(/^www\./, '') : '';
+  } catch {
+    return u || '';
+  }
+};
 const time = (iso: string) => new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
 
 export function AiTalentButton({ onCreated }: { onCreated?: () => void }) {
@@ -109,7 +116,7 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
 
   const submit = async (force = false) => {
     setError('');
-    if (name.trim().length < 2) return setError('Nhập tên diễn viên.');
+    if (name.trim().length < 2 && !links.length) return setError('Dán ít nhất 1 link hoặc nhập tên diễn viên.');
     if (links.length > 5) return setError('Tối đa 5 link.');
     if (links.some(l => !/^https?:\/\/\S+\.\S+/.test(l))) return setError('Link chưa đúng định dạng (cần bắt đầu bằng https://).');
     setBusy(true);
@@ -127,7 +134,7 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
       setLinksText('');
       setNote('');
       setJobs(list => [b.job, ...list.filter(x => x.id !== b.job.id)]);
-      toast.success('AI đang tìm thông tin, thường mất 1–2 phút. Bạn có thể đóng hộp này, hồ sơ vẫn được tạo.');
+      toast.success('AI đang đọc link, tìm thêm nguồn và đối chứng, thường mất 2–3 phút. Bạn có thể đóng hộp này, hồ sơ vẫn được tạo.');
     } catch {
       setError('Mất kết nối mạng. Vui lòng thử lại.');
     } finally {
@@ -145,7 +152,7 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
               <Sparkles className="w-5 h-5 text-violet-600" /> AI tạo hồ sơ
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              AI tìm thông tin công khai trên web và tạo hồ sơ <b>Chờ duyệt</b>, chỉ trong CRM. Mỗi thông tin kèm nguồn để kiểm tra.
+              AI đọc link bạn gửi, tìm thêm nguồn chính thống, đối chứng từng thông tin rồi tạo hồ sơ <b>Chờ duyệt</b>, chỉ trong CRM. Mỗi thông tin kèm link nguồn riêng.
             </p>
           </div>
           <button onClick={onClose} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-muted" aria-label="Đóng">
@@ -162,11 +169,7 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold mb-1">Tên diễn viên *</label>
-            <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="VD: Kathy Uyên" maxLength={120} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold mb-1">Link tham khảo (không bắt buộc, tối đa 5, mỗi dòng 1 link)</label>
+            <label className="block text-xs font-semibold mb-1">Dán link về diễn viên (tối đa 5, mỗi dòng 1 link)</label>
             <textarea
               className={`${inputCls} resize-y`}
               rows={3}
@@ -174,6 +177,11 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
               onChange={e => setLinksText(e.target.value)}
               placeholder={'https://vi.wikipedia.org/wiki/...\nhttps://www.instagram.com/...'}
             />
+            <p className="text-[11px] text-muted-foreground mt-1">AI đọc các link này, tìm thêm nguồn chính thống khác rồi đối chứng từng thông tin.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1">Tên diễn viên (nhập nếu chưa có link)</label>
+            <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="VD: Kathy Uyên" maxLength={120} />
           </div>
           <div>
             <label className="block text-xs font-semibold mb-1">Ghi chú cho AI (không bắt buộc)</label>
@@ -225,7 +233,7 @@ function AiTalentDialog({ onClose, onCreated }: { onClose: () => void; onCreated
               {jobs.map(j => (
                 <li key={j.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
                   <div className="min-w-0">
-                    <p className="font-semibold truncate">{j.input?.name}</p>
+                    <p className="font-semibold truncate">{j.input?.name || `Từ link: ${hostOf(j.input?.links?.[0])}`}</p>
                     <p className="text-muted-foreground">
                       {time(j.created_at)}
                       {j.created_by ? ` · ${j.created_by}` : ''}
@@ -334,6 +342,9 @@ export function AiTalentPanel({ talent }: { talent: TalentProfile }) {
 
       {info?.bio && <p className="text-sm leading-relaxed">{info.bio}</p>}
 
+      {info?.facts ? (
+        <FactsTable info={info} />
+      ) : (
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
         {info?.real_name && (
           <div>
@@ -378,6 +389,13 @@ export function AiTalentPanel({ talent }: { talent: TalentProfile }) {
           </div>
         )}
       </dl>
+      )}
+      {info?.facts && !!info.skills?.length && (
+        <p className="text-xs">
+          <span className="text-muted-foreground">Kỹ năng: </span>
+          {info.skills.join(' · ')}
+        </p>
+      )}
 
       {info?.notes && (
         <div className="flex gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
@@ -401,6 +419,120 @@ export function AiTalentPanel({ talent }: { talent: TalentProfile }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Bảng đối chứng ---------------- */
+
+type FactView = { label: string; value: string | null; status: string; sources: string[]; alternatives?: { value: string; sources: string[] }[] };
+const STATUS_VIEW: Record<string, { label: string; cls: string }> = {
+  verified: { label: 'Khớp ≥ 2 nguồn', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  single: { label: 'Chỉ 1 nguồn', cls: 'bg-amber-50 text-amber-800 border-amber-300' },
+  conflict: { label: 'Nguồn ghi khác nhau', cls: 'bg-rose-50 text-rose-800 border-rose-200' },
+  unknown: { label: 'Không tìm thấy', cls: 'bg-muted text-muted-foreground border-border' }
+};
+
+function SourceLinks({ urls }: { urls: string[] }) {
+  if (!urls.length) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="flex flex-wrap gap-x-2 gap-y-0.5">
+      {urls.map(u => (
+        <a key={u} href={u} target="_blank" rel="noreferrer" title={u} className="inline-flex items-center gap-0.5 text-violet-700 hover:underline">
+          {hostOf(u)} <ExternalLink className="w-3 h-3" />
+        </a>
+      ))}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const v = STATUS_VIEW[status] || STATUS_VIEW.unknown;
+  return <span className={`inline-block whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full border ${v.cls}`}>{v.label}</span>;
+}
+
+/** Từng thông tin: giá trị · mức đối chứng · link nguồn của chính thông tin đó. Nguồn lệch nhau: hiện mọi giá trị kèm nguồn để team chọn. */
+function FactsTable({ info }: { info: NonNullable<TalentProfile['ai_profile']> }) {
+  const facts = [...Object.values(info.facts || {}), ...(info.training_facts || [])] as FactView[];
+  const films = info.films || [];
+  const row = 'border-t align-top';
+  const cell = 'px-2.5 py-2';
+  const filmKind: Record<string, string> = { feature_film: 'Điện ảnh', tv_show: 'Truyền hình', web_drama: 'Web drama', short_film: 'Phim ngắn' };
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/50 text-left">
+            <tr>
+              <th className={`${cell} font-semibold`}>Thông tin</th>
+              <th className={`${cell} font-semibold`}>Giá trị</th>
+              <th className={`${cell} font-semibold`}>Đối chứng</th>
+              <th className={`${cell} font-semibold`}>Nguồn</th>
+            </tr>
+          </thead>
+          <tbody>
+            {facts
+              .filter(f => f.value || f.status === 'conflict')
+              .map((f, i) => (
+                <tr key={`${f.label}-${i}`} className={row}>
+                  <td className={`${cell} text-muted-foreground whitespace-nowrap`}>{f.label}</td>
+                  <td className={cell}>
+                    <span className="font-medium">{f.value || '—'}</span>
+                    {f.status === 'conflict' &&
+                      (f.alternatives || []).map(a => (
+                        <span key={a.value} className="block mt-1 text-rose-800">
+                          hoặc <b>{a.value}</b> · <SourceLinks urls={a.sources} />
+                        </span>
+                      ))}
+                    {f.status === 'conflict' && <span className="block mt-1 text-[11px] text-muted-foreground">Chưa điền vào hồ sơ, team chọn giá trị đúng.</span>}
+                  </td>
+                  <td className={cell}>
+                    <StatusBadge status={f.status} />
+                  </td>
+                  <td className={cell}>
+                    <SourceLinks urls={f.sources} />
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+      {films.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className={`${cell} font-semibold`}>Phim</th>
+                <th className={`${cell} font-semibold`}>Năm</th>
+                <th className={`${cell} font-semibold`}>Vai</th>
+                <th className={`${cell} font-semibold`}>Đối chứng</th>
+                <th className={`${cell} font-semibold`}>Nguồn</th>
+              </tr>
+            </thead>
+            <tbody>
+              {films.map((f, i) => (
+                <tr key={`${f.title}-${i}`} className={row}>
+                  <td className={cell}>
+                    <span className="font-medium">{f.title}</span>
+                    <span className="block text-[11px] text-muted-foreground">{filmKind[f.kind] || ''}</span>
+                  </td>
+                  <td className={cell}>{f.year || '—'}</td>
+                  <td className={cell}>
+                    {f.character || '—'}
+                    <span className="block text-[11px] text-muted-foreground">{f.role === 'leading' ? 'Vai chính' : f.role === 'supporting' ? 'Vai phụ' : f.role === 'cameo' ? 'Cameo' : 'Quần chúng'}</span>
+                  </td>
+                  <td className={cell}>
+                    <StatusBadge status={f.status} />
+                  </td>
+                  <td className={cell}>
+                    <SourceLinks urls={f.sources} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

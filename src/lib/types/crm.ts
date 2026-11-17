@@ -338,6 +338,14 @@ export interface TalentProfile {
   updated_at?: string;
 }
 
+export interface AiFact {
+  label: string;
+  value: string | null;
+  status: 'verified' | 'single' | 'conflict' | 'unknown';
+  sources: string[];
+  alternatives?: { value: string; sources: string[] }[];
+}
+
 export interface AiTalentInfo {
   bio?: string;
   stage_name?: string | null;
@@ -350,6 +358,10 @@ export interface AiTalentInfo {
   agency?: string | null;
   sources?: { label: string; url: string }[];
   notes?: string | null;
+  /** Từng thông tin đã đối chứng: giá trị, mức (verified / single / conflict / unknown), link nguồn riêng */
+  facts?: Record<string, AiFact>;
+  training_facts?: AiFact[];
+  films?: { title: string; year: number | null; character: string | null; role: string; kind: string; status: string; sources: string[] }[];
   input?: { name: string; links: string[]; note: string };
   created_by?: string;
   created_at?: string;
