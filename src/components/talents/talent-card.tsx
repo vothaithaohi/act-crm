@@ -111,10 +111,10 @@ export function TalentCard({ talent, isSelected = false, onToggleSelect, selecta
         </div>
 
         {/* Hồ sơ tự nộp từ dienvienvn.com */}
-        {talent.submission_source === 'dienvienvn' && (
+        {(talent.submission_source === 'dienvienvn' || talent.submission_source === 'ai') && (
           <div className="absolute top-10 left-3 z-10 flex items-center gap-1">
-            <span className="text-[9px] font-bold bg-white/90 text-slate-900 px-2 py-0.5 rounded-full shadow-xs">
-              DienVienVN
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs ${talent.submission_source === 'ai' ? 'bg-violet-600 text-white' : 'bg-white/90 text-slate-900'}`}>
+              {talent.submission_source === 'ai' ? 'AI tạo' : 'DienVienVN'}
             </span>
             {getReviewStatus(talent) !== 'approved' && (
               <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[getReviewStatus(talent)].badgeClass}`}>

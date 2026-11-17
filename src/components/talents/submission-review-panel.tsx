@@ -39,12 +39,12 @@ export function SubmissionReviewPanel({ talent }: { talent: TalentProfile }) {
         </div>
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-sm text-foreground">Hồ sơ tự nộp từ DienVienVN</span>
+            <span className="font-bold text-sm text-foreground">{talent.submission_source === 'ai' ? 'Hồ sơ AI tạo – cần kiểm tra' : 'Hồ sơ tự nộp từ DienVienVN'}</span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[status].badgeClass}`}>
               {REVIEW_STATUS_DETAILS[status].label}
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground">Nộp lúc {submittedLabel} (giờ VN)</p>
+          <p className="text-[11px] text-muted-foreground">{talent.submission_source === 'ai' ? 'Tạo lúc' : 'Nộp lúc'} {submittedLabel} (giờ VN)</p>
         </div>
       </div>
 

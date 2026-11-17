@@ -13,6 +13,7 @@ import {
   EXTERNAL_PROGRAM_LABELS
 } from '@/lib/types/crm';
 import { SubmissionReviewPanel } from '@/components/talents/submission-review-panel';
+import { AiTalentPanel } from '@/components/talents/ai-talent';
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
 import { TalentCompCard } from '@/components/talents/talent-comp-card';
@@ -226,7 +227,8 @@ export function TalentDetailView({ talent }: TalentDetailViewProps) {
         </div>
       </div>
 
-      {talent.submission_source === 'dienvienvn' && <SubmissionReviewPanel talent={talent} />}
+      {(talent.submission_source === 'dienvienvn' || talent.submission_source === 'ai') && <SubmissionReviewPanel talent={talent} />}
+      {talent.submission_source === 'ai' && <AiTalentPanel talent={talent} />}
 
       {activeTab === 'compcard' ? (
         <TalentCompCard talent={talent} />

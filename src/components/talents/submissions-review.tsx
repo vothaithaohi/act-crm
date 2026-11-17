@@ -22,6 +22,7 @@ import { REVIEW_STATUS_DETAILS, TalentProfile, TalentReviewStatus, getReviewStat
 import { calculateAge, formatPhoneNumber } from '@/lib/utils';
 import { ACT_ACADEMY_SCHOOL, ART_SCHOOLS } from '@/lib/dienvienvn/schools';
 import { talentPath } from '@/lib/talent-path';
+import { AiBadge, AiTalentButton } from '@/components/talents/ai-talent';
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'all';
 type SortKey = 'newest' | 'oldest' | 'name';
@@ -79,7 +80,12 @@ export function SubmissionsReview() {
 
   const canReview = can('talents:write');
 
-  const submissions = useMemo(() => talents.filter(t => t.submission_source === 'dienvienvn'), [talents]);
+  // Hồ sơ tự nộp từ dienvienvn.com + hồ sơ AI tạo (cùng luồng duyệt)
+  const [source, setSource] = useState<'all' | 'dienvienvn' | 'ai'>('all');
+  const submissions = useMemo(
+    () => talents.filter(t => (t.submission_source === 'dienvienvn' || t.submission_source === 'ai') && (source === 'all' || t.submission_source === source)),
+    [talents, source]
+  );
 
   const counts = useMemo(() => {
     const c = { pending: 0, approved: 0, rejected: 0, all: submissions.length, today: 0 };
@@ -142,10 +148,11 @@ export function SubmissionsReview() {
             <span>Hồ Sơ Nộp Từ DienVienVN</span>
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Diễn viên tự nộp hồ sơ casting tại dienvienvn.com. Duyệt để đưa vào kho Casting Matching gửi nhà sản xuất.
+            Diễn viên tự nộp hồ sơ tại dienvienvn.com và hồ sơ AI tạo. Duyệt để đưa vào kho Casting Matching gửi nhà sản xuất.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          <AiTalentButton onCreated={() => refreshTalents()} />
           <button
             onClick={handleRefresh}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border bg-card hover:bg-muted text-xs font-semibold transition-colors"
@@ -218,6 +225,11 @@ export function SubmissionsReview() {
               className="w-full pl-8 pr-3 py-2 rounded-lg border bg-background focus:border-brand-500 outline-none"
             />
           </div>
+          <select value={source} onChange={e => setSource(e.target.value as typeof source)} className="px-3 py-2 rounded-lg border bg-background outline-none" aria-label="Nguồn hồ sơ">
+            <option value="all">Mọi nguồn</option>
+            <option value="dienvienvn">Tự nộp từ dienvienvn.com</option>
+            <option value="ai">AI tạo</option>
+          </select>
           <select value={gender} onChange={e => setGender(e.target.value as typeof gender)} className="px-3 py-2 rounded-lg border bg-background outline-none">
             <option value="all">Mọi giới tính</option>
             <option value="female">Nữ</option>
@@ -328,6 +340,7 @@ export function SubmissionsReview() {
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${REVIEW_STATUS_DETAILS[status].badgeClass}`}>
                         {REVIEW_STATUS_DETAILS[status].label}
                       </span>
+                      {t.submission_source === 'ai' && <AiBadge />}
                     </div>
                     <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2.5 gap-y-0.5">
                       <span>{t.gender === 'female' ? 'Nữ' : t.gender === 'male' ? 'Nam' : 'Khác'}</span>
@@ -337,7 +350,7 @@ export function SubmissionsReview() {
                       {t.city && <span>{t.city}</span>}
                     </div>
                     <div className="text-[11px] text-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                      <span className="font-semibold">{formatPhoneNumber(t.phone)}</span>
+                      {t.phone ? <span className="font-semibold">{formatPhoneNumber(t.phone)}</span> : null}
                       {t.email && <span className="text-muted-foreground truncate">{t.email}</span>}
                     </div>
                   </div>

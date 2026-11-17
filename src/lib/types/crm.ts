@@ -329,12 +329,33 @@ export interface TalentProfile {
   username?: string | null;
   /** Diễn viên đồng ý hiển thị hồ sơ trên trang công khai. */
   public_profile?: boolean | null;
+  /** Hồ sơ do AI tạo từ tên / link (chỉ trong CRM cho đến khi bật công khai). */
+  ai_generated?: boolean | null;
+  /** Tiểu sử, nguồn tham khảo, điểm chưa chắc chắn… AI tìm được */
+  ai_profile?: AiTalentInfo | null;
   
   created_at?: string;
   updated_at?: string;
 }
 
-export type TalentSubmissionSource = 'crm' | 'dienvienvn';
+export interface AiTalentInfo {
+  bio?: string;
+  stage_name?: string | null;
+  real_name?: string;
+  birth_year?: number | null;
+  birth_date_exact?: boolean;
+  hometown?: string | null;
+  training?: string[];
+  skills?: string[];
+  agency?: string | null;
+  sources?: { label: string; url: string }[];
+  notes?: string | null;
+  input?: { name: string; links: string[]; note: string };
+  created_by?: string;
+  created_at?: string;
+}
+
+export type TalentSubmissionSource = 'crm' | 'dienvienvn' | 'ai';
 
 export type TalentReviewStatus = 'pending' | 'approved' | 'rejected';
 

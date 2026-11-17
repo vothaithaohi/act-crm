@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
     {
       mode: 'live',
       partner: { full_name: partner.full_name, company: partner.company, partner_type: partner.partner_type },
-      talents: ((data || []) as TalentProfile[]).map(toPartnerTalent),
+      // Hồ sơ AI tạo chưa bật công khai: không hiện trong kho chung, chỉ hiện khi ACT thêm vào dự án / link NSX
+      talents: ((data || []) as TalentProfile[]).filter(t => !(t.ai_generated && !t.public_profile)).map(toPartnerTalent),
       projects: await partnerProjects(db, partner)
     },
     { headers: PRIVATE }
