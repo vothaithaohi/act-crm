@@ -170,9 +170,10 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
   const signedIn = session.status === 'signed-in';
   // Đã đăng nhập: làm nổi mục và nút chính theo vai của tài khoản; chưa đăng nhập: theo trang đang xem
   const role = useAccountRole();
-  // (Trang chủ: mục đang chọn là phần nội dung đang xem nên giữ theo trang; các trang bên trong theo vai)
+  // Mục menu tô đậm luôn theo trang đang xem (VD trang Dự án đang casting → "Dành cho diễn viên", kể cả khi đăng nhập tài khoản ekip);
+  // chỉ nút chính bên phải đổi theo vai của tài khoản
   const roleAudience: NavAudience | null = role === 'partner' ? 'hiring' : role === 'crew' ? 'crew' : role === 'actor' ? 'talent' : null;
-  const audience: NavAudience = compact && roleAudience ? roleAudience : pageAudience;
+  const audience: NavAudience = pageAudience;
   const onLogin = /\/dang-nhap\/?$/.test(usePathname() || '');
   const go = (a: Audience) => {
     onAudience(a);

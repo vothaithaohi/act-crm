@@ -1,6 +1,6 @@
 import 'server-only';
 import { getServiceDb } from '@/lib/projects/server';
-import { CastingProject, isDeadlinePassed } from '@/lib/projects/types';
+import { CastingProject, isDeadlinePassed, visibleRoles } from '@/lib/projects/types';
 import { listPublicTalents } from './public-talents';
 
 /** Số liệu thật cho trang chủ: chỉ dự án đang mở còn hạn, hồ sơ đã duyệt, gương mặt đã đồng ý công khai. */
@@ -43,7 +43,7 @@ export async function getHomeStats(): Promise<HomeStats> {
       new Set(open.filter(p => !p.hide_title && p.production_company?.trim()).map(p => (p.production_company as string).trim()))
     ).slice(0, 8);
     return {
-      roles: open.reduce((n, p) => n + (Array.isArray(p.roles) ? p.roles.length : 0), 0),
+      roles: open.reduce((n, p) => n + visibleRoles(p.roles).length, 0),
       projects: open.length,
       talents: talentsRes.count || 0,
       companies,

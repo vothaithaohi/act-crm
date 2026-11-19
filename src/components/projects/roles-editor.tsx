@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Copy, ImagePlus, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, ImagePlus, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { ProjectRole, ROLE_MAX_IMAGES, RoleGender, genderLabel } from '@/lib/projects/types';
 import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
 
@@ -171,6 +171,11 @@ export function RolesEditor({ roles, onChange, canEdit }: { roles: ProjectRole[]
                   <span className="min-w-0">
                     <span className={`block truncate text-sm font-semibold ${r.name.trim() ? '' : 'text-muted-foreground italic font-normal'}`}>
                       {r.name.trim() || 'Vai chưa đặt tên'}
+                      {r.hidden && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[10px] font-semibold text-amber-800">
+                          <EyeOff className="w-3 h-3" /> Ẩn trên web
+                        </span>
+                      )}
                     </span>
                     {!expanded && <span className="block truncate text-[11px] text-muted-foreground">{roleSummaryLine(r)}</span>}
                   </span>
@@ -183,6 +188,9 @@ export function RolesEditor({ roles, onChange, canEdit }: { roles: ProjectRole[]
                     </IconBtn>
                     <IconBtn title="Xuống dưới" disabled={i === roles.length - 1} onClick={() => move(i, 1)}>
                       <ArrowDown className="w-3.5 h-3.5" />
+                    </IconBtn>
+                    <IconBtn title={r.hidden ? 'Đang ẩn trên web. Bấm để hiện lại' : 'Ẩn vai trên web (vẫn giữ trong CRM và link NSX)'} onClick={() => setRole(r.id, { hidden: !r.hidden })}>
+                      {r.hidden ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5" />}
                     </IconBtn>
                     <IconBtn title="Nhân bản vai" onClick={() => duplicate(i)}>
                       <Copy className="w-3.5 h-3.5" />

@@ -1,7 +1,7 @@
 import 'server-only';
 import type { Metadata } from 'next';
 import { findProjectByParam, getServiceDb } from './server';
-import { CastingProject, findRoleBySlug, projectTypeLabel, publicProjectName, roleImages, roleSummary } from './types';
+import { CastingProject, findRoleBySlug, projectTypeLabel, publicProjectName, roleImages, roleSummary, visibleRoles } from './types';
 
 const FALLBACK: Metadata = {
   title: 'Dự án đang casting — DienVienVN',
@@ -17,7 +17,7 @@ export async function projectMetadata(projectParam: string, roleParam?: string):
   if (!project || project === 'error') return FALLBACK;
   const p = project as CastingProject;
   const name = publicProjectName(p);
-  const roles = Array.isArray(p.roles) ? p.roles : [];
+  const roles = visibleRoles(p.roles);
   const role = roleParam ? findRoleBySlug(roles, roleParam) : null;
   const clip = (s: string) => (s.length > 180 ? `${s.slice(0, 180).replace(/\s+\S*$/, '')}…` : s);
   if (role) {

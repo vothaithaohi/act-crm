@@ -20,9 +20,14 @@ export interface ProjectRole {
   description?: string;
   /** Ảnh tham khảo feel & look của vai (tối đa ROLE_MAX_IMAGES) */
   images?: string[];
+  /** Ẩn vai trên dienvienvn.com (không hiện, không nhận ứng tuyển); vẫn dùng trong CRM và link NSX */
+  hidden?: boolean;
 }
 
 export const ROLE_MAX_IMAGES = 3;
+
+/** Các vai hiện trên trang công khai. */
+export const visibleRoles = <R extends Pick<ProjectRole, 'hidden'>>(roles: R[] | null | undefined): R[] => (Array.isArray(roles) ? roles.filter(r => !r.hidden) : []);
 
 /** Phần đường dẫn của vai: /du-an/ten-du-an/<ten-vai>. Trùng tên trong cùng dự án → thêm số thứ tự. */
 export function roleSlug(role: Pick<ProjectRole, 'id' | 'name'>, roles: Pick<ProjectRole, 'id' | 'name'>[]): string {
@@ -193,7 +198,7 @@ export function toPublicProject(p: CastingProject): PublicProject {
     shooting_time: p.shooting_time || null,
     compensation: p.compensation || null,
     deadline: p.deadline || null,
-    roles: Array.isArray(p.roles) ? p.roles : [],
+    roles: visibleRoles(p.roles),
     selftape_required: !!p.selftape_required,
     selftape_brief: p.selftape_brief || null,
     status: p.status,
@@ -277,7 +282,7 @@ export function checkApplication(
   selftapeUrl?: string | null
 ): string | null {
   if (!isAcceptingApplications(p)) return 'Dự án này đã ngừng nhận hồ sơ.';
-  if (!(p.roles || []).some(r => r.id === roleId)) return 'Vai ứng tuyển không còn tồn tại trong dự án.';
+  if (!visibleRoles(p.roles).some(r => r.id === roleId)) return 'Vai ứng tuyển không còn tồn tại trong dự án.';
   const tape = (selftapeUrl || '').trim();
   if (p.selftape_required && !tape) return 'Dự án này bắt buộc gửi link self-tape (YouTube, Google Drive…).';
   if (tape && !isValidHttpUrl(tape)) return 'Link self-tape không hợp lệ (cần bắt đầu bằng http:// hoặc https://).';

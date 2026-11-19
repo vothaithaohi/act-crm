@@ -4,8 +4,8 @@
 import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, Building2, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Loader2, MapPin, MonitorPlay, SlidersHorizontal, UserRound, X } from 'lucide-react';
-import { PROJECT_TYPES, ProjectRole, PublicProject, castingModeLabel, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, sourceLabel } from '@/lib/projects/types';
+import { Banknote, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Link2, Loader2, MapPin, MonitorPlay, SlidersHorizontal, UserRound, X } from 'lucide-react';
+import { PROJECT_TYPES, ProjectRole, PublicProject, castingModeLabel, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, roleSlug, sourceLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
@@ -13,7 +13,37 @@ import { formatVnDate } from './projects-section';
 
 const PAGE_SIZE = 10;
 
-type Call = { key: string; project: PublicProject; role: ProjectRole; path: string };
+type Call = { key: string; project: PublicProject; role: ProjectRole; path: string; rolePath: string };
+
+/** Nút sao chép đúng link (dự án hoặc vai), bấm xong hiện "Đã sao chép link" 2 giây. */
+function CopyLink({ path, label }: { path: string; label: string }) {
+  const tx = useTx();
+  const [copied, setCopied] = useState(false);
+  const copy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}${path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt(tx('Sao chép link:'), url);
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={tx(label)}
+      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#d2d2d7] bg-white px-3 text-[13px] text-[var(--dv-text)] transition-colors hover:border-[#86868b]"
+    >
+      {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+      <span>{tx(copied ? 'Đã sao chép link' : label)}</span>
+    </button>
+  );
+}
 
 const ageText = (r: ProjectRole) =>
   r.age_min && r.age_max ? `${r.age_min} - ${r.age_max}` : r.age_min ? `Từ ${r.age_min}` : r.age_max ? `Đến ${r.age_max}` : '';
@@ -63,7 +93,6 @@ export function CastingCalls() {
   const [view, setView] = useState<'role' | 'project'>('role');
   const [openProjects, setOpenProjects] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState('');
 
   useEffect(() => {
     fetchPublicProjects()
@@ -74,7 +103,10 @@ export function CastingCalls() {
   const calls = useMemo<Call[]>(
     () =>
       (projects || []).flatMap(p =>
-        p.roles.map(r => ({ key: `${p.id}:${r.id}`, project: p, role: r, path: href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`) }))
+        p.roles.map(r => {
+          const path = href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`);
+          return { key: `${p.id}:${r.id}`, project: p, role: r, path, rolePath: `${path}/${roleSlug(r, p.roles)}` };
+        })
       ),
     [projects, href]
   );
@@ -106,9 +138,6 @@ export function CastingCalls() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const shown = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const shownGroups = groups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const current =
-    list.find(c => c.key === selected) ||
-    (view === 'role' ? shown[0] : shownGroups.find(g => openProjects.includes(g.project.id))?.calls[0] || shownGroups[0]?.calls[0]);
   const toggleProject = (id: string) => setOpenProjects(o => (o.includes(id) ? o.filter(x => x !== id) : [...o, id]));
   const nFilters = (gender !== 'all' ? 1 : 0) + (age ? 1 : 0) + (place ? 1 : 0);
 
@@ -117,37 +146,28 @@ export function CastingCalls() {
     document.getElementById('casting-calls')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  /** Một vai trong danh sách (compact: hiện trong dự án đang mở rộng, không lặp tên dự án). */
-  const roleItem = (c: Call, compact = false) => {
-                const active = current?.key === c.key;
-                const body = (
-                  <>
-                    <p className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
-                      <Clapperboard className="h-4 w-4" /> {tx(projectTypeLabel(c.project.project_type))}
-                    </p>
-                    <p className="dv-display mt-1.5 text-[24px] font-semibold leading-[1.2]">{tx(c.role.name)}</p>
-                    {!compact && <p className="mt-1 text-[16px]">{tx(c.project.display_name)}</p>}
-                    <div className="mt-4">
-                      <CallTags c={c} />
-                    </div>
-                  </>
-                );
-                return (
-                  <li key={c.key}>
-                    {/* Điện thoại: bấm vào thẳng trang dự án; máy tính: chọn để xem chi tiết bên phải */}
-                    <Link href={c.path} className="block rounded-[16px] border border-[#e0e0e5] p-5 lg:hidden">
-                      {tx(body)}
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(c.key)}
-                      className={`hidden w-full rounded-[16px] border p-6 text-left transition-colors lg:block ${active ? 'border-[#1d1d1f] shadow-[0_6px_0_0_#1d1d1f]' : 'border-[#e0e0e5] hover:border-[#86868b]'}`}
-                    >
-                      {tx(body)}
-                    </button>
-                  </li>
-                );
-                };
+  /** Một vai trong danh sách: bấm vào mở trang của vai (link riêng); nút bên cạnh sao chép link vai. compact: trong dự án đang mở rộng. */
+  const roleItem = (c: Call, compact = false) => (
+    <li key={c.key} className="relative">
+      <Link href={c.rolePath} className="block rounded-[16px] border border-[#e0e0e5] p-5 transition-colors hover:border-[#86868b] md:p-6">
+        <p className="flex items-center gap-2 pr-28 text-[15px] text-[var(--dv-text-secondary)] sm:pr-40">
+          <Clapperboard className="h-4 w-4 shrink-0" /> {tx(projectTypeLabel(c.project.project_type))}
+          {!compact && c.project.deadline ? tx(` · Hạn ${formatVnDate(c.project.deadline)}`) : ''}
+        </p>
+        <p className="dv-display mt-1.5 text-[24px] font-semibold leading-[1.2]">{c.role.name}</p>
+        {!compact && <p className="mt-1 text-[16px]">{c.project.display_name}</p>}
+        {c.role.description?.trim() && (
+          <p className="mt-2 line-clamp-2 whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">{c.role.description.trim()}</p>
+        )}
+        <div className="mt-4">
+          <CallTags c={c} />
+        </div>
+      </Link>
+      <div className="absolute right-4 top-4 md:right-5 md:top-5">
+        <CopyLink path={c.rolePath} label="Link vai" />
+      </div>
+    </li>
+  );
 
   return (
     <div className="bg-white pb-16">
@@ -162,7 +182,7 @@ export function CastingCalls() {
         </div>
       </div>
 
-      <div id="casting-calls" className="mx-auto max-w-[1200px] scroll-mt-16 px-4 pt-10 md:px-6 md:pt-14">
+      <div id="casting-calls" className="mx-auto max-w-[908px] scroll-mt-16 px-4 pt-10 md:px-6 md:pt-14">
         <h1 className="dv-display dv-headline">{tx("Dự án đang casting.")}</h1>
 
         <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
@@ -198,7 +218,7 @@ export function CastingCalls() {
             {tx(calls.length ? 'Không có vai phù hợp bộ lọc.' : 'Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.')}
           </p>
         ) : (
-          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="mt-5">
             {/* Danh sách vai */}
             {view === 'role' ? (
               <ul className="space-y-4">{shown.map(c => roleItem(c))}</ul>
@@ -208,16 +228,26 @@ export function CastingCalls() {
                   const open = openProjects.includes(g.project.id);
                   return (
                     <li key={g.project.id} className="rounded-[16px] border border-[#e0e0e5]">
-                      <button type="button" onClick={() => toggleProject(g.project.id)} aria-expanded={open} className="flex w-full items-start justify-between gap-4 p-5 text-left md:p-6">
-                        <span className="min-w-0">
+                      <div className="flex items-start justify-between gap-3 p-5 md:p-6">
+                        <Link href={g.path} className="group min-w-0">
                           <span className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
                             <Clapperboard className="h-4 w-4" /> {tx(projectTypeLabel(g.project.project_type))}
                             {tx(g.project.deadline ? ` · Hạn ${formatVnDate(g.project.deadline)}` : '')}
                           </span>
-                          <span className="dv-display mt-1.5 block text-[24px] font-semibold leading-[1.2]">{tx(g.project.display_name)}</span>
-                          <span className="mt-1 block text-[15px] text-[var(--dv-text-secondary)]">{tx(g.calls.length)} {tx("vai đang tuyển")}</span>
+                          <span className="dv-display mt-1.5 block text-[24px] font-semibold leading-[1.2] group-hover:underline">{g.project.display_name}</span>
+                        </Link>
+                        <CopyLink path={g.path} label="Link dự án" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleProject(g.project.id)}
+                        aria-expanded={open}
+                        className="flex w-full items-center justify-between gap-4 border-t border-[#f0f0f2] px-5 py-3 text-left text-[15px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)] md:px-6"
+                      >
+                        <span>
+                          {tx(`${g.calls.length} vai đang tuyển`)} · {tx(open ? 'Thu gọn' : 'Xem các vai')}
                         </span>
-                        <ChevronDown className={`mt-1 h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
                       </button>
                       {open && <ul className="space-y-3 border-t border-[#e0e0e5] p-4 md:p-5">{g.calls.map(c => roleItem(c, true))}</ul>}
                     </li>
@@ -226,33 +256,6 @@ export function CastingCalls() {
               </ul>
             )}
 
-            {/* Chi tiết vai đang chọn */}
-            {current && (
-              <aside className="hidden lg:block">
-                <div className="sticky top-16 rounded-[16px] border border-[#1d1d1f] p-6">
-                  <p className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
-                    <Clapperboard className="h-4 w-4" /> {tx(projectTypeLabel(current.project.project_type))}
-                  </p>
-                  <p className="dv-display mt-1.5 text-[26px] font-semibold leading-[1.2]">{tx(current.role.name)}</p>
-                  <p className="mt-1 text-[16px]">{tx(current.project.display_name)}</p>
-                  <div className="mt-4">
-                    <CallTags c={current} />
-                  </div>
-                  <p className="mt-6 text-[17px] font-semibold">{tx("Về vai diễn")}</p>
-                  <p className="mt-2 line-clamp-6 whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">
-                    {tx(current.role.description?.trim() || current.project.description?.trim() || 'Xem chi tiết dự án để biết thêm về vai diễn.')}
-                  </p>
-                  {current.project.deadline && (
-                    <p className="mt-4 flex items-center gap-2 text-[15px]">
-                      <CalendarClock className="h-4 w-4" /> <span className="font-semibold">{tx("Hạn nộp:")}</span> {tx(formatVnDate(current.project.deadline))}
-                    </p>
-                  )}
-                  <Link href={current.path} className="dv-btn dv-btn-primary mt-6 w-full">
-                    {tx("Xem & ứng tuyển")}
-                  </Link>
-                </div>
-              </aside>
-            )}
           </div>
         )}
 
