@@ -30,10 +30,16 @@ export async function localizeMetadata(meta: Metadata): Promise<Metadata> {
   const out: Metadata = { ...meta };
   if (typeof meta.title === 'string') out.title = tr(meta.title);
   if (meta.description) out.description = tr(meta.description);
+  // Địa chỉ chính (canonical) của bản tiếng Anh là /en/... để Google lập chỉ mục cả 2 bản
+  const toEn = (u: string) => u.replace(/^(https?:\/\/[^/]+)(\/|$)/, (_m, host) => `${host}/en/`).replace(/\/en\/$/, '/en');
+  if (meta.alternates && typeof meta.alternates.canonical === 'string') {
+    const vi = meta.alternates.canonical;
+    out.alternates = { ...meta.alternates, canonical: toEn(vi), languages: { vi, en: toEn(vi) } };
+  }
   if (meta.openGraph) {
     const og = { ...meta.openGraph, title: t(meta.openGraph.title) as string, description: t(meta.openGraph.description) as string } as Record<string, unknown>;
     if (og.locale) og.locale = 'en_US';
-    if (typeof og.url === 'string') og.url = og.url.replace(/^(https?:\/\/[^/]+)(\/|$)/, (_m, host) => `${host}/en/`).replace(/\/en\/$/, '/en');
+    if (typeof og.url === 'string') og.url = toEn(og.url);
     out.openGraph = og as Metadata['openGraph'];
   }
   if (meta.twitter) out.twitter = { ...meta.twitter, title: t(meta.twitter.title) as string, description: t(meta.twitter.description) as string };

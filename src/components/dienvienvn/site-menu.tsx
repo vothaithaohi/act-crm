@@ -14,7 +14,9 @@ export function SiteMenu() {
   const href = useDvvnHref();
   const router = useRouter();
   const path = usePathname() || '';
-  const audience: NavAudience = /\/(ekip|tai-khoan\/ekip|tuyen-dung\/ung-tuyen)(\/|$)/.test(path)
+  const audience: NavAudience = /\/academy(\/|$)/.test(path)
+    ? 'academy'
+    : /\/(ekip|tai-khoan\/ekip|tuyen-dung\/ung-tuyen)(\/|$)/.test(path)
     ? 'crew'
     : /\/(doi-tac|tuyen-dung)(\/|$)/.test(path)
     ? 'hiring'

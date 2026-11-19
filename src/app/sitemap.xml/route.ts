@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
 import { INDEXABLE_PATHS, SITE_URL, isPublicHost } from '@/lib/dienvienvn/hosts';
 import { listPublicTalents } from '@/lib/dienvienvn/public-talents';
+import { listPublishedPosts } from '@/lib/dienvienvn/academy-server';
 
 export async function GET(req: NextRequest) {
   if (!isPublicHost(req.headers)) return new Response('Not found', { status: 404 });
   const lastmod = new Date().toISOString().slice(0, 10);
-  const talents = await listPublicTalents();
-  const paths = [...INDEXABLE_PATHS, ...talents.map(t => `/${t.username}`)];
+  const [talents, posts] = await Promise.all([listPublicTalents(), listPublishedPosts(1000)]);
+  const paths = [...INDEXABLE_PATHS, ...posts.map(p => `/academy/${p.slug}`), ...talents.map(t => `/${t.username}`)];
   // Mỗi trang có 2 bản: tiếng Việt (gốc) và tiếng Anh (/en), khai báo hreflang cho nhau
   const urls = paths
     .flatMap(p => {

@@ -181,7 +181,7 @@ function uploadWithProgress(blob: Blob, kind: string, onProgress: (pct: number) 
 }
 
 /** Thu nhỏ + tải 1 ảnh lên kho ảnh công khai, trả link ảnh (dùng cho ảnh tham khảo của vai). */
-export async function uploadPublicImage(file: File, kind: 'role', onProgress: (pct: number) => void = () => undefined): Promise<string> {
+export async function uploadPublicImage(file: File, kind: 'role' | 'academy', onProgress: (pct: number) => void = () => undefined): Promise<string> {
   if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) throw new Error('Vui lòng chọn file ảnh.');
   if (file.size > 25 * 1024 * 1024) throw new Error('Ảnh quá lớn (tối đa 25MB).');
   let blob: Blob;

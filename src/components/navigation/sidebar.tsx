@@ -20,7 +20,8 @@ import {
   Mic,
   BriefcaseBusiness,
   UsersRound,
-  Library
+  Library,
+  Newspaper
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
@@ -99,6 +100,13 @@ export function Sidebar() {
       icon: Handshake,
       badge: null,
       visible: can('talents:export')
+    },
+    {
+      title: 'Academy · Blog',
+      href: '/academy',
+      icon: Newspaper,
+      badge: null,
+      visible: can('users:manage')
     },
     {
       title: 'Thêm Hồ Sơ Casting',

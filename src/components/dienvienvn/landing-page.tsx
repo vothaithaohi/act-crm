@@ -18,7 +18,7 @@ import { DvLogo, Reveal, SiteFooter } from './site-chrome';
 /** Trang chủ chia 2 luồng: diễn viên và người tìm diễn viên. Mỗi luồng chỉ hiện phần dành cho mình. */
 export type Audience = 'talent' | 'hiring';
 /** Thanh menu có thêm mục "Dành cho ekip" (trang việc làm ekip, không phải một tab của trang chủ). */
-export type NavAudience = Audience | 'crew';
+export type NavAudience = Audience | 'crew' | 'academy';
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
 
@@ -174,6 +174,8 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
   // chỉ nút chính bên phải đổi theo vai của tài khoản
   const roleAudience: NavAudience | null = role === 'partner' ? 'hiring' : role === 'crew' ? 'crew' : role === 'actor' ? 'talent' : null;
   const audience: NavAudience = pageAudience;
+  // Nút chính: trang Academy dẫn diễn viên tới nộp hồ sơ
+  const ctaAudience: NavAudience = (roleAudience || audience) === 'academy' ? 'talent' : roleAudience || audience;
   const onLogin = /\/dang-nhap\/?$/.test(usePathname() || '');
   const go = (a: Audience) => {
     onAudience(a);
@@ -195,6 +197,9 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
           <HiringDropdown linkCls={linkCls} active={audience === 'hiring'} onSelect={() => go('hiring')} />
           <Link href={href('/ekip')} className={`${linkCls} ${audience === 'crew' ? '!text-black font-semibold' : ''}`}>
             {tx("Dành cho ekip")}
+          </Link>
+          <Link href={href('/academy')} className={`${linkCls} ${audience === 'academy' ? '!text-black font-semibold' : ''}`}>
+            {tx("Academy")}
           </Link>
           {!HIDDEN_MENU.talents && (
             <Link href={href('/dien-vien')} className={linkCls}>
@@ -220,11 +225,11 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
           ) : !signedIn && onLogin ? (
             // Trang đăng nhập: không đẩy sang nộp hồ sơ diễn viên, cho chọn đăng ký theo vai
             <SignupDropdown />
-          ) : (roleAudience || audience) === 'talent' ? (
+          ) : ctaAudience === 'talent' ? (
             <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
               {tx("Nộp hồ sơ")}
             </Link>
-          ) : (roleAudience || audience) === 'crew' ? (
+          ) : ctaAudience === 'crew' ? (
             // Đã đăng nhập: "Tài khoản" bên cạnh đã mở trang hồ sơ → nút chính mở danh sách việc làm
             <Link href={href(signedIn ? '/ekip' : '/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
               {tx(signedIn ? 'Việc làm ekip' : 'Đăng ký ekip')}
@@ -264,6 +269,9 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
           </div>
           <Link href={href('/ekip')} onClick={() => setOpen(false)} className={mobileCls}>
             {tx("Dành cho ekip")}
+          </Link>
+          <Link href={href('/academy')} onClick={() => setOpen(false)} className={mobileCls}>
+            {tx("Academy")}
           </Link>
           {!HIDDEN_MENU.talents && (
             <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>

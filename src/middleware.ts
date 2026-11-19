@@ -14,6 +14,12 @@ export function middleware(req: NextRequest) {
       url.pathname = `/dienvienvn${p.slice('/dienvienvn/en'.length)}`;
       return rewriteWithLang(req, url, '/dienvienvn/en', 'en');
     }
+    // /dienvienvn/... (không có /en) luôn là tiếng Việt, không theo ngôn ngữ đã nhớ
+    if (p === '/dienvienvn' || p.startsWith('/dienvienvn/')) {
+      const headers = new Headers(req.headers);
+      headers.set(LANG_HEADER, 'vi');
+      return NextResponse.next({ request: { headers } });
+    }
     return NextResponse.next();
   }
 
