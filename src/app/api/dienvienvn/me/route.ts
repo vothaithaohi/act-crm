@@ -4,7 +4,7 @@ import { CASTING_STEPS, CastingDraft, draftToTalentProfile, talentToDraft, valid
 import { getActor, isSuperAdminUser, writeTalent } from '@/lib/dienvienvn/actor-server';
 import { findPartnerForUser } from '@/lib/dienvienvn/partner-server';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { CastingProject, ProjectApplication, toPublicProject } from '@/lib/projects/types';
+import { CastingProject, ProjectApplication, isAcceptingApplications, toPublicProject } from '@/lib/projects/types';
 import { getReviewStatus } from '@/lib/types/crm';
 import { RESERVED_USERNAMES, USERNAME_PATTERN } from '@/lib/dienvienvn/hosts';
 import { cleanSelfTapes, selfTapesSchema } from '@/lib/dienvienvn/selftapes';
@@ -66,7 +66,12 @@ export async function GET(req: NextRequest) {
         project_id: a.project_id,
         project_name: project?.display_name || 'Dự án đã kết thúc',
         role_name: project?.roles.find(r => r.id === a.role_id)?.name || 'Vai đã gỡ',
-        created_at: a.created_at
+        created_at: a.created_at,
+        selftape_urls: a.selftape_urls?.length ? a.selftape_urls : a.selftape_url ? [a.selftape_url] : [],
+        selftape_updated_at: a.selftape_updated_at || null,
+        selftape_required: !!project?.selftape_required,
+        // Sửa self-tape được khi dự án còn nhận hồ sơ và vai còn hiện
+        can_edit: !!project && isAcceptingApplications(project) && project.roles.some(r => r.id === a.role_id)
       };
     })
   });

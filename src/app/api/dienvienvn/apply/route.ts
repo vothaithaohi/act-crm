@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getActor } from '@/lib/dienvienvn/actor-server';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
-import { CastingProject, NEW_APPLICATION_STATUS, checkApplication } from '@/lib/projects/types';
+import { CastingProject, NEW_APPLICATION_STATUS, checkApplication, isAcceptingApplications, visibleRoles } from '@/lib/projects/types';
 import { selfTapeUrl } from '@/lib/dienvienvn/selftapes';
 
 const schema = z.object({
@@ -62,4 +62,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Hệ thống đang bận, vui lòng thử lại.' }, { status: 500 });
   }
   return NextResponse.json({ ok: true, full_name: actor.talent.full_name });
+}
+
+const editSchema = z.object({
+  application_id: z.string().uuid(),
+  selftape_url: z.string().trim().max(500).optional().default(''),
+  selftape_urls: z.array(selfTapeUrl).max(10).optional().default([])
+});
+
+// Diễn viên sửa self-tape của vai đã ứng tuyển (chỉ khi dự án còn nhận hồ sơ). CRM và link NSX thấy ngay link mới.
+export async function PATCH(req: NextRequest) {
+  const { mode, db } = getServiceDb();
+  if (mode === 'demo') return NextResponse.json({ mode: 'demo' });
+  if (!db) return NextResponse.json({ error: MISCONFIGURED_MESSAGE }, { status: 500 });
+
+  if (isRateLimited(`apply-edit:${clientIp(req.headers)}`, 30, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút.' }, { status: 429 });
+  }
+  const actor = await getActor(req, db);
+  if (actor instanceof NextResponse) return actor;
+  if (!actor.talent) return NextResponse.json({ error: 'Tài khoản này chưa gắn với hồ sơ diễn viên nào.' }, { status: 404 });
+
+  const parsed = editSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'Self-tape chưa hợp lệ.' }, { status: 400 });
+  const body = parsed.data;
+
+  const { data: app } = await db.from('project_applications').select('id, project_id, role_id, talent_id').eq('id', body.application_id).maybeSingle();
+  if (!app || app.talent_id !== actor.talent.id) return NextResponse.json({ error: 'Không tìm thấy đơn ứng tuyển.' }, { status: 404 });
+  const { data: project } = await db.from('casting_projects').select('*').eq('id', app.project_id).maybeSingle();
+  if (!project || !isAcceptingApplications(project as CastingProject) || !visibleRoles((project as CastingProject).roles).some(r => r.id === app.role_id)) {
+    return NextResponse.json({ error: 'Dự án đã ngừng nhận hồ sơ nên không sửa được self-tape.' }, { status: 400 });
+  }
+  const tapes = Array.from(new Set([...body.selftape_urls, body.selftape_url].map(u => (u || '').trim()).filter(Boolean)));
+  const problem = checkApplication(project as CastingProject, app.role_id, tapes[0] || '');
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { selftape_url: tapes[0] || null, selftape_urls: tapes, selftape_updated_at: now };
+  let { error } = await db.from('project_applications').update(patch).eq('id', app.id);
+  // Chưa chạy migration 20261130: vẫn lưu link, bỏ mốc thời gian
+  if (error && /selftape_updated_at/i.test(error.message)) {
+    delete patch.selftape_updated_at;
+    ({ error } = await db.from('project_applications').update(patch).eq('id', app.id));
+  }
+  if (error) {
+    console.error('[dienvienvn] Không sửa được self-tape:', error);
+    return NextResponse.json({ error: 'Hệ thống đang bận, vui lòng thử lại.' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, selftape_urls: tapes, selftape_updated_at: patch.selftape_updated_at || null });
 }

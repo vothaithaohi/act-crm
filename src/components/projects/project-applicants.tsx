@@ -331,6 +331,14 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
                       </a>
                     ));
                   })()}
+                  {a.selftape_updated_at && (
+                    <span
+                      title={`Diễn viên tự sửa self-tape lúc ${new Date(a.selftape_updated_at).toLocaleString('vi-VN')}`}
+                      className="px-2 py-1 rounded-lg bg-amber-100 text-amber-800 text-[10px] font-semibold"
+                    >
+                      Self-tape sửa {new Date(a.selftape_updated_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  )}
                   {canEdit && t && review !== 'approved' && (
                     <button
                       type="button"

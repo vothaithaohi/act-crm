@@ -483,7 +483,153 @@ interface AccountData {
     public_locked?: boolean;
     selftapes?: SelfTape[];
   };
-  applications: { id: string; project_id: string; project_name: string; role_name: string; created_at?: string }[];
+  applications: AppliedRole[];
+}
+
+type AppliedRole = {
+  id: string;
+  project_id: string;
+  project_name: string;
+  role_name: string;
+  created_at?: string;
+  selftape_urls?: string[];
+  selftape_updated_at?: string | null;
+  selftape_required?: boolean;
+  can_edit?: boolean;
+};
+
+/** Một vai đã ứng tuyển: xem self-tape đã gửi, sửa được khi dự án còn nhận hồ sơ. */
+function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library: SelfTape[]; onSaved: (a: AppliedRole) => void }) {
+  const tx = useTx();
+  const current = app.selftape_urls || [];
+  const [editing, setEditing] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [link, setLink] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const titleOf = (url: string, i: number) => library.find(t => t.url === url)?.title || `Self-tape ${i + 1}`;
+
+  const open = () => {
+    // Link đang gửi có trong kho → tick sẵn; link ngoài kho → để ở ô dán link
+    setPicked(current.filter(u => library.some(t => t.url === u)));
+    setLink(current.find(u => !library.some(t => t.url === u)) || '');
+    setError('');
+    setDone(false);
+    setEditing(true);
+  };
+  const save = async () => {
+    const extra = link.trim();
+    if (extra && !/^https?:\/\//i.test(extra)) return setError('Link self-tape cần bắt đầu bằng https://');
+    if (app.selftape_required && !picked.length && !extra) return setError('Dự án này bắt buộc gửi link self-tape (YouTube, Google Drive…).');
+    setSaving(true);
+    setError('');
+    try {
+      const res = await actorFetch('/api/dienvienvn/apply', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ application_id: app.id, selftape_urls: picked, selftape_url: extra })
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok || !b.ok) return setError(b.error || 'Không lưu được. Vui lòng thử lại.');
+      onSaved({ ...app, selftape_urls: b.selftape_urls, selftape_updated_at: b.selftape_updated_at || new Date().toISOString() });
+      setEditing(false);
+      setDone(true);
+    } catch {
+      setError('Mất kết nối mạng. Vui lòng thử lại.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <li className="px-5 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-[16px] font-semibold">{app.project_name}</p>
+          <p className="truncate text-[14px] text-[var(--dv-text-secondary)]">
+            {tx('Vai')} {app.role_name}
+          </p>
+        </div>
+        <span className="shrink-0 text-[13px] text-[var(--dv-text-secondary)]">{app.created_at ? formatVnDate(app.created_at) : ''}</span>
+      </div>
+
+      {!editing && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
+          {current.length ? (
+            current.map((u, i) => (
+              <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="max-w-full truncate text-[var(--dv-text)] underline underline-offset-2">
+                {tx(titleOf(u, i))}
+              </a>
+            ))
+          ) : (
+            <span className="text-[var(--dv-text-secondary)]">{tx('Chưa gửi self-tape')}</span>
+          )}
+          {app.can_edit && (
+            <button type="button" onClick={open} className="inline-flex items-center gap-1 font-semibold text-[var(--dv-text)] hover:underline">
+              <Pencil className="h-3.5 w-3.5" /> {tx(current.length ? 'Sửa self-tape' : 'Gửi self-tape')}
+            </button>
+          )}
+          {done && <span className="text-[#1d5c33]">{tx('Đã cập nhật self-tape.')}</span>}
+          {!done && app.selftape_updated_at && (
+            <span className="text-[13px] text-[var(--dv-text-tertiary)]">{tx(`Đã sửa ngày ${formatVnDate(app.selftape_updated_at)}`)}</span>
+          )}
+        </div>
+      )}
+
+      {editing && (
+        <div className="mt-3 space-y-3 rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
+          {library.length > 0 && (
+            <fieldset>
+              <legend className="mb-2 text-[14px] font-semibold">
+                {tx('Chọn self-tape phù hợp với dự án')}
+                {app.selftape_required && <span className="text-[#b00020]"> *</span>}
+              </legend>
+              <ul className="divide-y divide-[#f0f0f2] rounded-[12px] border border-[#e8e8ed] bg-white">
+                {library.map((t, k) => (
+                  <li key={t.url}>
+                    <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(t.url)}
+                        onChange={() => setPicked(p => (p.includes(t.url) ? p.filter(x => x !== t.url) : [...p, t.url]))}
+                        className="h-[18px] w-[18px] shrink-0 accent-[#1d1d1f]"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-semibold">{tx(t.title || `Self-tape ${k + 1}`)}</span>
+                        <span className="block truncate text-[12px] text-[var(--dv-text-tertiary)]">{t.url}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          )}
+          <Field
+            label={library.length > 0 ? 'Hoặc dán link self-tape mới' : 'Link self-tape'}
+            htmlFor={`tape-${app.id}`}
+            hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
+          >
+            <TextInput id={`tape-${app.id}`} type="url" inputMode="url" placeholder="https://" value={link} onChange={e => setLink(e.target.value)} />
+          </Field>
+          {error && (
+            <p role="alert" className="rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">
+              {tx(error)}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button type="button" onClick={save} disabled={saving} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {tx(saving ? 'Đang lưu…' : 'Lưu self-tape')}
+            </button>
+            <button type="button" onClick={() => setEditing(false)} disabled={saving} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
+              {tx('Huỷ')}
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
+  );
 }
 
 const REVIEW_LABEL: Record<AccountData['profile']['review_status'], string> = {
@@ -637,13 +783,12 @@ export function ActorAccount() {
       ) : (
         <ul className="dv-card mt-5 divide-y divide-[#f0f0f2]">
           {applications.map(a => (
-            <li key={a.id} className="flex items-center justify-between gap-4 px-5 py-4">
-              <div className="min-w-0">
-                <p className="truncate text-[16px] font-semibold">{tx(a.project_name)}</p>
-                <p className="truncate text-[14px] text-[var(--dv-text-secondary)]">{tx("Vai")} {tx(a.role_name)}</p>
-              </div>
-              <span className="shrink-0 text-[13px] text-[var(--dv-text-secondary)]">{tx(a.created_at ? formatVnDate(a.created_at) : '')}</span>
-            </li>
+            <AppliedRoleItem
+              key={a.id}
+              app={a}
+              library={profile.selftapes || []}
+              onSaved={next => setData(d => (d ? { ...d, applications: d.applications.map(x => (x.id === next.id ? next : x)) } : d))}
+            />
           ))}
         </ul>
       )}

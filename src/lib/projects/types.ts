@@ -85,6 +85,8 @@ export interface ProjectApplication {
   selftape_url?: string | null;
   /** Các self-tape diễn viên tick khi ứng tuyển (selftape_url = video đầu tiên) */
   selftape_urls?: string[] | null;
+  /** Lần gần nhất diễn viên tự sửa self-tape sau khi đã nộp */
+  selftape_updated_at?: string | null;
   note?: string | null;
   status: ApplicationStatus;
   /** Lựa chọn của NSX trên link shortlist / cổng đối tác */
