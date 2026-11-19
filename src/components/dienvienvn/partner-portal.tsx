@@ -10,7 +10,7 @@ import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/acto
 import { ageFromDob, bodyMarkLabel, ROLE_WILLINGNESS_OPTIONS } from '@/lib/dienvienvn/casting-form';
 import { PARTNER_TYPE_LABELS, PartnerProjectSummary, PartnerTalent, PartnerType } from '@/lib/dienvienvn/partners';
 import type { ProducerView } from '@/lib/projects/producer';
-import { CASTING_MODES, PROJECT_TYPES, ProjectRole, RoleGender, projectTypeLabel } from '@/lib/projects/types';
+import { CASTING_MODES, PROJECT_TYPES, ProjectRole, ROLE_TIERS, RoleGender, RoleTier, projectTypeLabel } from '@/lib/projects/types';
 import { ABROAD, ALL_PROVINCES } from '@/lib/dienvienvn/provinces';
 import { CheckOption, Field, SelectInput, TextInput } from './form-fields';
 import { ProducerApplicants } from './producer-board';
@@ -851,9 +851,19 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_80px_80px_90px]">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.1fr)_70px_70px_80px]">
                   <Field label="Tên vai" required htmlFor={`pp-r-${r.id}`} className="col-span-2 sm:col-span-1">
                     <TextInput id={`pp-r-${r.id}`} value={r.name} onChange={e => setRole(r.id, { name: e.target.value })} placeholder={tx("VD: Nữ chính – Linh")} />
+                  </Field>
+                  <Field label="Loại vai" htmlFor={`pp-t-${r.id}`}>
+                    <SelectInput id={`pp-t-${r.id}`} value={r.tier || ''} onChange={e => setRole(r.id, { tier: (e.target.value || null) as RoleTier | null })}>
+                      <option value="">{tx('Chưa chọn')}</option>
+                      {ROLE_TIERS.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {tx(t.label)}
+                        </option>
+                      ))}
+                    </SelectInput>
                   </Field>
                   <Field label="Giới tính" htmlFor={`pp-g-${r.id}`}>
                     <SelectInput id={`pp-g-${r.id}`} value={r.gender} onChange={e => setRole(r.id, { gender: e.target.value as RoleGender })}>

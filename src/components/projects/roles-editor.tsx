@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, ImagePlus, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
-import { ProjectRole, ROLE_MAX_IMAGES, RoleGender, genderLabel } from '@/lib/projects/types';
+import { ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGender, RoleTier, genderLabel, roleTierLabel } from '@/lib/projects/types';
 import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-foreground transition-colors';
@@ -14,7 +14,7 @@ export function emptyRole(name = ''): ProjectRole {
 
 function roleSummaryLine(r: ProjectRole): string {
   const age = r.age_min && r.age_max ? `${r.age_min}–${r.age_max} tuổi` : r.age_min ? `từ ${r.age_min} tuổi` : r.age_max ? `đến ${r.age_max} tuổi` : null;
-  return [genderLabel(r.gender), age, r.quantity ? `${r.quantity} người` : null].filter(Boolean).join(' · ');
+  return [roleTierLabel(r.tier), genderLabel(r.gender), age, r.quantity ? `${r.quantity} người` : null].filter(Boolean).join(' · ');
 }
 
 const hasContent = (r: ProjectRole) => !!(r.name.trim() || (r.description || '').trim());
@@ -204,7 +204,7 @@ export function RolesEditor({ roles, onChange, canEdit }: { roles: ProjectRole[]
 
               {expanded && (
                 <div className="px-3 pb-3.5 space-y-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,2fr)_130px_80px_80px_90px] gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,2fr)_140px_120px_70px_70px_80px] gap-3">
                     <div className="col-span-2 sm:col-span-1">
                       <label className={labelCls}>Tên vai *</label>
                       <input
@@ -225,6 +225,17 @@ export function RolesEditor({ roles, onChange, canEdit }: { roles: ProjectRole[]
                           }
                         }}
                       />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Loại vai</label>
+                      <select className={inputCls} value={r.tier || ''} disabled={!canEdit} onChange={e => setRole(r.id, { tier: (e.target.value || null) as RoleTier | null })}>
+                        <option value="">Chưa chọn</option>
+                        {ROLE_TIERS.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className={labelCls}>Giới tính</label>

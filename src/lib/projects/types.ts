@@ -22,7 +22,21 @@ export interface ProjectRole {
   images?: string[];
   /** Ẩn vai trên dienvienvn.com (không hiện, không nhận ứng tuyển); vẫn dùng trong CRM và link NSX */
   hidden?: boolean;
+  /** Loại vai: chính, thứ chính, phụ, nhỏ, quần chúng (không bắt buộc) */
+  tier?: RoleTier | null;
 }
+
+export type RoleTier = 'lead' | 'second_lead' | 'supporting' | 'minor' | 'extra';
+export const ROLE_TIERS: { id: RoleTier; label: string }[] = [
+  { id: 'lead', label: 'Vai chính' },
+  { id: 'second_lead', label: 'Vai thứ chính' },
+  { id: 'supporting', label: 'Vai phụ' },
+  { id: 'minor', label: 'Vai nhỏ' },
+  { id: 'extra', label: 'Quần chúng' }
+];
+export const roleTierLabel = (t?: string | null) => ROLE_TIERS.find(x => x.id === t)?.label || '';
+/** Vai chính / thứ chính: nhãn đậm hơn */
+export const isMajorTier = (t?: string | null) => t === 'lead' || t === 'second_lead';
 
 export const ROLE_MAX_IMAGES = 3;
 
@@ -181,7 +195,12 @@ export function genderLabel(g: RoleGender): string {
 export function roleSummary(r: ProjectRole): string {
   const age =
     r.age_min && r.age_max ? `${r.age_min}–${r.age_max} tuổi` : r.age_min ? `từ ${r.age_min} tuổi` : r.age_max ? `đến ${r.age_max} tuổi` : '';
-  return [genderLabel(r.gender), age].filter(Boolean).join(' · ');
+  return [roleTierLabel(r.tier), genderLabel(r.gender), age].filter(Boolean).join(' · ');
+}
+
+/** Tóm tắt không kèm loại vai (khi loại vai đã hiện thành nhãn riêng) */
+export function roleSummaryNoTier(r: ProjectRole): string {
+  return roleSummary({ ...r, tier: null });
 }
 
 export function publicProjectName(p: Pick<CastingProject, 'hide_title' | 'code' | 'title'>): string {

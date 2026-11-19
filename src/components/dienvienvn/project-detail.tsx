@@ -16,7 +16,7 @@ import {
   projectTypeLabel,
   roleImages,
   roleSlug,
-  roleSummary
+  roleSummaryNoTier
 } from '@/lib/projects/types';
 import { applyToRole, fetchPublicProject } from '@/lib/projects/public-client';
 import { actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
@@ -26,6 +26,7 @@ import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
+import { RoleTierBadge } from './role-tier';
 
 /** Chia sẻ link: điện thoại mở bảng chia sẻ của máy (Zalo, Messenger…); máy tính sao chép link. Trả true khi đã sao chép. */
 async function shareLink(url: string, title: string, copyPrompt = 'Sao chép link:'): Promise<boolean> {
@@ -245,9 +246,11 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
                       ))}
                     </div>
                   )}
-                  <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">{tx(r.name)}</p>
+                  <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">
+                    {r.name} <RoleTierBadge tier={r.tier} className="ml-1 -translate-y-px" />
+                  </p>
                   <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">
-                    {tx([roleSummary(r), r.quantity ? `Cần ${r.quantity} người` : null].filter(Boolean).join(' · '))}
+                    {tx([roleSummaryNoTier(r), r.quantity ? `Cần ${r.quantity} người` : null].filter(Boolean).join(' · '))}
                   </p>
                   {r.description && <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.47]">{tx(r.description)}</p>}
                   <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">

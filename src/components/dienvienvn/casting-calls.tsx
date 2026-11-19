@@ -5,11 +5,12 @@ import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Banknote, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Link2, Loader2, MapPin, MonitorPlay, SlidersHorizontal, UserRound, X } from 'lucide-react';
-import { PROJECT_TYPES, ProjectRole, PublicProject, castingModeLabel, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, roleSlug, sourceLabel } from '@/lib/projects/types';
+import { PROJECT_TYPES, ProjectRole, PublicProject, castingModeLabel, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, ROLE_TIERS, RoleTier, roleSlug, sourceLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { formatVnDate } from './projects-section';
+import { RoleTierBadge } from './role-tier';
 
 const PAGE_SIZE = 10;
 
@@ -123,6 +124,7 @@ export function CastingCalls() {
   const [gender, setGender] = useState<'all' | 'male' | 'female'>('all');
   const [age, setAge] = useState('');
   const [place, setPlace] = useState('');
+  const [tiers, setTiers] = useState<RoleTier[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
   // Xem theo vai (sổ hết các vai) hoặc theo dự án (thu gọn, bấm vào xem các vai của dự án đó)
   const [view, setView] = useState<'role' | 'project'>('role');
@@ -154,9 +156,10 @@ export function CastingCalls() {
       if (gender !== 'all' && r.gender !== 'any' && r.gender !== gender) return false;
       if (a !== null && ((r.age_min && a < r.age_min) || (r.age_max && a > r.age_max))) return false;
       if (place && p.location !== place) return false;
+      if (tiers.length && !(r.tier && tiers.includes(r.tier))) return false;
       return true;
     });
-  }, [calls, type, gender, age, place]);
+  }, [calls, type, gender, age, place, tiers]);
 
   const groups = useMemo(() => {
     const map = new Map<string, { project: PublicProject; path: string; calls: Call[] }>();
@@ -168,13 +171,13 @@ export function CastingCalls() {
     return Array.from(map.values());
   }, [list]);
 
-  useEffect(() => setPage(1), [type, gender, age, place, view]);
+  useEffect(() => setPage(1), [type, gender, age, place, tiers, view]);
   const total = view === 'role' ? list.length : groups.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const shown = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const shownGroups = groups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const toggleProject = (id: string) => setOpenProjects(o => (o.includes(id) ? o.filter(x => x !== id) : [...o, id]));
-  const nFilters = (gender !== 'all' ? 1 : 0) + (age ? 1 : 0) + (place ? 1 : 0);
+  const nFilters = (gender !== 'all' ? 1 : 0) + (age ? 1 : 0) + (place ? 1 : 0) + (tiers.length ? 1 : 0);
 
   const goPage = (n: number) => {
     setPage(n);
@@ -190,7 +193,9 @@ export function CastingCalls() {
         <Clapperboard className="h-4 w-4 shrink-0" /> {tx(projectTypeLabel(c.project.project_type))}
         {!compact && c.project.deadline ? tx(` · Hạn ${formatVnDate(c.project.deadline)}`) : ''}
       </p>
-      <p className="dv-display pointer-events-none relative mt-1.5 text-[24px] font-semibold leading-[1.2]">{c.role.name}</p>
+      <p className="dv-display pointer-events-none relative mt-1.5 text-[24px] font-semibold leading-[1.2]">
+        {c.role.name} <RoleTierBadge tier={c.role.tier} className="ml-1 -translate-y-1" />
+      </p>
       {!compact && <p className="pointer-events-none relative mt-1 text-[16px]">{c.project.display_name}</p>}
       {c.role.description?.trim() && <RoleDescription text={c.role.description.trim()} />}
       <div className="pointer-events-none relative mt-4">
@@ -363,6 +368,22 @@ export function CastingCalls() {
                 </div>
               </div>
               <div>
+                <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx('Loại vai')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {ROLE_TIERS.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      aria-pressed={tiers.includes(t.id)}
+                      onClick={() => setTiers(x => (x.includes(t.id) ? x.filter(y => y !== t.id) : [...x, t.id]))}
+                      className="dv-chip"
+                    >
+                      {tx(t.label)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Tuổi của bạn")}</p>
                 <input inputMode="numeric" value={age} onChange={e => setAge(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder={tx("VD: 25")} className="dv-input" aria-label={tx("Tuổi của bạn")} />
               </div>
@@ -388,6 +409,7 @@ export function CastingCalls() {
                   setGender('all');
                   setAge('');
                   setPlace('');
+                  setTiers([]);
                 }}
                 className="dv-btn dv-btn-secondary disabled:opacity-40"
               >

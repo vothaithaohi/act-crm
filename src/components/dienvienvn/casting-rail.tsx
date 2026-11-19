@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
-import { PublicProject, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
+import { PublicProject, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, roleTierLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { TalentLink } from './talent-drawer';
 import { useDvvnHref } from './base-path';
@@ -204,7 +204,7 @@ export function CastingRail({ audience, stats }: { audience: Audience; stats: Ho
                 </span>
                 <span className="dv-display mt-1.5 line-clamp-2 block text-[22px] font-semibold leading-[1.2] md:text-[24px]">{tx(r.name)}</span>
                 <span className="mt-1 line-clamp-1 block text-[14px] text-white/75">{tx(p.display_name)}</span>
-                <span className="mt-1 block text-[14px] text-white/75">{tx([genderLabel(r.gender), age].filter(Boolean).join(' · '))}</span>
+                <span className="mt-1 block text-[14px] text-white/75">{tx([roleTierLabel(r.tier), genderLabel(r.gender), age].filter(Boolean).join(' · '))}</span>
                 <span className="mt-5 flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-white text-[14px] font-semibold text-[#1d1d1f] transition-colors group-hover:bg-[#f0f0f2]">
                   {tx("Ứng tuyển")} <ArrowUpRight className="h-4 w-4" />
                 </span>
