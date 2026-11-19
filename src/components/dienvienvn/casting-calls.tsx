@@ -3,7 +3,7 @@
 
 import { useTx } from './i18n';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Banknote, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Link2, Loader2, MapPin, MonitorPlay, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { PROJECT_TYPES, ProjectRole, PublicProject, castingModeLabel, genderLabel, isDeadlinePassed, projectPathName, projectTypeLabel, roleSlug, sourceLabel } from '@/lib/projects/types';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
@@ -14,6 +14,41 @@ import { formatVnDate } from './projects-section';
 const PAGE_SIZE = 10;
 
 type Call = { key: string; project: PublicProject; role: ProjectRole; path: string; rolePath: string };
+
+/** Mô tả vai: hiện 2 dòng, dài hơn thì có "Xem thêm" để mở hết ngay trong ô (không chuyển trang). */
+function RoleDescription({ text }: { text: string }) {
+  const tx = useTx();
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || open) return;
+    const check = () => setLong(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text, open]);
+  return (
+    <div className="relative z-10 mt-2 w-fit max-w-full">
+      <p ref={ref} className={`pointer-events-none whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)] ${open ? '' : 'line-clamp-2'}`}>
+        {text}
+      </p>
+      {(long || open) && (
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          aria-expanded={open}
+          className="mt-1 inline-flex items-center gap-1 text-[15px] font-semibold text-[var(--dv-text)] hover:underline"
+        >
+          {tx(open ? 'Thu gọn' : '… Xem thêm')}
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+    </div>
+  );
+}
 
 /** Nút sao chép đúng link (dự án hoặc vai), bấm xong hiện "Đã sao chép link" 2 giây. */
 function CopyLink({ path, label }: { path: string; label: string }) {
@@ -148,22 +183,20 @@ export function CastingCalls() {
 
   /** Một vai trong danh sách: bấm vào mở trang của vai (link riêng); nút bên cạnh sao chép link vai. compact: trong dự án đang mở rộng. */
   const roleItem = (c: Call, compact = false) => (
-    <li key={c.key} className="relative">
-      <Link href={c.rolePath} className="block rounded-[16px] border border-[#e0e0e5] p-5 transition-colors hover:border-[#86868b] md:p-6">
-        <p className="flex items-center gap-2 pr-28 text-[15px] text-[var(--dv-text-secondary)] sm:pr-40">
-          <Clapperboard className="h-4 w-4 shrink-0" /> {tx(projectTypeLabel(c.project.project_type))}
-          {!compact && c.project.deadline ? tx(` · Hạn ${formatVnDate(c.project.deadline)}`) : ''}
-        </p>
-        <p className="dv-display mt-1.5 text-[24px] font-semibold leading-[1.2]">{c.role.name}</p>
-        {!compact && <p className="mt-1 text-[16px]">{c.project.display_name}</p>}
-        {c.role.description?.trim() && (
-          <p className="mt-2 line-clamp-2 whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">{c.role.description.trim()}</p>
-        )}
-        <div className="mt-4">
-          <CallTags c={c} />
-        </div>
-      </Link>
-      <div className="absolute right-4 top-4 md:right-5 md:top-5">
+    <li key={c.key} className="group relative rounded-[16px] border border-[#e0e0e5] p-5 transition-colors hover:border-[#86868b] md:p-6">
+      {/* Cả ô là link tới trang vai; mô tả (Xem thêm) và nút Link vai nằm trên lớp link nên bấm riêng được */}
+      <Link href={c.rolePath} className="absolute inset-0 rounded-[16px]" aria-label={c.role.name} />
+      <p className="pointer-events-none relative flex items-center gap-2 pr-28 text-[15px] text-[var(--dv-text-secondary)] sm:pr-40">
+        <Clapperboard className="h-4 w-4 shrink-0" /> {tx(projectTypeLabel(c.project.project_type))}
+        {!compact && c.project.deadline ? tx(` · Hạn ${formatVnDate(c.project.deadline)}`) : ''}
+      </p>
+      <p className="dv-display pointer-events-none relative mt-1.5 text-[24px] font-semibold leading-[1.2]">{c.role.name}</p>
+      {!compact && <p className="pointer-events-none relative mt-1 text-[16px]">{c.project.display_name}</p>}
+      {c.role.description?.trim() && <RoleDescription text={c.role.description.trim()} />}
+      <div className="pointer-events-none relative mt-4">
+        <CallTags c={c} />
+      </div>
+      <div className="absolute right-4 top-4 z-10 md:right-5 md:top-5">
         <CopyLink path={c.rolePath} label="Link vai" />
       </div>
     </li>
