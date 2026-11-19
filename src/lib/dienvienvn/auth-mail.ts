@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { SET_PASSWORD_PATH } from './actor-server';
 import { publicSiteUrl } from './hosts';
 import { sendMail } from './mailer';
+import { getLang, serverTr } from './i18n/server';
 
 /**
  * Email tài khoản do hệ thống tự gửi qua Brevo (không dùng mẫu email chung của Supabase — mẫu đó viết cho diễn viên).
@@ -48,9 +49,12 @@ const COPY: Record<AuthMailAudience, Record<AuthMailPurpose, { subject: string; 
   }
 };
 
-function render(audience: AuthMailAudience, purpose: AuthMailPurpose, name: string, link: string) {
-  const c = COPY[audience][purpose];
-  const hello = name ? `Xin chào ${escapeHtml(name)},` : 'Xin chào,';
+/** Nội dung email theo ngôn ngữ người dùng đang xem trang (bản /en → email tiếng Anh). */
+function render(audience: AuthMailAudience, purpose: AuthMailPurpose, name: string, link: string, tr: (s: string) => string) {
+  const v = COPY[audience][purpose];
+  const c = { subject: tr(v.subject), title: tr(v.title), body: tr(v.body), button: tr(v.button), ignore: tr(v.ignore) };
+  const hi = (n: string) => (n ? tr(`Xin chào ${n},`) : tr('Xin chào,'));
+  const hello = name ? hi(escapeHtml(name)) : hi('');
   const html = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1d1d1f">
   <p style="font-size:20px;font-weight:600;margin:0 0 24px">🎬 DienVienVN</p>
   <h2 style="font-size:22px;margin:0 0 12px">${c.title}</h2>
@@ -58,7 +62,7 @@ function render(audience: AuthMailAudience, purpose: AuthMailPurpose, name: stri
   <a href="${link}" style="display:inline-block;background:#1d1d1f;color:#ffffff;text-decoration:none;font-size:15px;padding:12px 24px;border-radius:980px">${escapeHtml(c.button)}</a>
   <p style="font-size:12px;line-height:1.5;color:#86868b;margin:28px 0 0">${c.ignore}</p>
 </div>`;
-  const text = `${name ? `Xin chào ${name},` : 'Xin chào,'} ${c.body}\n\n${c.button}: ${link}\n\n${c.ignore}`;
+  const text = `${hi(name)} ${c.body}\n\n${c.button}: ${link}\n\n${c.ignore}`;
   return { subject: c.subject, html, text };
 }
 
@@ -83,7 +87,8 @@ export async function mailAuthLink(
   headers: Headers
 ): Promise<{ result: 'sent' | 'exists' | 'failed'; userId: string | null }> {
   const email = opts.email.trim().toLowerCase();
-  const redirectTo = `${publicSiteUrl(headers)}${SET_PASSWORD_PATH}`;
+  const lang = await getLang();
+  const redirectTo = `${publicSiteUrl(headers)}${lang === 'en' ? '/en' : ''}${SET_PASSWORD_PATH}`;
   const { data, error } =
     opts.type === 'invite'
       ? await db.auth.admin.generateLink({ type: 'invite', email, options: { redirectTo, data: opts.data } })
@@ -96,6 +101,6 @@ export async function mailAuthLink(
   // Xác nhận tài khoản: trang tạo mật khẩu hiện như "Xác nhận tài khoản" (kể cả khi là link khôi phục gửi lại)
   const forParam = opts.purpose === 'confirm' ? `&for=${FOR_PARAM[opts.audience]}` : '';
   const link = `${redirectTo}?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=${opts.type}${forParam}`;
-  const ok = await sendMail({ to: email, ...render(opts.audience, opts.purpose, opts.name, link) });
+  const ok = await sendMail({ to: email, ...render(opts.audience, opts.purpose, opts.name, link, await serverTr()) });
   return { result: ok ? 'sent' : 'failed', userId: data.user?.id || null };
 }

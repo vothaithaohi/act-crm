@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Link2, SlidersHorizontal, UserRound } from 'lucide-react';
 import { EMPTY_FILTER, TalentFilter, TalentFilterPanel, activeCount, applyFilter } from './talent-filter';
@@ -16,6 +18,7 @@ const isAct = (t: PublicTalent) => t.trainings.some(x => /ACT Academy/i.test(x))
 const genderLabel = (g: PublicTalent['gender']) => (g === 'female' ? 'Nữ' : g === 'male' ? 'Nam' : null);
 
 export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
+  const tx = useTx();
   const [filter, setFilter] = useState<TalentFilter>(EMPTY_FILTER);
   const [filterOpen, setFilterOpen] = useState(false);
   const [mode, setMode] = useState<'grid' | 'list'>('grid');
@@ -34,7 +37,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-10 md:pt-16">
         <div className="mx-auto max-w-[1120px]">
-          <h1 className="dv-display dv-headline">Đúng người. Đúng vai.</h1>
+          <h1 className="dv-display dv-headline">{tx("Đúng người. Đúng vai.")}</h1>
 
           {talents.length > 0 && (
             <div className="sticky top-11 z-20 -mx-4 mt-6 bg-[var(--dv-bg-alt)]/95 px-4 py-3 backdrop-blur">
@@ -46,11 +49,11 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                   className={`dv-btn !h-11 !py-0 text-[15px] ${nActive ? 'dv-btn-primary' : 'dv-btn-secondary'}`}
                   aria-haspopup="dialog"
                 >
-                  <SlidersHorizontal className="h-4 w-4" /> Bộ lọc{nActive ? ` (${nActive})` : ''}
+                  <SlidersHorizontal className="h-4 w-4" /> {tx("Bộ lọc")}{tx(nActive ? ` (${nActive})` : '')}
                 </button>
                 {nActive > 0 && (
                   <button type="button" onClick={() => setFilter(EMPTY_FILTER)} className="px-2 text-[14px] text-[var(--dv-text-secondary)] underline underline-offset-2">
-                    Xoá lọc
+                    {tx("Xoá lọc")}
                   </button>
                 )}
                 <div className="ml-auto flex rounded-full border border-[#d2d2d7] bg-white p-1">
@@ -61,12 +64,12 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                       onClick={() => setMode(m)}
                       className={`h-9 whitespace-nowrap rounded-full px-4 text-[14px] ${mode === m ? 'bg-[#1d1d1f] text-white' : 'text-[var(--dv-text-secondary)]'}`}
                     >
-                      {m === 'grid' ? 'Lưới' : 'Danh sách'}
+                      {tx(m === 'grid' ? 'Lưới' : 'Danh sách')}
                     </button>
                   ))}
                 </div>
               </div>
-              <p className="mt-2 text-[13px] text-[var(--dv-text-secondary)]">{list.length} diễn viên phù hợp</p>
+              <p className="mt-2 text-[13px] text-[var(--dv-text-secondary)]">{tx(list.length)} {tx("diễn viên phù hợp")}</p>
             </div>
           )}
 
@@ -78,7 +81,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                     <div className="aspect-[3/4] overflow-hidden bg-[#e8e8ed]">
                       {t.photos[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={t.photos[0].url} alt={t.name} loading="lazy" className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
+                        <img src={t.photos[0].url} alt={tx(t.name)} loading="lazy" className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-[#aeaeb2]">
                           <UserRound className="h-10 w-10" strokeWidth={1.3} />
@@ -86,8 +89,8 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                       )}
                     </div>
                     <div className="px-4 py-3.5">
-                      <p className="truncate text-[16px] font-semibold leading-[1.25]">{t.name}</p>
-                      <p className="mt-0.5 truncate text-[13px] text-[var(--dv-text-secondary)]">{subtitle(t)}</p>
+                      <p className="truncate text-[16px] font-semibold leading-[1.25]">{tx(t.name)}</p>
+                      <p className="mt-0.5 truncate text-[13px] text-[var(--dv-text-secondary)]">{tx(subtitle(t))}</p>
                     </div>
                   </TalentLink>
                 </li>
@@ -101,7 +104,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                     <div className="h-20 w-16 shrink-0 overflow-hidden rounded-[10px] bg-[#e8e8ed]">
                       {t.photos[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={t.photos[0].url} alt={t.name} loading="lazy" className="h-full w-full object-cover object-top" />
+                        <img src={t.photos[0].url} alt={tx(t.name)} loading="lazy" className="h-full w-full object-cover object-top" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-[#aeaeb2]">
                           <UserRound className="h-6 w-6" strokeWidth={1.3} />
@@ -109,10 +112,10 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[16px] font-semibold">{t.name}</p>
-                      <p className="mt-0.5 truncate text-[13px] text-[var(--dv-text-secondary)]">{subtitle(t)}</p>
+                      <p className="truncate text-[16px] font-semibold">{tx(t.name)}</p>
+                      <p className="mt-0.5 truncate text-[13px] text-[var(--dv-text-secondary)]">{tx(subtitle(t))}</p>
                       {t.skills.length > 0 && (
-                        <p className="mt-1 truncate text-[13px] text-[var(--dv-text-tertiary)]">{t.skills.flatMap(g => g.items).slice(0, 5).join(' · ')}</p>
+                        <p className="mt-1 truncate text-[13px] text-[var(--dv-text-tertiary)]">{tx(t.skills.flatMap(g => g.items).slice(0, 5).join(' · '))}</p>
                       )}
                     </div>
                     <ChevronRight className="h-5 w-5 shrink-0 text-[var(--dv-text-tertiary)]" />
@@ -122,7 +125,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
             </ul>
           )}
           {talents.length > 0 && list.length === 0 && (
-            <p className="mt-6 text-[15px] text-[var(--dv-text-secondary)]">Không tìm thấy diễn viên phù hợp.</p>
+            <p className="mt-6 text-[15px] text-[var(--dv-text-secondary)]">{tx("Không tìm thấy diễn viên phù hợp.")}</p>
           )}
         </div>
       </main>
@@ -135,6 +138,7 @@ export function TalentDirectory({ talents }: { talents: PublicTalent[] }) {
 
 /* ---------------- Hồ sơ diễn viên (trang riêng, cùng bố cục với cửa sổ hồ sơ) ---------------- */
 export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent; shareUrl: string }) {
+  const tx = useTx();
   const session = useActorSession();
   const [copied, setCopied] = useState(false);
   const [partner, setPartner] = useState<PartnerTalent | null>(null);
@@ -167,10 +171,10 @@ export function PublicTalentProfile({ talent, shareUrl }: { talent: PublicTalent
       <GlobalNav />
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-6 md:pt-10">
         <div className="mx-auto max-w-[1080px]">
-          <h1 className="sr-only">{talent.name}</h1>
+          <h1 className="sr-only">{tx(talent.name)}</h1>
           <div className="mb-4 flex justify-end">
             <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-[#d2d2d7] bg-white px-3 py-1.5 text-[13px] hover:border-[#1d1d1f]">
-              <Link2 className="h-3.5 w-3.5" /> {copied ? 'Đã sao chép link' : `dienvienvn.com/${talent.username}`}
+              <Link2 className="h-3.5 w-3.5" /> {tx(copied ? 'Đã sao chép link' : `dienvienvn.com/${talent.username}`)}
             </button>
           </div>
           <TalentProfileBody talent={talent} partner={partner} />

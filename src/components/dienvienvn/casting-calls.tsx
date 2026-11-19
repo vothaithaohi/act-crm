@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Banknote, Building2, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Loader2, MapPin, MonitorPlay, SlidersHorizontal, UserRound, X } from 'lucide-react';
@@ -17,36 +19,39 @@ const ageText = (r: ProjectRole) =>
   r.age_min && r.age_max ? `${r.age_min} - ${r.age_max}` : r.age_min ? `Từ ${r.age_min}` : r.age_max ? `Đến ${r.age_max}` : '';
 
 function Tag({ icon: Icon, children, tone = 'gray' }: { icon: typeof MapPin; children: React.ReactNode; tone?: 'gray' | 'green' | 'amber' }) {
+  const tx = useTx();
   const cls = tone === 'green' ? 'bg-[#eaf6ee] text-[#1d5c33]' : tone === 'amber' ? 'bg-[#fdf3e1] text-[#7a4b0c]' : 'bg-[var(--dv-bg-alt)] text-[var(--dv-text)]';
   return (
     <span className={`inline-flex max-w-full items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[14px] ${cls}`}>
       <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-      <span className="truncate">{children}</span>
+      <span className="truncate">{tx(children)}</span>
     </span>
   );
 }
 
 function CallTags({ c }: { c: Call }) {
+  const tx = useTx();
   const { project: p, role: r } = c;
   return (
     <div className="flex flex-wrap gap-2">
       <Tag icon={Banknote} tone="green">
-        {p.compensation || 'Thoả thuận'}
+        {tx(p.compensation || 'Thoả thuận')}
       </Tag>
       <Tag icon={UserRound} tone="amber">
-        {genderLabel(r.gender)}
+        {tx(genderLabel(r.gender))}
       </Tag>
-      {p.location && <Tag icon={MapPin}>{provinceLabel(p.location)}</Tag>}
-      {ageText(r) && <Tag icon={UserRound}>{ageText(r)} tuổi</Tag>}
-      <Tag icon={Clapperboard}>{projectTypeLabel(p.project_type)}</Tag>
-      {p.casting_mode && <Tag icon={MonitorPlay}>{castingModeLabel(p.casting_mode)}</Tag>}
-      {p.source && <Tag icon={Building2}>{sourceLabel(p.source)}</Tag>}
+      {p.location && <Tag icon={MapPin}>{tx(provinceLabel(p.location))}</Tag>}
+      {ageText(r) && <Tag icon={UserRound}>{tx(ageText(r))} {tx("tuổi")}</Tag>}
+      <Tag icon={Clapperboard}>{tx(projectTypeLabel(p.project_type))}</Tag>
+      {p.casting_mode && <Tag icon={MonitorPlay}>{tx(castingModeLabel(p.casting_mode))}</Tag>}
+      {p.source && <Tag icon={Building2}>{tx(sourceLabel(p.source))}</Tag>}
     </div>
   );
 }
 
 /** Trang /du-an: danh sách vai đang tuyển (theo mẫu castingnetworks.com/casting-calls). */
 export function CastingCalls() {
+  const tx = useTx();
   const href = useDvvnHref();
   const [projects, setProjects] = useState<PublicProject[] | null>(null);
   const [type, setType] = useState('all');
@@ -118,10 +123,10 @@ export function CastingCalls() {
                 const body = (
                   <>
                     <p className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
-                      <Clapperboard className="h-4 w-4" /> {projectTypeLabel(c.project.project_type)}
+                      <Clapperboard className="h-4 w-4" /> {tx(projectTypeLabel(c.project.project_type))}
                     </p>
-                    <p className="dv-display mt-1.5 text-[24px] font-semibold leading-[1.2]">{c.role.name}</p>
-                    {!compact && <p className="mt-1 text-[16px]">{c.project.display_name}</p>}
+                    <p className="dv-display mt-1.5 text-[24px] font-semibold leading-[1.2]">{tx(c.role.name)}</p>
+                    {!compact && <p className="mt-1 text-[16px]">{tx(c.project.display_name)}</p>}
                     <div className="mt-4">
                       <CallTags c={c} />
                     </div>
@@ -131,14 +136,14 @@ export function CastingCalls() {
                   <li key={c.key}>
                     {/* Điện thoại: bấm vào thẳng trang dự án; máy tính: chọn để xem chi tiết bên phải */}
                     <Link href={c.path} className="block rounded-[16px] border border-[#e0e0e5] p-5 lg:hidden">
-                      {body}
+                      {tx(body)}
                     </Link>
                     <button
                       type="button"
                       onClick={() => setSelected(c.key)}
                       className={`hidden w-full rounded-[16px] border p-6 text-left transition-colors lg:block ${active ? 'border-[#1d1d1f] shadow-[0_6px_0_0_#1d1d1f]' : 'border-[#e0e0e5] hover:border-[#86868b]'}`}
                     >
-                      {body}
+                      {tx(body)}
                     </button>
                   </li>
                 );
@@ -151,17 +156,17 @@ export function CastingCalls() {
         <div className="dv-scroll-x -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:justify-center md:px-0">
           {[{ id: 'all', label: 'Tất cả vai' }, ...PROJECT_TYPES].map(t => (
             <button key={t.id} type="button" className="dv-chip shrink-0" aria-pressed={type === t.id} onClick={() => setType(t.id)}>
-              {t.label}
+              {tx(t.label)}
             </button>
           ))}
         </div>
       </div>
 
       <div id="casting-calls" className="mx-auto max-w-[1200px] scroll-mt-16 px-4 pt-10 md:px-6 md:pt-14">
-        <h1 className="dv-display dv-headline">Dự án đang casting.</h1>
+        <h1 className="dv-display dv-headline">{tx("Dự án đang casting.")}</h1>
 
         <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
-          <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1" role="group" aria-label="Cách xem">
+          <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1" role="group" aria-label={tx("Cách xem")}>
             {(
               [
                 ['role', 'Theo vai'],
@@ -175,12 +180,12 @@ export function CastingCalls() {
                 onClick={() => setView(k)}
                 className={`h-8 whitespace-nowrap rounded-full px-4 text-[14px] ${view === k ? 'bg-[#1d1d1f] text-white' : 'text-[var(--dv-text-secondary)]'}`}
               >
-                {label}
+                {tx(label)}
               </button>
             ))}
           </div>
           <button type="button" onClick={() => setFilterOpen(true)} className={`dv-btn !h-10 !py-0 text-[14px] ${nFilters ? 'dv-btn-primary' : 'dv-btn-secondary'}`}>
-            <SlidersHorizontal className="h-4 w-4" /> Bộ lọc ({nFilters})
+            <SlidersHorizontal className="h-4 w-4" /> {tx("Bộ lọc (")}{tx(nFilters)})
           </button>
         </div>
 
@@ -190,7 +195,7 @@ export function CastingCalls() {
           </div>
         ) : list.length === 0 ? (
           <p className="py-16 text-center text-[17px] text-[var(--dv-text-secondary)]">
-            {calls.length ? 'Không có vai phù hợp bộ lọc.' : 'Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.'}
+            {tx(calls.length ? 'Không có vai phù hợp bộ lọc.' : 'Hiện chưa có dự án nào đang nhận hồ sơ. Vui lòng quay lại sau.')}
           </p>
         ) : (
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
@@ -206,11 +211,11 @@ export function CastingCalls() {
                       <button type="button" onClick={() => toggleProject(g.project.id)} aria-expanded={open} className="flex w-full items-start justify-between gap-4 p-5 text-left md:p-6">
                         <span className="min-w-0">
                           <span className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
-                            <Clapperboard className="h-4 w-4" /> {projectTypeLabel(g.project.project_type)}
-                            {g.project.deadline ? ` · Hạn ${formatVnDate(g.project.deadline)}` : ''}
+                            <Clapperboard className="h-4 w-4" /> {tx(projectTypeLabel(g.project.project_type))}
+                            {tx(g.project.deadline ? ` · Hạn ${formatVnDate(g.project.deadline)}` : '')}
                           </span>
-                          <span className="dv-display mt-1.5 block text-[24px] font-semibold leading-[1.2]">{g.project.display_name}</span>
-                          <span className="mt-1 block text-[15px] text-[var(--dv-text-secondary)]">{g.calls.length} vai đang tuyển</span>
+                          <span className="dv-display mt-1.5 block text-[24px] font-semibold leading-[1.2]">{tx(g.project.display_name)}</span>
+                          <span className="mt-1 block text-[15px] text-[var(--dv-text-secondary)]">{tx(g.calls.length)} {tx("vai đang tuyển")}</span>
                         </span>
                         <ChevronDown className={`mt-1 h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
                       </button>
@@ -226,24 +231,24 @@ export function CastingCalls() {
               <aside className="hidden lg:block">
                 <div className="sticky top-16 rounded-[16px] border border-[#1d1d1f] p-6">
                   <p className="flex items-center gap-2 text-[15px] text-[var(--dv-text-secondary)]">
-                    <Clapperboard className="h-4 w-4" /> {projectTypeLabel(current.project.project_type)}
+                    <Clapperboard className="h-4 w-4" /> {tx(projectTypeLabel(current.project.project_type))}
                   </p>
-                  <p className="dv-display mt-1.5 text-[26px] font-semibold leading-[1.2]">{current.role.name}</p>
-                  <p className="mt-1 text-[16px]">{current.project.display_name}</p>
+                  <p className="dv-display mt-1.5 text-[26px] font-semibold leading-[1.2]">{tx(current.role.name)}</p>
+                  <p className="mt-1 text-[16px]">{tx(current.project.display_name)}</p>
                   <div className="mt-4">
                     <CallTags c={current} />
                   </div>
-                  <p className="mt-6 text-[17px] font-semibold">Về vai diễn</p>
+                  <p className="mt-6 text-[17px] font-semibold">{tx("Về vai diễn")}</p>
                   <p className="mt-2 line-clamp-6 whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">
-                    {current.role.description?.trim() || current.project.description?.trim() || 'Xem chi tiết dự án để biết thêm về vai diễn.'}
+                    {tx(current.role.description?.trim() || current.project.description?.trim() || 'Xem chi tiết dự án để biết thêm về vai diễn.')}
                   </p>
                   {current.project.deadline && (
                     <p className="mt-4 flex items-center gap-2 text-[15px]">
-                      <CalendarClock className="h-4 w-4" /> <span className="font-semibold">Hạn nộp:</span> {formatVnDate(current.project.deadline)}
+                      <CalendarClock className="h-4 w-4" /> <span className="font-semibold">{tx("Hạn nộp:")}</span> {tx(formatVnDate(current.project.deadline))}
                     </p>
                   )}
                   <Link href={current.path} className="dv-btn dv-btn-primary mt-6 w-full">
-                    Xem &amp; ứng tuyển
+                    {tx("Xem & ứng tuyển")}
                   </Link>
                 </div>
               </aside>
@@ -253,8 +258,8 @@ export function CastingCalls() {
 
         {/* Phân trang */}
         {pages > 1 && (
-          <nav className="mt-10 flex items-center justify-center gap-1" aria-label="Phân trang">
-            <button type="button" disabled={page === 1} onClick={() => goPage(page - 1)} className="flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-30" aria-label="Trang trước">
+          <nav className="mt-10 flex items-center justify-center gap-1" aria-label={tx("Phân trang")}>
+            <button type="button" disabled={page === 1} onClick={() => goPage(page - 1)} className="flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-30" aria-label={tx("Trang trước")}>
               <ChevronLeft className="h-5 w-5" />
             </button>
             {Array.from({ length: pages }, (_, i) => i + 1).map(n => (
@@ -265,10 +270,10 @@ export function CastingCalls() {
                 aria-current={n === page ? 'page' : undefined}
                 className={`h-10 min-w-10 rounded-full px-3 text-[16px] ${n === page ? 'bg-[#1d1d1f] text-white' : 'hover:bg-[var(--dv-bg-alt)]'}`}
               >
-                {n}
+                {tx(n)}
               </button>
             ))}
-            <button type="button" disabled={page === pages} onClick={() => goPage(page + 1)} className="flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-30" aria-label="Trang sau">
+            <button type="button" disabled={page === pages} onClick={() => goPage(page + 1)} className="flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-30" aria-label={tx("Trang sau")}>
               <ChevronRight className="h-5 w-5" />
             </button>
           </nav>
@@ -277,11 +282,11 @@ export function CastingCalls() {
         {/* Theo địa điểm */}
         {places.length > 0 && (
           <section className="mt-16 text-center">
-            <h2 className="dv-display text-[28px] font-semibold md:text-[32px]">Tìm dự án casting gần bạn</h2>
+            <h2 className="dv-display text-[28px] font-semibold md:text-[32px]">{tx("Tìm dự án casting gần bạn")}</h2>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {places.map(l => (
                 <button key={l} type="button" className="dv-chip" aria-pressed={place === l} onClick={() => setPlace(place === l ? '' : l)}>
-                  {provinceLabel(l)}
+                  {tx(provinceLabel(l))}
                 </button>
               ))}
             </div>
@@ -292,16 +297,16 @@ export function CastingCalls() {
       {/* Bảng bộ lọc */}
       {filterOpen && (
         <div className="fixed inset-0 z-[60] flex justify-end bg-black/40" onClick={() => setFilterOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Bộ lọc" onClick={e => e.stopPropagation()} className="flex h-full w-full max-w-[400px] flex-col bg-white">
+          <div role="dialog" aria-modal="true" aria-label={tx("Bộ lọc")} onClick={e => e.stopPropagation()} className="flex h-full w-full max-w-[400px] flex-col bg-white">
             <div className="flex items-center justify-between border-b border-[#f0f0f2] px-5 py-4">
-              <p className="text-[19px] font-semibold">Bộ lọc</p>
-              <button type="button" onClick={() => setFilterOpen(false)} aria-label="Đóng" className="rounded-full p-2 hover:bg-[var(--dv-bg-alt)]">
+              <p className="text-[19px] font-semibold">{tx("Bộ lọc")}</p>
+              <button type="button" onClick={() => setFilterOpen(false)} aria-label={tx("Đóng")} className="rounded-full p-2 hover:bg-[var(--dv-bg-alt)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
               <div>
-                <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Giới tính</p>
+                <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Giới tính")}</p>
                 <div className="flex rounded-full border border-[#d2d2d7] p-1">
                   {(
                     [
@@ -316,23 +321,23 @@ export function CastingCalls() {
                       onClick={() => setGender(id)}
                       className={`h-9 flex-1 rounded-full text-[14px] ${gender === id ? 'bg-[#1d1d1f] text-white' : 'text-[var(--dv-text-secondary)]'}`}
                     >
-                      {label}
+                      {tx(label)}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Tuổi của bạn</p>
-                <input inputMode="numeric" value={age} onChange={e => setAge(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder="VD: 25" className="dv-input" aria-label="Tuổi của bạn" />
+                <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Tuổi của bạn")}</p>
+                <input inputMode="numeric" value={age} onChange={e => setAge(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder={tx("VD: 25")} className="dv-input" aria-label={tx("Tuổi của bạn")} />
               </div>
               {places.length > 0 && (
                 <div>
-                  <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Địa điểm</p>
-                  <select value={place} onChange={e => setPlace(e.target.value)} className="dv-input" aria-label="Địa điểm">
-                    <option value="">Mọi địa điểm</option>
+                  <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Địa điểm")}</p>
+                  <select value={place} onChange={e => setPlace(e.target.value)} className="dv-input" aria-label={tx("Địa điểm")}>
+                    <option value="">{tx("Mọi địa điểm")}</option>
                     {places.map(l => (
                       <option key={l} value={l}>
-                        {provinceLabel(l)}
+                        {tx(provinceLabel(l))}
                       </option>
                     ))}
                   </select>
@@ -350,10 +355,10 @@ export function CastingCalls() {
                 }}
                 className="dv-btn dv-btn-secondary disabled:opacity-40"
               >
-                Xoá lọc
+                {tx("Xoá lọc")}
               </button>
               <button type="button" onClick={() => setFilterOpen(false)} className="dv-btn dv-btn-primary flex-1">
-                Xem {list.length} vai
+                {tx("Xem")} {tx(list.length)} {tx("vai")}
               </button>
             </div>
           </div>

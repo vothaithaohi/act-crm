@@ -1,5 +1,7 @@
 'use client';
 
+
+import { LangSwitch, useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { Clapperboard } from 'lucide-react';
@@ -7,11 +9,12 @@ import { useDvvnHref } from './base-path';
 import { SiteMenu } from './site-menu';
 
 export function DvLogo({ className = '' }: { className?: string }) {
+  const tx = useTx();
   return (
     <span className={`inline-flex items-center gap-2 font-semibold tracking-[-0.02em] ${className}`}>
       <Clapperboard className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden="true" />
       <span>
-        DienVien<span className="text-[var(--dv-text-secondary)]">VN</span>
+        {tx("DienVien")}<span className="text-[var(--dv-text-secondary)]">{tx("VN")}</span>
       </span>
     </span>
   );
@@ -22,12 +25,13 @@ export function DvLogo({ className = '' }: { className?: string }) {
  * minimal: chỉ logo ở giữa (trang gửi riêng cho nhà sản xuất: /nsx, /kho).
  */
 export function GlobalNav({ minimal = false }: { minimal?: boolean }) {
+  const tx = useTx();
   const href = useDvvnHref();
   if (!minimal) return <SiteMenu />;
   return (
-    <nav className="dv-nav" aria-label="DienVienVN">
+    <nav className="dv-nav" aria-label={tx("DienVienVN")}>
       <div className="mx-auto flex h-full max-w-[1024px] items-center justify-center px-4 md:px-[22px]">
-        <Link href={href('/')} className="text-[17px] text-[#1d1d1f]" aria-label="DienVienVN — Trang chủ">
+        <Link href={href('/')} className="text-[17px] text-[#1d1d1f]" aria-label={tx("DienVienVN — Trang chủ")}>
           <DvLogo />
         </Link>
       </div>
@@ -36,24 +40,26 @@ export function GlobalNav({ minimal = false }: { minimal?: boolean }) {
 }
 
 export function SiteFooter() {
+  const tx = useTx();
   const href = useDvvnHref();
   return (
     <footer className="bg-[var(--dv-bg-alt)] text-[var(--dv-text-secondary)]">
       <div className="mx-auto max-w-[980px] px-4 py-5 md:px-[22px]">
         <div className="dv-small space-y-2 border-b border-[#d2d2d7] pb-4">
           <p>
-            Hồ sơ diễn viên chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa
-            hoặc xoá hồ sơ bất kỳ lúc nào.
+            {tx("Hồ sơ diễn viên chỉ được dùng để giới thiệu diễn viên tới đạo diễn và nhà sản xuất. Bạn có thể yêu cầu chỉnh sửa hoặc xoá hồ sơ bất kỳ lúc nào.")}
           </p>
         </div>
         <div className="dv-small flex flex-col gap-2 pt-4 md:flex-row md:items-center md:justify-between">
-          <p>Bản quyền © 2026 DienVienVN. Bảo lưu mọi quyền.</p>
+          <p>{tx("Bản quyền © 2026 DienVienVN. Bảo lưu mọi quyền.")}</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Link href={href('/nop-ho-so')} className="hover:underline">Nộp hồ sơ diễn viên</Link>
+            <Link href={href('/nop-ho-so')} className="hover:underline">{tx("Nộp hồ sơ diễn viên")}</Link>
             <span className="text-[#d2d2d7]">|</span>
-            <Link href={href('/tuyen-dung')} className="hover:underline">Tuyển dụng ekip</Link>
+            <Link href={href('/tuyen-dung')} className="hover:underline">{tx("Tuyển dụng ekip")}</Link>
             <span className="text-[#d2d2d7]">|</span>
-            <span>Việt Nam</span>
+            <span>{tx("Việt Nam")}</span>
+            <span className="text-[#d2d2d7]">|</span>
+            <LangSwitch className="-mx-1.5" />
           </div>
         </div>
       </div>
@@ -63,6 +69,7 @@ export function SiteFooter() {
 
 /** Hiệu ứng hiện dần khi cuộn tới, giống các section trên apple.com. */
 export function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const tx = useTx();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -87,7 +94,7 @@ export function Reveal({ children, className = '', delay = 0 }: { children: Reac
   }, []);
   return (
     <div ref={ref} className={`dv-reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>
-      {children}
+      {tx(children)}
     </div>
   );
 }

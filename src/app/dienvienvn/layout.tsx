@@ -2,11 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
 import { BasePathProvider } from '@/components/dienvienvn/base-path';
+import { LangProvider } from '@/components/dienvienvn/i18n';
+import { dictFor, getLang } from '@/lib/dienvienvn/i18n/server';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
 import { TalentDrawerProvider } from '@/components/dienvienvn/talent-drawer';
 import { ImpersonationBar } from '@/components/dienvienvn/impersonation-bar';
 import { CommunityPrompt } from '@/components/dienvienvn/community-prompt';
 import './dienvienvn.css';
+import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
 /** Google Analytics 4 của DienVienVN (chỉ chạy trên tên miền dienvienvn.com). */
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-HSCCK5DSHP';
@@ -15,7 +18,7 @@ const TITLE = 'DienVienVN — Đúng người. Đúng vai.';
 const DESCRIPTION =
   'DienVienVN kết nối diễn viên Việt với đạo diễn và nhà sản xuất đang casting. Chính thức ra mắt 11.11.2026 — cổng nộp hồ sơ diễn viên đã mở.';
 
-export const metadata: Metadata = {
+const META: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: TITLE,
   description: DESCRIPTION,
@@ -46,8 +49,10 @@ export const viewport: Viewport = {
 export default async function DienVienVNLayout({ children }: { children: React.ReactNode }) {
   const h = await headers();
   const base = h.get('x-dienvienvn-base') ?? '/dienvienvn';
-  const onPublicDomain = base === '';
+  const onPublicDomain = base === '' || base === '/en';
+  const lang = await getLang();
   return (
+    <LangProvider lang={lang} dict={dictFor(lang)}>
     <BasePathProvider base={base}>
       <div className="dv-root">
         <TalentDrawerProvider>{children}</TalentDrawerProvider>
@@ -63,5 +68,9 @@ export default async function DienVienVNLayout({ children }: { children: React.R
         </>
       )}
     </BasePathProvider>
+    </LangProvider>
   );
 }
+
+/** Tiêu đề / mô tả theo ngôn ngữ trang (bản /en dịch sang tiếng Anh). */
+export const generateMetadata = () => localizeMetadata(META);

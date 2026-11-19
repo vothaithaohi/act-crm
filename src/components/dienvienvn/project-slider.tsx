@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, ChevronRight } from 'lucide-react';
@@ -29,6 +31,7 @@ function backdropOf(id: string) {
 
 /** Thẻ dự án (ảnh nền + loại dự án, tên, số vai, nút Ứng tuyển) — dùng chung cho trang chủ mới và /du-an. */
 export function ProjectCard({ project: p, href }: { project: PublicProject; href: string }) {
+  const tx = useTx();
   return (
     <Link
       href={href}
@@ -38,13 +41,13 @@ export function ProjectCard({ project: p, href }: { project: PublicProject; href
       <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       <span className="relative">
         <span className="block text-[12px] font-semibold uppercase tracking-[0.06em] text-white/70">
-          {projectTypeLabel(p.project_type)}
-          {p.deadline ? ` · Hạn ${formatVnDate(p.deadline)}` : ''}
+          {tx(projectTypeLabel(p.project_type))}
+          {tx(p.deadline ? ` · Hạn ${formatVnDate(p.deadline)}` : '')}
         </span>
-        <span className="dv-display mt-1.5 line-clamp-2 block text-[22px] font-semibold leading-[1.2] md:text-[24px]">{p.display_name}</span>
-        <span className="mt-1 block text-[14px] text-white/75">{p.roles.length} vai đang tuyển</span>
+        <span className="dv-display mt-1.5 line-clamp-2 block text-[22px] font-semibold leading-[1.2] md:text-[24px]">{tx(p.display_name)}</span>
+        <span className="mt-1 block text-[14px] text-white/75">{tx(p.roles.length)} {tx("vai đang tuyển")}</span>
         <span className="mt-5 flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-white text-[14px] font-semibold text-[#1d1d1f] transition-colors group-hover:bg-[#f0f0f2]">
-          Ứng tuyển <ArrowUpRight className="h-4 w-4" />
+          {tx("Ứng tuyển")} <ArrowUpRight className="h-4 w-4" />
         </span>
       </span>
     </Link>
@@ -53,6 +56,7 @@ export function ProjectCard({ project: p, href }: { project: PublicProject; href
 
 /** Trang chủ mới: "Dự án đang casting" dạng thẻ trượt ngang, tối đa 6 dự án, nhiều hơn thì có nút xem tất cả. */
 export function ProjectSlider() {
+  const tx = useTx();
   const href = useDvvnHref();
   const [projects, setProjects] = useState<PublicProject[] | null>(null);
   const track = useRef<HTMLUListElement>(null);
@@ -90,8 +94,8 @@ export function ProjectSlider() {
       <div className="mx-auto max-w-[1100px] px-4">
         <Reveal className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="dv-display dv-headline">Dự án đang casting.</h2>
-            <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">Vuốt hoặc kéo ngang để xem. Chọn vai phù hợp và ứng tuyển ngay hôm nay.</p>
+            <h2 className="dv-display dv-headline">{tx("Dự án đang casting.")}</h2>
+            <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{tx("Vuốt hoặc kéo ngang để xem. Chọn vai phù hợp và ứng tuyển ngay hôm nay.")}</p>
           </div>
         </Reveal>
       </div>
@@ -99,7 +103,7 @@ export function ProjectSlider() {
       <ul
         ref={track}
         className="dv-scroll-x mx-auto mt-10 flex max-w-[1100px] snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 px-4 pb-2"
-        aria-label="Dự án đang casting"
+        aria-label={tx("Dự án đang casting")}
       >
         {shown.map(p => {
           const path = href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`);
@@ -123,7 +127,7 @@ export function ProjectSlider() {
       {projects.length > MAX_CARDS && (
         <div className="mt-8 text-center">
           <Link href={href('/du-an')} className="dv-btn dv-btn-secondary">
-            Xem tất cả {projects.length} dự án <ChevronRight className="h-4 w-4" />
+            {tx("Xem tất cả")} {tx(projects.length)} {tx("dự án")} <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
       )}

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useState } from 'react';
 import { LAUNCH_AT_MS } from '@/lib/dienvienvn/casting-form';
 
@@ -25,6 +27,7 @@ function getRemaining(now: number): Remaining {
 
 /** Một thẻ số lật: nửa trên lật xuống để lộ số mới, giống đồng hồ lật cơ học. */
 function FlipDigit({ value }: { value: string }) {
+  const tx = useTx();
   const [state, setState] = useState({ current: value, previous: value, flips: 0 });
 
   useEffect(() => {
@@ -35,18 +38,18 @@ function FlipDigit({ value }: { value: string }) {
   return (
     <div className="dv-flip" aria-hidden="true">
       <div className="dv-flip-half dv-flip-top">
-        <span>{current}</span>
+        <span>{tx(current)}</span>
       </div>
       <div className="dv-flip-half dv-flip-bottom">
-        <span>{flips > 0 ? previous : current}</span>
+        <span>{tx(flips > 0 ? previous : current)}</span>
       </div>
       {flips > 0 && (
         <>
           <div key={`t${flips}`} className="dv-flip-half dv-flip-top dv-flap-top">
-            <span>{previous}</span>
+            <span>{tx(previous)}</span>
           </div>
           <div key={`b${flips}`} className="dv-flip-half dv-flip-bottom dv-flap-bottom">
-            <span>{current}</span>
+            <span>{tx(current)}</span>
           </div>
         </>
       )}
@@ -55,6 +58,7 @@ function FlipDigit({ value }: { value: string }) {
 }
 
 function FlipGroup({ value, label, minDigits = 2 }: { value: number | null; label: string; minDigits?: number }) {
+  const tx = useTx();
   const text = value === null ? '0'.repeat(minDigits) : String(value).padStart(minDigits, '0');
   return (
     <div className="flex flex-col items-center">
@@ -64,13 +68,14 @@ function FlipGroup({ value, label, minDigits = 2 }: { value: number | null; labe
         ))}
       </div>
       <span className="mt-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#86868b] md:mt-4 md:text-[14px]">
-        {label}
+        {tx(label)}
       </span>
     </div>
   );
 }
 
 export function FlipCountdown() {
+  const tx = useTx();
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
@@ -87,7 +92,7 @@ export function FlipCountdown() {
   return (
     <div className="dv-clock w-full">
       <p className="sr-only" aria-live="off">
-        {srText}
+        {tx(srText)}
       </p>
 
       {/* Mobile: lưới 2x2 — Desktop: một hàng có dấu hai chấm */}

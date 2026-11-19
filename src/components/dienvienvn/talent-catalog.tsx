@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Lock, Search } from 'lucide-react';
@@ -25,6 +27,7 @@ function ageSpan(t: ProducerTalent): [number, number] | null {
 
 /** Link kho diễn viên gửi NSX: toàn bộ hồ sơ đã duyệt, lọc theo giới tính / tuổi / chiều cao / từ khoá. */
 export function TalentCatalog({ token }: { token: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [data, setData] = useState<CatalogData | null | undefined>(undefined);
   const [error, setError] = useState('');
@@ -101,8 +104,8 @@ export function TalentCatalog({ token }: { token: string }) {
       <>
         <GlobalNav minimal />
         <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
-          <h1 className="dv-display dv-headline">Link không khả dụng.</h1>
-          <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{error}</p>
+          <h1 className="dv-display dv-headline">{tx("Link không khả dụng.")}</h1>
+          <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{tx(error)}</p>
         </main>
       </>
     );
@@ -125,45 +128,44 @@ export function TalentCatalog({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Số đo và thông tin liên hệ</span> của diễn viên chỉ dành cho đối tác
-                  DienVienVN. Bấm &ldquo;Liên hệ&rdquo; trên thẻ diễn viên để đăng ký tài khoản đối tác.
+                  <span className="font-semibold text-[var(--dv-text)]">{tx("Số đo và thông tin liên hệ")}</span> {tx("của diễn viên chỉ dành cho đối tác DienVienVN. Bấm “Liên hệ” trên thẻ diễn viên để đăng ký tài khoản đối tác.")}
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Link href={signupHref} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-                  Đăng ký đối tác
+                  {tx("Đăng ký đối tác")}
                 </Link>
                 <Link href={href(`/dang-nhap?next=${encodeURIComponent(next)}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-                  Đăng nhập
+                  {tx("Đăng nhập")}
                 </Link>
               </div>
             </div>
           )}
 
-          <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Kho diễn viên DienVienVN</p>
-          <h1 className="dv-display dv-headline mt-1">{data.label || 'Diễn viên đã được duyệt.'}</h1>
+          <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Kho diễn viên DienVienVN")}</p>
+          <h1 className="dv-display dv-headline mt-1">{tx(data.label || 'Diễn viên đã được duyệt.')}</h1>
           <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">
-            {data.talents.length} hồ sơ đã được DienVienVN duyệt
+            {tx(data.talents.length)} {tx("hồ sơ đã được DienVienVN duyệt")}
           </p>
 
           <div className="sticky top-11 z-20 -mx-4 mt-6 bg-[var(--dv-bg-alt)]/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-full min-w-[220px] md:w-auto md:flex-1">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dv-text-tertiary)]" />
-                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tên, kỹ năng, phim đã đóng…" className={`${inputCls} !pl-11`} aria-label="Tìm diễn viên" />
+                <input value={q} onChange={e => setQ(e.target.value)} placeholder={tx("Tên, kỹ năng, phim đã đóng…")} className={`${inputCls} !pl-11`} aria-label={tx("Tìm diễn viên")} />
               </div>
-              <select value={gender} onChange={e => setGender(e.target.value as typeof gender)} className={`${inputCls} !w-[150px]`} aria-label="Giới tính">
-                <option value="all">Mọi giới tính</option>
-                <option value="female">Nữ</option>
-                <option value="male">Nam</option>
+              <select value={gender} onChange={e => setGender(e.target.value as typeof gender)} className={`${inputCls} !w-[150px]`} aria-label={tx("Giới tính")}>
+                <option value="all">{tx("Mọi giới tính")}</option>
+                <option value="female">{tx("Nữ")}</option>
+                <option value="male">{tx("Nam")}</option>
               </select>
               <div className="flex items-center gap-1.5">
-                <input inputMode="numeric" value={ageMin} onChange={e => setAgeMin(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder="Tuổi từ" aria-label="Tuổi từ" className={`${inputCls} !w-[84px] !px-3`} />
-                <input inputMode="numeric" value={ageMax} onChange={e => setAgeMax(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder="đến" aria-label="Tuổi đến" className={`${inputCls} !w-[68px] !px-3`} />
+                <input inputMode="numeric" value={ageMin} onChange={e => setAgeMin(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder={tx("Tuổi từ")} aria-label={tx("Tuổi từ")} className={`${inputCls} !w-[84px] !px-3`} />
+                <input inputMode="numeric" value={ageMax} onChange={e => setAgeMax(e.target.value.replace(/\D/g, '').slice(0, 2))} placeholder={tx("đến")} aria-label={tx("Tuổi đến")} className={`${inputCls} !w-[68px] !px-3`} />
               </div>
               <div className="flex items-center gap-1.5">
-                <input inputMode="numeric" value={hMin} onChange={e => setHMin(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="Cao từ" aria-label="Chiều cao từ" className={`${inputCls} !w-[84px] !px-3`} />
-                <input inputMode="numeric" value={hMax} onChange={e => setHMax(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="đến" aria-label="Chiều cao đến" className={`${inputCls} !w-[68px] !px-3`} />
+                <input inputMode="numeric" value={hMin} onChange={e => setHMin(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder={tx("Cao từ")} aria-label={tx("Chiều cao từ")} className={`${inputCls} !w-[84px] !px-3`} />
+                <input inputMode="numeric" value={hMax} onChange={e => setHMax(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder={tx("đến")} aria-label={tx("Chiều cao đến")} className={`${inputCls} !w-[68px] !px-3`} />
               </div>
               <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1">
                 {(['grid', 'list'] as const).map(m => (
@@ -173,16 +175,16 @@ export function TalentCatalog({ token }: { token: string }) {
                     onClick={() => setMode(m)}
                     className={`h-9 flex-1 whitespace-nowrap rounded-full px-4 text-[14px] ${mode === m ? 'bg-[#1d1d1f] text-white' : 'text-[var(--dv-text-secondary)]'}`}
                   >
-                    {m === 'grid' ? 'Lưới' : 'Danh sách'}
+                    {tx(m === 'grid' ? 'Lưới' : 'Danh sách')}
                   </button>
                 ))}
               </div>
             </div>
-            <p className="mt-2 text-[13px] text-[var(--dv-text-secondary)]">{filtered.length} diễn viên phù hợp</p>
+            <p className="mt-2 text-[13px] text-[var(--dv-text-secondary)]">{tx(filtered.length)} {tx("diễn viên phù hợp")}</p>
           </div>
 
           {filtered.length === 0 ? (
-            <p className="mt-10 text-center text-[15px] text-[var(--dv-text-secondary)]">Không có diễn viên phù hợp bộ lọc.</p>
+            <p className="mt-10 text-center text-[15px] text-[var(--dv-text-secondary)]">{tx("Không có diễn viên phù hợp bộ lọc.")}</p>
           ) : mode === 'grid' ? (
             <ul className="mt-4 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.slice(0, shown).map(t => (
@@ -199,12 +201,12 @@ export function TalentCatalog({ token }: { token: string }) {
           {filtered.length > shown && (
             <div className="mt-8 text-center">
               <button type="button" onClick={() => setShown(s => s + PAGE)} className="dv-btn dv-btn-secondary">
-                Xem thêm {Math.min(PAGE, filtered.length - shown)} diễn viên
+                {tx("Xem thêm")} {tx(Math.min(PAGE, filtered.length - shown))} {tx("diễn viên")}
               </button>
             </div>
           )}
           <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
-            Tài liệu do DienVienVN cung cấp cho đạo diễn và nhà sản xuất. Vui lòng không chia sẻ công khai.
+            {tx("Tài liệu do DienVienVN cung cấp cho đạo diễn và nhà sản xuất. Vui lòng không chia sẻ công khai.")}
           </p>
         </div>
       </main>

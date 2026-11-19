@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { ChevronRight, Clapperboard, GraduationCap, LockKeyhole, ScanFace } from 'lucide-react';
@@ -19,14 +21,15 @@ function Cta({
   secondary?: { href: string; label: string };
   tone?: 'primary' | 'light';
 }) {
+  const tx = useTx();
   return (
     <div className="mt-5 flex flex-wrap items-center justify-center gap-3 md:mt-6 md:gap-4">
       <Link href={primary.href} className={`dv-btn ${tone === 'light' ? 'dv-btn-light' : 'dv-btn-primary'}`}>
-        {primary.label}
+        {tx(primary.label)}
       </Link>
       {secondary && (
         <Link href={secondary.href} className="dv-btn dv-btn-secondary">
-          {secondary.label}
+          {tx(secondary.label)}
         </Link>
       )}
     </div>
@@ -34,7 +37,8 @@ function Cta({
 }
 
 function TileIcon({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto mt-10 flex h-[150px] items-center justify-center md:h-[190px]">{children}</div>;
+  const tx = useTx();
+  return <div className="mx-auto mt-10 flex h-[150px] items-center justify-center md:h-[190px]">{tx(children)}</div>;
 }
 
 /**
@@ -51,6 +55,7 @@ const HOMEPAGE_SECTIONS = {
 } as const;
 
 export function DienVienVNHome() {
+  const tx = useTx();
   const href = useDvvnHref();
   const launched = useLaunched();
   const session = useActorSession();
@@ -76,11 +81,11 @@ export function DienVienVNHome() {
           className="dv-tile dv-tile-dark flex min-h-[100svh] scroll-mt-11 flex-col items-center justify-center px-4 py-16 md:py-20"
         >
           <Reveal>
-            <h1 className="dv-display dv-hero-headline text-[#f5f5f7]">DienVienVN</h1>
-            <p className="dv-display dv-hero-subhead mt-1.5 text-[#a1a1a6]">Đúng người. Đúng vai.</p>
-            <p className="dv-eyebrow mt-10 text-[#86868b] md:mt-12">{launched ? 'Đã ra mắt' : 'Coming Soon'}</p>
+            <h1 className="dv-display dv-hero-headline text-[#f5f5f7]">{tx("DienVienVN")}</h1>
+            <p className="dv-display dv-hero-subhead mt-1.5 text-[#a1a1a6]">{tx("Đúng người. Đúng vai.")}</p>
+            <p className="dv-eyebrow mt-10 text-[#86868b] md:mt-12">{tx(launched ? 'Đã ra mắt' : 'Coming Soon')}</p>
             <h2 className="dv-display dv-headline mt-2 text-[#f5f5f7]">
-              {launched ? 'DienVienVN đã chính thức ra mắt.' : 'Chính thức ra mắt 11.11.2026.'}
+              {tx(launched ? 'DienVienVN đã chính thức ra mắt.' : 'Chính thức ra mắt 11.11.2026.')}
             </h2>
           </Reveal>
           <Reveal delay={120} className="mt-10 w-full md:mt-14">
@@ -92,13 +97,13 @@ export function DienVienVNHome() {
               <p className="mt-5 text-[14px] text-[#86868b]">
                 {session.status === 'signed-in' ? (
                   <Link href={href('/tai-khoan')} className="text-[#f5f5f7] underline underline-offset-4 hover:decoration-2">
-                    Tài khoản của bạn
+                    {tx("Tài khoản của bạn")}
                   </Link>
                 ) : (
                   <>
-                    Đã có hồ sơ?{' '}
+                    {tx("Đã có hồ sơ?")}{tx(' ')}
                     <Link href={href('/dang-nhap')} className="text-[#f5f5f7] underline underline-offset-4 hover:decoration-2">
-                      Đăng nhập
+                      {tx("Đăng nhập")}
                     </Link>
                   </>
                 )}
@@ -115,10 +120,10 @@ export function DienVienVNHome() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div id="dien-vien" className="dv-tile dv-tile-alt scroll-mt-11 px-6 pb-10 pt-12 md:pt-14">
                 <Reveal>
-                  <h3 className="dv-display dv-headline">Hồ sơ diễn viên</h3>
-                  <p className="dv-subhead mt-2">Một hồ sơ. Mọi dự án.</p>
+                  <h3 className="dv-display dv-headline">{tx("Hồ sơ diễn viên")}</h3>
+                  <p className="dv-subhead mt-2">{tx("Một hồ sơ. Mọi dự án.")}</p>
                   <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                    Số đo, kỹ năng, kinh nghiệm và ảnh chân dung — trình bày đúng chuẩn mà đạo diễn casting cần xem.
+                    {tx("Số đo, kỹ năng, kinh nghiệm và ảnh chân dung — trình bày đúng chuẩn mà đạo diễn casting cần xem.")}
                   </p>
                   <Cta primary={{ href: href('/nop-ho-so'), label: 'Bắt đầu' }} secondary={{ href: `${href('/')}#quy-trinh`, label: 'Các bước' }} />
                   <TileIcon>
@@ -129,12 +134,12 @@ export function DienVienVNHome() {
 
               <div id="nha-san-xuat" className="dv-tile dv-tile-dark scroll-mt-11 px-6 pb-10 pt-12 md:pt-14">
                 <Reveal>
-                  <h3 className="dv-display dv-headline text-[#f5f5f7]">Nhà sản xuất</h3>
-                  <p className="dv-subhead mt-2 text-[#f5f5f7]">Tìm đúng gương mặt, nhanh hơn.</p>
+                  <h3 className="dv-display dv-headline text-[#f5f5f7]">{tx("Nhà sản xuất")}</h3>
+                  <p className="dv-subhead mt-2 text-[#f5f5f7]">{tx("Tìm đúng gương mặt, nhanh hơn.")}</p>
                   <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-[1.47] text-[#a1a1a6]">
-                    Lọc theo độ tuổi, chiều cao, giọng vùng miền, kỹ năng và mức độ sẵn sàng vai diễn — chỉ trong vài giây.
+                    {tx("Lọc theo độ tuổi, chiều cao, giọng vùng miền, kỹ năng và mức độ sẵn sàng vai diễn — chỉ trong vài giây.")}
                   </p>
-                  <p className="mt-5 text-[17px] text-[#86868b]">Mở cho đối tác từ 11.11.2026</p>
+                  <p className="mt-5 text-[17px] text-[#86868b]">{tx("Mở cho đối tác từ 11.11.2026")}</p>
                   <TileIcon>
                     <Clapperboard className="h-28 w-28 text-[#f5f5f7] md:h-36 md:w-36" strokeWidth={0.9} />
                   </TileIcon>
@@ -143,14 +148,14 @@ export function DienVienVNHome() {
 
               <div id="dao-tao" className="dv-tile dv-tile-dark scroll-mt-11 px-6 pb-10 pt-12 md:pt-14">
                 <Reveal>
-                  <h3 className="dv-display dv-headline text-[#f5f5f7]">Đào tạo diễn xuất</h3>
-                  <p className="dv-subhead mt-2 text-[#f5f5f7]">Từ lớp học đến trường quay.</p>
+                  <h3 className="dv-display dv-headline text-[#f5f5f7]">{tx("Đào tạo diễn xuất")}</h3>
+                  <p className="dv-subhead mt-2 text-[#f5f5f7]">{tx("Từ lớp học đến trường quay.")}</p>
                   <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-[1.47] text-[#a1a1a6]">
-                    Ghi nhận quá trình học tại ACT Academy và các trường nghệ thuật chính quy trên cả nước.
+                    {tx("Ghi nhận quá trình học tại ACT Academy và các trường nghệ thuật chính quy trên cả nước.")}
                   </p>
                   <div className="dv-on-dark mt-5">
                     <Link href={href('/nop-ho-so')} className="dv-link text-[17px]">
-                      Khai báo trong hồ sơ <ChevronRight className="h-4 w-4" />
+                      {tx("Khai báo trong hồ sơ")} <ChevronRight className="h-4 w-4" />
                     </Link>
                   </div>
                   <TileIcon>
@@ -161,10 +166,10 @@ export function DienVienVNHome() {
 
               <div className="dv-tile dv-tile-alt px-6 pb-10 pt-12 md:pt-14">
                 <Reveal>
-                  <h3 className="dv-display dv-headline">Riêng tư</h3>
-                  <p className="dv-subhead mt-2">Hồ sơ của bạn. Quyền của bạn.</p>
+                  <h3 className="dv-display dv-headline">{tx("Riêng tư")}</h3>
+                  <p className="dv-subhead mt-2">{tx("Hồ sơ của bạn. Quyền của bạn.")}</p>
                   <p className="mx-auto mt-3 max-w-[380px] text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                    Thông tin chỉ được đội ngũ casting xem xét và gửi tới nhà sản xuất khi có vai phù hợp với bạn.
+                    {tx("Thông tin chỉ được đội ngũ casting xem xét và gửi tới nhà sản xuất khi có vai phù hợp với bạn.")}
                   </p>
                   <TileIcon>
                     <LockKeyhole className="h-28 w-28 text-[#1d1d1f] md:h-36 md:w-36" strokeWidth={0.9} />
@@ -179,9 +184,9 @@ export function DienVienVNHome() {
         {HOMEPAGE_SECTIONS.process && (
           <section id="quy-trinh" className="dv-tile dv-tile-light scroll-mt-11 px-4 py-16 md:py-24">
             <Reveal>
-              <h2 className="dv-display dv-headline">Bảy bước. Khoảng mười phút.</h2>
+              <h2 className="dv-display dv-headline">{tx("Bảy bước. Khoảng mười phút.")}</h2>
               <p className="dv-subhead mx-auto mt-3 max-w-[640px] text-[var(--dv-text-secondary)]">
-                Điền theo từng phần, quay lại chỉnh sửa bất kỳ lúc nào trước khi nộp.
+                {tx("Điền theo từng phần, quay lại chỉnh sửa bất kỳ lúc nào trước khi nộp.")}
               </p>
             </Reveal>
             <ol className="mx-auto mt-12 grid max-w-[980px] grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
@@ -189,9 +194,9 @@ export function DienVienVNHome() {
                 <li key={s.id}>
                   <Reveal delay={i * 60} className="h-full">
                     <div className="h-full rounded-[18px] bg-[var(--dv-bg-alt)] p-6">
-                      <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">Bước {s.id}</span>
-                      <p className="mt-1 text-[19px] font-semibold leading-[1.21] tracking-[0.012em]">{s.title}</p>
-                      <p className="mt-2 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{s.desc}</p>
+                      <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{tx("Bước")} {tx(s.id)}</span>
+                      <p className="mt-1 text-[19px] font-semibold leading-[1.21] tracking-[0.012em]">{tx(s.title)}</p>
+                      <p className="mt-2 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{tx(s.desc)}</p>
                     </div>
                   </Reveal>
                 </li>
@@ -202,9 +207,9 @@ export function DienVienVNHome() {
                     href={href('/nop-ho-so')}
                     className="group flex h-full flex-col justify-between rounded-[18px] bg-[#1d1d1f] p-6 text-white transition-colors hover:bg-[#424245]"
                   >
-                    <span className="text-[14px] font-semibold text-white/75">Sẵn sàng?</span>
+                    <span className="text-[14px] font-semibold text-white/75">{tx("Sẵn sàng?")}</span>
                     <span className="mt-1 flex items-center gap-1 text-[19px] font-semibold leading-[1.21]">
-                      Nộp hồ sơ diễn viên <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                      {tx("Nộp hồ sơ diễn viên")} <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </Link>
                 </Reveal>
@@ -217,7 +222,7 @@ export function DienVienVNHome() {
         {HOMEPAGE_SECTIONS.closing && (
           <section className="dv-tile dv-tile-alt px-4 py-16 md:py-20">
             <Reveal>
-              <h2 className="dv-display dv-headline">Vai diễn tiếp theo có thể là của bạn.</h2>
+              <h2 className="dv-display dv-headline">{tx("Vai diễn tiếp theo có thể là của bạn.")}</h2>
               <Cta primary={apply} />
             </Reveal>
           </section>

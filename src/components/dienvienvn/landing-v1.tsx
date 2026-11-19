@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, ChevronRight, Clapperboard, GraduationCap, Video } from 'lucide-react';
@@ -54,6 +56,7 @@ const SERVICES = [
 
 /* ---------- 1. Mở đầu ---------- */
 function Hero({ audience, onAudience }: { audience: Audience; onAudience: (a: Audience) => void }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const talent = audience === 'talent';
   return (
@@ -72,14 +75,14 @@ function Hero({ audience, onAudience }: { audience: Audience; onAudience: (a: Au
             aria-pressed={audience === id}
             className={`h-9 rounded-full px-4 text-[14px] font-medium transition-colors ${audience === id ? 'bg-white text-[#1d1d1f] shadow-sm' : 'text-[var(--dv-text-secondary)]'}`}
           >
-            {label}
+            {tx(label)}
           </button>
         ))}
       </div>
       <Reveal>
-        <p className="mt-10 text-[15px] text-[var(--dv-text-secondary)] md:text-[17px]">DienVienVN</p>
+        <p className="mt-10 text-[15px] text-[var(--dv-text-secondary)] md:text-[17px]">{tx("DienVienVN")}</p>
         <h1 className="dv-display mx-auto mt-3 max-w-[900px] text-[40px] font-semibold leading-[1.08] tracking-[-0.01em] md:text-[64px]">
-          Cộng đồng diễn viên trung thực – minh bạch – hết mình.
+          {tx("Cộng đồng diễn viên trung thực – minh bạch – hết mình.")}
         </h1>
       </Reveal>
       <Reveal delay={120} className="mt-9 flex justify-center">
@@ -87,7 +90,7 @@ function Hero({ audience, onAudience }: { audience: Audience; onAudience: (a: Au
           href={href(talent ? '/nop-ho-so' : '/doi-tac/du-an/moi')}
           className="inline-flex h-11 items-center gap-2 rounded-full bg-[#e8e8ed] px-6 text-[15px] font-medium text-[#1d1d1f] transition-colors hover:bg-[#dcdce1]"
         >
-          {talent ? 'Nộp hồ sơ diễn viên' : 'Đăng casting call'} <span aria-hidden>👋</span>
+          {tx(talent ? 'Nộp hồ sơ diễn viên' : 'Đăng casting call')} <span aria-hidden>👋</span>
         </Link>
       </Reveal>
     </section>
@@ -111,6 +114,7 @@ const STORY = [
 ];
 
 function LightUp({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const tx = useTx();
   const ref = useRef<HTMLDivElement>(null);
   const [lit, setLit] = useState(false);
   useEffect(() => {
@@ -124,27 +128,28 @@ function LightUp({ children, className = '' }: { children: React.ReactNode; clas
   }, []);
   return (
     <div ref={ref} className={`transition-colors duration-700 ${lit ? 'text-[#f5f5f7]' : 'text-[#48484a]'} ${className}`}>
-      {children}
+      {tx(children)}
     </div>
   );
 }
 
 export function Story() {
+  const tx = useTx();
   return (
     <section className="bg-[#111111] px-4 py-20 md:py-28">
       <div className="mx-auto grid max-w-[1100px] gap-10 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] md:gap-16">
         <div>
           <h2 className="dv-display text-[28px] font-semibold leading-[1.15] text-[#f5f5f7] md:sticky md:top-28 md:text-[34px]">
-            Đúng người.
+            {tx("Đúng người.")}
             <br />
-            Đúng vai.
+            {tx("Đúng vai.")}
           </h2>
         </div>
         <div className="space-y-16 md:space-y-24">
           {STORY.map(s => (
             <LightUp key={s.title}>
-              <h3 className="dv-display text-[34px] font-semibold leading-[1.1] md:text-[48px]">{s.title}</h3>
-              <p className="mt-5 max-w-[620px] text-[16px] leading-[1.6] md:text-[17px]">{s.body}</p>
+              <h3 className="dv-display text-[34px] font-semibold leading-[1.1] md:text-[48px]">{tx(s.title)}</h3>
+              <p className="mt-5 max-w-[620px] text-[16px] leading-[1.6] md:text-[17px]">{tx(s.body)}</p>
             </LightUp>
           ))}
         </div>
@@ -186,6 +191,7 @@ function useDragScroll() {
 }
 
 export function Ecosystem({ audience, stats }: { audience: Audience; stats: HomeStats }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const talent = audience === 'talent';
   const [projects, setProjects] = useState<PublicProject[] | null>(null);
@@ -209,17 +215,17 @@ export function Ecosystem({ audience, stats }: { audience: Audience; stats: Home
       <div className="mx-auto max-w-[1100px] border-t border-white/15 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 className="dv-display max-w-[420px] text-[28px] font-semibold leading-[1.15] text-[#f5f5f7] md:text-[34px]">
-            {talent ? 'Lịch casting đang mở cho bạn.' : 'Gương mặt sẵn sàng cho vai diễn tiếp theo.'}
+            {tx(talent ? 'Lịch casting đang mở cho bạn.' : 'Gương mặt sẵn sàng cho vai diễn tiếp theo.')}
           </h2>
           <Link href={stat.href} className="inline-flex items-center gap-1 text-[15px] text-[#f5f5f7] underline-offset-4 hover:underline">
-            {talent ? 'Xem tất cả dự án' : 'Xem tất cả diễn viên'} <ChevronRight className="h-4 w-4" />
+            {tx(talent ? 'Xem tất cả dự án' : 'Xem tất cả diễn viên')} <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
       <div ref={track} className="dv-scroll-x mx-auto mt-10 flex max-w-[1100px] cursor-grab snap-x snap-mandatory gap-4 overflow-x-auto pb-2 active:cursor-grabbing">
         <Link href={stat.href} className={`${card} flex aspect-[4/5] flex-col justify-end rounded-[22px] bg-[#0071e3] p-6 text-white`}>
-          <span className="dv-display text-[56px] font-semibold leading-none">{stat.value}</span>
-          <span className="mt-2 text-[17px]">{stat.label}</span>
+          <span className="dv-display text-[56px] font-semibold leading-none">{tx(stat.value)}</span>
+          <span className="mt-2 text-[17px]">{tx(stat.label)}</span>
         </Link>
         {talent
           ? (projects || []).slice(0, 8).map(p => (
@@ -230,16 +236,16 @@ export function Ecosystem({ audience, stats }: { audience: Audience; stats: Home
           : stats.faces.slice(0, 10).map(f => (
               <TalentLink key={f.username} username={f.username} draggable={false} className={`${card} group relative block aspect-[4/5] overflow-hidden rounded-[22px] bg-[#1d1d1f]`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.photo} alt={f.name} loading="lazy" draggable={false} className="absolute inset-0 h-full w-full object-cover object-[50%_18%] transition duration-500 group-hover:scale-[1.04]" />
+                <img src={f.photo} alt={tx(f.name)} loading="lazy" draggable={false} className="absolute inset-0 h-full w-full object-cover object-[50%_18%] transition duration-500 group-hover:scale-[1.04]" />
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-5 pb-5 pt-16 text-white">
-                  {f.act && <span className="mb-1.5 inline-flex rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1d1d1f]">ACT Academy</span>}
-                  <span className="block text-[17px] font-semibold">{f.name}</span>
+                  {f.act && <span className="mb-1.5 inline-flex rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1d1d1f]">{tx("ACT Academy")}</span>}
+                  <span className="block text-[17px] font-semibold">{tx(f.name)}</span>
                 </span>
               </TalentLink>
             ))}
         {talent && projects === null && <div className={`${card} aspect-[4/5] animate-pulse rounded-[22px] bg-white/5`} />}
       </div>
-      {empty && <p className="mx-auto mt-4 max-w-[1100px] text-[15px] text-[#a1a1a6]">{talent ? 'Hiện chưa có dự án nào đang nhận hồ sơ.' : 'Các hồ sơ đã duyệt sẽ sớm xuất hiện tại đây.'}</p>}
+      {empty && <p className="mx-auto mt-4 max-w-[1100px] text-[15px] text-[#a1a1a6]">{tx(talent ? 'Hiện chưa có dự án nào đang nhận hồ sơ.' : 'Các hồ sơ đã duyệt sẽ sớm xuất hiện tại đây.')}</p>}
     </section>
   );
 }
@@ -250,6 +256,7 @@ export function Ecosystem({ audience, stats }: { audience: Audience; stats: Home
  * Ảnh hiện đủ sáng (không làm mờ) để giữ chất lượng gốc.
  */
 export function Services({ photo, photos }: { photo?: string; photos?: string[] }) {
+  const tx = useTx();
   const [picked, setPicked] = useState<string | null>(null);
   useEffect(() => {
     if (!photos?.length) return;
@@ -270,25 +277,24 @@ export function Services({ photo, photos }: { photo?: string; photos?: string[] 
           </div>
         </Reveal>
         <Reveal delay={100}>
-          <h2 className="dv-display text-[32px] font-semibold leading-[1.12] text-[#f5f5f7] md:text-[40px]">Nâng cấp bản thân. Nâng tầm hồ sơ.</h2>
+          <h2 className="dv-display text-[32px] font-semibold leading-[1.12] text-[#f5f5f7] md:text-[40px]">{tx("Nâng cấp bản thân. Nâng tầm hồ sơ.")}</h2>
           <p className="mt-4 text-[16px] leading-[1.6] text-[#a1a1a6] md:text-[17px]">
-            Hồ sơ tốt mở ra nhiều cơ hội hơn. Các dịch vụ hỗ trợ diễn viên giúp bạn chuẩn bị kỹ năng, self-tape và hình ảnh đúng chuẩn đạo diễn và nhà sản
-            xuất cần xem.
+            {tx("Hồ sơ tốt mở ra nhiều cơ hội hơn. Các dịch vụ hỗ trợ diễn viên giúp bạn chuẩn bị kỹ năng, self-tape và hình ảnh đúng chuẩn đạo diễn và nhà sản xuất cần xem.")}
           </p>
           <ul className="mt-8 space-y-4">
             {SERVICES.map(s => (
               <li key={s.title} className="flex gap-4">
                 <s.icon className="mt-0.5 h-6 w-6 shrink-0 text-[#f5f5f7]" strokeWidth={1.6} />
                 <div>
-                  <p className="text-[17px] font-semibold text-[#f5f5f7]">{s.title}</p>
-                  <p className="mt-0.5 text-[15px] leading-[1.5] text-[#a1a1a6]">{s.desc}</p>
+                  <p className="text-[17px] font-semibold text-[#f5f5f7]">{tx(s.title)}</p>
+                  <p className="mt-0.5 text-[15px] leading-[1.5] text-[#a1a1a6]">{tx(s.desc)}</p>
                 </div>
               </li>
             ))}
           </ul>
           {/* Dịch vụ chưa mở: nút chỉ báo "Sắp ra mắt", không bấm được */}
           <span aria-disabled="true" className="mt-8 inline-flex h-10 cursor-default items-center rounded-full border border-white/30 px-5 text-[14px] text-[#a1a1a6]">
-            Sắp ra mắt
+            {tx("Sắp ra mắt")}
           </span>
         </Reveal>
       </div>
@@ -298,6 +304,7 @@ export function Services({ photo, photos }: { photo?: string; photos?: string[] 
 
 /* ---------- 5. Mạng lưới đối tác: logo tự trượt chậm, kéo / vuốt tay để xem nhanh ---------- */
 export function Partners() {
+  const tx = useTx();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -390,17 +397,16 @@ export function Partners() {
     <section className="bg-white py-20 md:py-28">
       <div className="mx-auto max-w-[1100px] px-4">
         <div className="grid gap-6 border-t border-[#d2d2d7] pt-14 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] md:gap-16">
-          <h2 className="dv-display text-[28px] font-semibold leading-[1.15] md:text-[34px]">Mạng lưới đối tác.</h2>
+          <h2 className="dv-display text-[28px] font-semibold leading-[1.15] md:text-[34px]">{tx("Mạng lưới đối tác.")}</h2>
           <p className="max-w-[560px] text-[16px] leading-[1.6] text-[var(--dv-text-secondary)] md:text-[17px]">
-            DienVienVN được xây dựng bởi A.C.T Academy – thành viên của Embassy Education Group. Cùng các thành viên trong hệ sinh thái giáo dục nghệ thuật,
-            thể thao và sáng tạo, chúng tôi nâng chuẩn đào tạo và kết nối tài năng.
+            {tx("DienVienVN được xây dựng bởi A.C.T Academy – thành viên của Embassy Education Group. Cùng các thành viên trong hệ sinh thái giáo dục nghệ thuật, thể thao và sáng tạo, chúng tôi nâng chuẩn đào tạo và kết nối tài năng.")}
           </p>
         </div>
       </div>
       <div
         ref={ref}
         className="dv-scroll-x mt-12 flex cursor-grab select-none overflow-x-auto active:cursor-grabbing"
-        aria-label="Logo thành viên Embassy Education Group"
+        aria-label={tx("Logo thành viên Embassy Education Group")}
       >
         {[...PARTNERS, ...PARTNERS].map((p, i) => (
           <a
@@ -408,14 +414,14 @@ export function Partners() {
             href={p.url}
             target="_blank"
             rel="noopener noreferrer"
-            title={p.name}
+            title={tx(p.name)}
             aria-hidden={i >= PARTNERS.length ? true : undefined}
             tabIndex={i >= PARTNERS.length ? -1 : undefined}
             draggable={false}
             className="flex h-28 w-[170px] shrink-0 items-center justify-center px-6 md:h-32 md:w-[200px]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/dienvienvn/partners/${p.file}`} alt={p.name} loading="lazy" draggable={false} className="max-h-20 max-w-full object-contain md:max-h-24" />
+            <img src={`/dienvienvn/partners/${p.file}`} alt={tx(p.name)} loading="lazy" draggable={false} className="max-h-20 max-w-full object-contain md:max-h-24" />
           </a>
         ))}
       </div>
@@ -428,6 +434,7 @@ export function Partners() {
 
 /* ---------- 6. Chỉ trang đối tác: tìm ekip / đăng tuyển ---------- */
 export function CrewCta({ photo }: { photo?: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   return (
     <section className="relative overflow-hidden bg-[#111111] px-4 py-28 text-center text-[#f5f5f7] md:py-40">
@@ -437,16 +444,16 @@ export function CrewCta({ photo }: { photo?: string }) {
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-black/80" />
       <Reveal className="relative">
-        <h2 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">Xây dựng ekip cho dự án của bạn.</h2>
+        <h2 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">{tx("Xây dựng ekip cho dự án của bạn.")}</h2>
         <p className="mx-auto mt-4 max-w-[560px] text-[16px] leading-[1.6] text-[#d2d2d7] md:text-[17px]">
-          Từ trợ lý casting, quay phim, ánh sáng đến hậu kỳ – tìm người làm nghề phù hợp hoặc đăng tin tuyển dụng miễn phí trên DienVienVN.
+          {tx("Từ trợ lý casting, quay phim, ánh sáng đến hậu kỳ – tìm người làm nghề phù hợp hoặc đăng tin tuyển dụng miễn phí trên DienVienVN.")}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href={href('/tuyen-dung')} className="inline-flex h-10 items-center rounded-full bg-white px-5 text-[14px] font-medium text-[#1d1d1f] hover:bg-[#e8e8ed]">
-            Tìm ekip
+            {tx("Tìm ekip")}
           </Link>
           <Link href={href('/doi-tac/tuyen-dung/moi')} className="inline-flex h-10 items-center rounded-full border border-white/60 px-5 text-[14px] font-medium text-white hover:bg-white/10">
-            Đăng tuyển
+            {tx("Đăng tuyển")}
           </Link>
         </div>
       </Reveal>
@@ -456,6 +463,7 @@ export function CrewCta({ photo }: { photo?: string }) {
 
 /** Trang chủ mới 01 (bản xem trước): theo tài liệu của Thảo, hiệu ứng tham khảo talentsystems.com, logo đối tác Embassy Education Group. */
 export function DienVienVNLandingV1({ stats }: { stats: HomeStats }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [audience, setAudience] = useState<Audience>('talent');
 

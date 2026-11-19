@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Bản nháp tin tuyển ekip: tự lưu 5 giây sau lần sửa cuối + nút "Lưu nháp". Dùng chung cho CRM và cổng đối tác.
@@ -117,12 +119,13 @@ const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('vi-VN', 
 
 /** Dòng trạng thái nhỏ cạnh nút: "Đã lưu nháp lúc 10:42". */
 export function DraftStatus({ state, className = '' }: { state: DraftSaveState; className?: string }) {
+  const tx = useTx();
   if (state.status === 'idle') return null;
   const text =
     state.status === 'saving' ? 'Đang lưu nháp…' : state.status === 'saved' ? `Đã lưu nháp lúc ${time(state.at)}` : state.error || 'Chưa lưu được nháp.';
   return (
     <span role="status" className={`${state.status === 'error' ? 'text-[#b00020]' : ''} ${className}`}>
-      {text}
+      {tx(text)}
     </span>
   );
 }

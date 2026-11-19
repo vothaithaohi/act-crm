@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import React from 'react';
 import { CalendarDays, Clapperboard, Clock, Coins, MapPin, UsersRound } from 'lucide-react';
 import type { PublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
@@ -137,10 +139,11 @@ export function parseJd(text: string): Block[] {
 
 /** "**đậm**" trong JD → chữ đậm. */
 function Inline({ text }: { text: string }) {
+  const tx = useTx();
   const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
   return (
     <>
-      {parts.map((p, i) => (/^\*\*[^*]+\*\*$/.test(p) ? <strong key={i} className="font-semibold text-[var(--dv-text)]">{p.slice(2, -2)}</strong> : <React.Fragment key={i}>{p}</React.Fragment>))}
+      {parts.map((p, i) => (/^\*\*[^*]+\*\*$/.test(p) ? <strong key={i} className="font-semibold text-[var(--dv-text)]">{p.slice(2, -2)}</strong> : <React.Fragment key={i}>{tx(p)}</React.Fragment>))}
     </>
   );
 }

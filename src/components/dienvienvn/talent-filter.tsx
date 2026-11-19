@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useState } from 'react';
 import { ChevronDown, RotateCcw, X } from 'lucide-react';
 import type { PublicTalent } from '@/lib/dienvienvn/public-talents';
@@ -140,38 +142,41 @@ const digits = (v: string, n: number) => v.replace(/\D/g, '').slice(0, n);
 const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const tx = useTx();
   return (
     <div className="border-b border-[#f0f0f2] py-5 last:border-0">
-      <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{title}</p>
-      {children}
+      <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx(title)}</p>
+      {tx(children)}
     </div>
   );
 }
 
 /** Nhóm dạng xổ xuống: bấm vào tiêu đề mới hiện các lựa chọn (mở sẵn khi nhóm đang có lựa chọn). */
 function Dropdown({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  const tx = useTx();
   const [open, setOpen] = useState(count > 0);
   return (
     <div className="border-b border-[#f0f0f2] last:border-0">
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 py-4 text-left">
         <span className="text-[15px] font-semibold">
-          {title}
-          {count > 0 && <span className="ml-2 rounded-full bg-[#1d1d1f] px-2 py-0.5 text-[12px] text-white">{count}</span>}
+          {tx(title)}
+          {count > 0 && <span className="ml-2 rounded-full bg-[#1d1d1f] px-2 py-0.5 text-[12px] text-white">{tx(count)}</span>}
         </span>
         <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--dv-text-secondary)] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="pb-5">{children}</div>}
+      {open && <div className="pb-5">{tx(children)}</div>}
     </div>
   );
 }
 
 function Chips({ options, value, onToggle }: { options: { id: string; label: string; badge?: string }[]; value: string[]; onToggle: (id: string) => void }) {
+  const tx = useTx();
   return (
     <div className="flex flex-wrap gap-2">
       {options.map(o => (
         <button key={o.id} type="button" className="dv-chip" aria-pressed={value.includes(o.id)} onClick={() => onToggle(o.id)}>
-          {o.label}
-          {o.badge && <span className="ml-1.5 text-[12px] opacity-60">{o.badge}</span>}
+          {tx(o.label)}
+          {o.badge && <span className="ml-1.5 text-[12px] opacity-60">{tx(o.badge)}</span>}
         </button>
       ))}
     </div>
@@ -179,13 +184,14 @@ function Chips({ options, value, onToggle }: { options: { id: string; label: str
 }
 
 function Range({ min, max, onMin, onMax, unit, len }: { min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void; unit: string; len: number }) {
+  const tx = useTx();
   const cls = 'dv-input !h-11 !py-0 text-[15px]';
   return (
     <div className="flex items-center gap-2">
-      <input inputMode="numeric" value={min} onChange={e => onMin(digits(e.target.value, len))} placeholder="Từ" aria-label={`${unit} từ`} className={cls} />
+      <input inputMode="numeric" value={min} onChange={e => onMin(digits(e.target.value, len))} placeholder={tx("Từ")} aria-label={tx(`${unit} từ`)} className={cls} />
       <span className="text-[var(--dv-text-tertiary)]">–</span>
-      <input inputMode="numeric" value={max} onChange={e => onMax(digits(e.target.value, len))} placeholder="Đến" aria-label={`${unit} đến`} className={cls} />
-      <span className="w-10 shrink-0 text-[14px] text-[var(--dv-text-secondary)]">{unit}</span>
+      <input inputMode="numeric" value={max} onChange={e => onMax(digits(e.target.value, len))} placeholder={tx("Đến")} aria-label={tx(`${unit} đến`)} className={cls} />
+      <span className="w-10 shrink-0 text-[14px] text-[var(--dv-text-secondary)]">{tx(unit)}</span>
     </div>
   );
 }
@@ -203,6 +209,7 @@ export function TalentFilterPanel({
   resultCount: number;
   onClose: () => void;
 }) {
+  const tx = useTx();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -228,24 +235,24 @@ export function TalentFilterPanel({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Bộ lọc diễn viên"
+        aria-label={tx("Bộ lọc diễn viên")}
         onClick={e => e.stopPropagation()}
         className="dv-slide-in-left flex h-full w-full max-w-[460px] flex-col bg-white shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[#f0f0f2] px-5 py-4">
           <div>
-            <p className="text-[19px] font-semibold">Bộ lọc diễn viên</p>
+            <p className="text-[19px] font-semibold">{tx("Bộ lọc diễn viên")}</p>
             <p className="text-[13px] text-[var(--dv-text-secondary)]">
-              Diễn viên phù hợp: <span className="font-semibold text-[var(--dv-text)]">{resultCount}</span> / {talents.length}
+              {tx("Diễn viên phù hợp:")} <span className="font-semibold text-[var(--dv-text)]">{tx(resultCount)}</span> / {tx(talents.length)}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Đóng" className="-mr-1 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+          <button type="button" onClick={onClose} aria-label={tx("Đóng")} className="-mr-1 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5">
-          <Section title="Giới tính diễn viên">
+          <Section title={tx("Giới tính diễn viên")}>
             <div className="flex rounded-full border border-[#d2d2d7] bg-white p-1">
               {(
                 [
@@ -260,24 +267,24 @@ export function TalentFilterPanel({
                   onClick={() => set({ gender: id })}
                   className={`h-9 flex-1 rounded-full text-[14px] ${value.gender === id ? 'bg-[#1d1d1f] text-white' : 'text-[var(--dv-text-secondary)]'}`}
                 >
-                  {label}
+                  {tx(label)}
                 </button>
               ))}
             </div>
           </Section>
-          <Section title="Độ tuổi">
+          <Section title={tx("Độ tuổi")}>
             <Range min={value.ageMin} max={value.ageMax} onMin={v => set({ ageMin: v })} onMax={v => set({ ageMax: v })} unit="tuổi" len={2} />
           </Section>
-          <Section title="Chiều cao">
+          <Section title={tx("Chiều cao")}>
             <Range min={value.hMin} max={value.hMax} onMin={v => set({ hMin: v })} onMax={v => set({ hMax: v })} unit="cm" len={3} />
           </Section>
-          <Section title="Cân nặng">
+          <Section title={tx("Cân nặng")}>
             <Range min={value.wMin} max={value.wMax} onMin={v => set({ wMin: v })} onMax={v => set({ wMax: v })} unit="kg" len={3} />
           </Section>
           {skillSections.map(sec => {
             const picked = value.skills[sec.group] || [];
             return (
-              <Dropdown key={sec.group} title={sec.title} count={picked.length}>
+              <Dropdown key={sec.group} title={tx(sec.title)} count={picked.length}>
                 <Chips
                   options={[...sec.main.map(o => ({ id: o, label: o })), ...(sec.hasOther ? [{ id: OTHER_SKILL, label: 'Khác' }] : [])]}
                   value={picked}
@@ -286,16 +293,16 @@ export function TalentFilterPanel({
               </Dropdown>
             );
           })}
-          <Dropdown title="Mức độ sẵn sàng cho vai diễn" count={value.willingness.length}>
+          <Dropdown title={tx("Mức độ sẵn sàng cho vai diễn")} count={value.willingness.length}>
             <Chips options={WILLINGNESS} value={value.willingness} onToggle={id => set({ willingness: toggle(value.willingness, id) })} />
           </Dropdown>
           {cities.length > 0 && (
-            <Dropdown title="Sẵn sàng quay tại tỉnh thành" count={value.cities.length}>
+            <Dropdown title={tx("Sẵn sàng quay tại tỉnh thành")} count={value.cities.length}>
               <Chips options={cities.map(c => ({ id: c, label: c }))} value={value.cities} onToggle={id => set({ cities: toggle(value.cities, id) })} />
             </Dropdown>
           )}
           {schools.length > 0 && (
-            <Dropdown title="Nơi đào tạo diễn xuất" count={value.schools.length}>
+            <Dropdown title={tx("Nơi đào tạo diễn xuất")} count={value.schools.length}>
               <Chips
                 options={(allSchools ? schools : schools.slice(0, SCHOOLS_SHOWN)).map(x => ({ id: x, label: x }))}
                 value={value.schools}
@@ -303,7 +310,7 @@ export function TalentFilterPanel({
               />
               {schools.length > SCHOOLS_SHOWN && (
                 <button type="button" onClick={() => setAllSchools(v => !v)} className="mt-3 text-[14px] font-semibold underline underline-offset-2">
-                  {allSchools ? 'Thu gọn' : `Xem thêm ${schools.length - SCHOOLS_SHOWN} nơi đào tạo`}
+                  {tx(allSchools ? 'Thu gọn' : `Xem thêm ${schools.length - SCHOOLS_SHOWN} nơi đào tạo`)}
                 </button>
               )}
             </Dropdown>
@@ -312,10 +319,10 @@ export function TalentFilterPanel({
 
         <div className="flex gap-2 border-t border-[#f0f0f2] px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
           <button type="button" onClick={() => onChange(EMPTY_FILTER)} disabled={n === 0} className="dv-btn dv-btn-secondary disabled:opacity-40">
-            <RotateCcw className="h-4 w-4" /> Xoá lọc
+            <RotateCcw className="h-4 w-4" /> {tx("Xoá lọc")}
           </button>
           <button type="button" onClick={onClose} className="dv-btn dv-btn-primary flex-1">
-            Xem {resultCount} diễn viên
+            {tx("Xem")} {tx(resultCount)} {tx("diễn viên")}
           </button>
         </div>
       </div>

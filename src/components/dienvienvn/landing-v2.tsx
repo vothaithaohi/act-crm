@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useRef, useState } from 'react';
 import type { HomeStats } from '@/lib/dienvienvn/home-stats';
 import { useDvvnHref } from './base-path';
@@ -37,6 +39,7 @@ const compact = (s: string) =>
 const isPinned = (f: { username: string; name: string }) => PINNED_HERO.includes(f.username) || PINNED_HERO.includes(compact(f.name));
 
 export function DienVienVNLandingV2({ stats }: { stats: HomeStats }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [audience, setAudience] = useState<Audience>('talent');
   // Gương mặt bốc ngẫu nhiên mỗi lần vào trang / F5, xoay vòng không lặp cho tới khi đi hết hồ sơ.

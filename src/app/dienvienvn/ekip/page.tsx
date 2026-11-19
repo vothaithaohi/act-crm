@@ -3,10 +3,11 @@ import { CrewJobBoard } from '@/components/dienvienvn/crew-jobs';
 import { getServiceDb } from '@/lib/projects/server';
 import { CrewJob, crewJobActive, toPublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
+import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: 'Việc làm ekip — DienVienVN',
   description: 'Việc làm ekip làm phim, quảng cáo, MV: trợ lý casting, quay phim, ánh sáng, trang điểm… Tạo tài khoản ekip, lưu CV và ứng tuyển trên DienVienVN.',
   alternates: { canonical: `${SITE_URL}/ekip` }
@@ -22,3 +23,6 @@ export default async function CrewPortalPage() {
   }
   return <CrewJobBoard jobs={jobs} variant="crew" />;
 }
+
+/** Tiêu đề / mô tả theo ngôn ngữ trang (bản /en dịch sang tiếng Anh). */
+export const generateMetadata = () => localizeMetadata(META);

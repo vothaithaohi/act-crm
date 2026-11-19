@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import { DienVienVNLandingV2 } from '@/components/dienvienvn/landing-v2';
 import { getHomeStats } from '@/lib/dienvienvn/home-stats';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
+import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
-export const metadata: Metadata = {
+const META: Metadata = {
   alternates: { canonical: `${SITE_URL}/` }
 };
 
@@ -43,3 +44,6 @@ export default async function DienVienVNHomePage() {
     </>
   );
 }
+
+/** Tiêu đề / mô tả theo ngôn ngữ trang (bản /en dịch sang tiếng Anh). */
+export const generateMetadata = () => localizeMetadata(META);

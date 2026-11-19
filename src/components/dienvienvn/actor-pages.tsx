@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -24,17 +26,19 @@ function safeNext(next: string | null, fallback: string) {
 }
 
 function Shell({ children, narrow = true }: { children: React.ReactNode; narrow?: boolean }) {
+  const tx = useTx();
   return (
     <>
       <GlobalNav />
       <main className="min-h-[calc(100vh-44px)] bg-[var(--dv-bg-alt)] px-4 py-10 md:py-16">
-        <div className={`mx-auto ${narrow ? 'max-w-[460px]' : 'max-w-[980px]'}`}>{children}</div>
+        <div className={`mx-auto ${narrow ? 'max-w-[460px]' : 'max-w-[980px]'}`}>{tx(children)}</div>
       </main>
     </>
   );
 }
 
 function Notice({ tone = 'error', children }: { tone?: 'error' | 'info'; children: React.ReactNode }) {
+  const tx = useTx();
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
@@ -43,7 +47,7 @@ function Notice({ tone = 'error', children }: { tone?: 'error' | 'info'; childre
       }`}
     >
       {tone === 'error' ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : <Check className="mt-0.5 h-4 w-4 shrink-0" />}
-      <span>{children}</span>
+      <span>{tx(children)}</span>
     </div>
   );
 }
@@ -57,12 +61,13 @@ function Spinner() {
 }
 
 function Unavailable() {
+  const tx = useTx();
   return (
     <Shell>
       <div className="dv-card p-8 text-center">
-        <h1 className="dv-display text-[28px] font-semibold">Chưa mở tài khoản.</h1>
+        <h1 className="dv-display text-[28px] font-semibold">{tx("Chưa mở tài khoản.")}</h1>
         <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-          Hệ thống tài khoản diễn viên chưa được kết nối. Vui lòng quay lại sau.
+          {tx("Hệ thống tài khoản diễn viên chưa được kết nối. Vui lòng quay lại sau.")}
         </p>
       </div>
     </Shell>
@@ -71,30 +76,31 @@ function Unavailable() {
 
 /* ---------------- Màn hình yêu cầu đăng nhập ---------------- */
 export function LoginGate({ title, description, next, partner = false }: { title: string; description: string; next: string; partner?: boolean }) {
+  const tx = useTx();
   const href = useDvvnHref();
   return (
     <Shell>
       <div className="dv-card px-6 py-10 text-center sm:px-10">
         <KeyRound className="mx-auto h-10 w-10 text-[var(--dv-text)]" strokeWidth={1.4} />
-        <h1 className="dv-display mt-5 text-[28px] font-semibold leading-[1.14]">{title}</h1>
-        <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{description}</p>
+        <h1 className="dv-display mt-5 text-[28px] font-semibold leading-[1.14]">{tx(title)}</h1>
+        <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{tx(description)}</p>
         <div className="mt-8 flex flex-col gap-3">
           <Link href={href(`/dang-nhap?next=${encodeURIComponent(next)}`)} className="dv-btn dv-btn-primary w-full">
-            Đăng nhập
+            {tx("Đăng nhập")}
           </Link>
           {partner ? (
             <Link href={href('/doi-tac/dang-ky')} className="dv-btn dv-btn-secondary w-full">
-              Chưa có tài khoản? Đăng ký đối tác
+              {tx("Chưa có tài khoản? Đăng ký đối tác")}
             </Link>
           ) : (
             <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-secondary w-full">
-              Chưa có hồ sơ? Nộp hồ sơ diễn viên
+              {tx("Chưa có hồ sơ? Nộp hồ sơ diễn viên")}
             </Link>
           )}
         </div>
         {partner && (
           <p className="mt-6 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-            Dành cho đạo diễn, nhà sản xuất và đối tác casting. Tài khoản đăng ký mới được DienVienVN duyệt trước khi sử dụng.
+            {tx("Dành cho đạo diễn, nhà sản xuất và đối tác casting. Tài khoản đăng ký mới được DienVienVN duyệt trước khi sử dụng.")}
           </p>
         )}
       </div>
@@ -104,6 +110,7 @@ export function LoginGate({ title, description, next, partner = false }: { title
 
 /* ---------------- Gửi lại email kích hoạt / quên mật khẩu ---------------- */
 function ResendForm({ initialEmail = '', onBack }: { initialEmail?: string; onBack?: () => void }) {
+  const tx = useTx();
   const [email, setEmail] = useState(initialEmail);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -134,12 +141,11 @@ function ResendForm({ initialEmail = '', onBack }: { initialEmail?: string; onBa
     return (
       <div className="space-y-5">
         <Notice tone="info">
-          Nếu <span className="font-semibold">{email.trim()}</span> đã có hồ sơ trên DienVienVN, bạn sẽ nhận được email trong vài phút. Hãy
-          kiểm tra cả mục Spam / Quảng cáo.
+          {tx("Nếu")} <span className="font-semibold">{tx(email.trim())}</span> {tx("đã có hồ sơ trên DienVienVN, bạn sẽ nhận được email trong vài phút. Hãy kiểm tra cả mục Spam / Quảng cáo.")}
         </Notice>
         {onBack && (
           <button type="button" onClick={onBack} className="dv-btn dv-btn-secondary w-full">
-            Quay lại đăng nhập
+            {tx("Quay lại đăng nhập")}
           </button>
         )}
       </div>
@@ -149,19 +155,19 @@ function ResendForm({ initialEmail = '', onBack }: { initialEmail?: string; onBa
   return (
     <form onSubmit={send} className="space-y-5" noValidate>
       <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-        Nhập email bạn đã dùng khi nộp hồ sơ. Chúng tôi sẽ gửi link để kích hoạt tài khoản hoặc đặt lại mật khẩu.
+        {tx("Nhập email bạn đã dùng khi nộp hồ sơ. Chúng tôi sẽ gửi link để kích hoạt tài khoản hoặc đặt lại mật khẩu.")}
       </p>
       <Field label="Email" required htmlFor="resend-email">
-        <TextInput id="resend-email" type="email" inputMode="email" autoComplete="email" placeholder="ban@email.com" value={email} onChange={e => setEmail(e.target.value)} invalid={!!error} />
+        <TextInput id="resend-email" type="email" inputMode="email" autoComplete="email" placeholder={tx("ban@email.com")} value={email} onChange={e => setEmail(e.target.value)} invalid={!!error} />
       </Field>
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice>{tx(error)}</Notice>}
       <button type="submit" disabled={sending} className="dv-btn dv-btn-primary w-full">
         {sending && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
-        {sending ? 'Đang gửi…' : 'Gửi email'}
+        {tx(sending ? 'Đang gửi…' : 'Gửi email')}
       </button>
       {onBack && (
         <button type="button" onClick={onBack} className="dv-btn dv-btn-ghost w-full">
-          Quay lại đăng nhập
+          {tx("Quay lại đăng nhập")}
         </button>
       )}
     </form>
@@ -169,6 +175,7 @@ function ResendForm({ initialEmail = '', onBack }: { initialEmail?: string; onBa
 }
 
 function PasswordInput({ id, value, onChange, autoComplete, invalid }: { id: string; value: string; onChange: (v: string) => void; autoComplete: string; invalid?: boolean }) {
+  const tx = useTx();
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
@@ -176,7 +183,7 @@ function PasswordInput({ id, value, onChange, autoComplete, invalid }: { id: str
       <button
         type="button"
         onClick={() => setShow(s => !s)}
-        aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+        aria-label={tx(show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu')}
         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -187,6 +194,7 @@ function PasswordInput({ id, value, onChange, autoComplete, invalid }: { id: str
 
 /* ---------------- Đăng nhập ---------------- */
 export function ActorLogin() {
+  const tx = useTx();
   const href = useDvvnHref();
   const router = useRouter();
   const params = useSearchParams();
@@ -228,22 +236,22 @@ export function ActorLogin() {
   return (
     <Shell>
       <div className="dv-card px-6 py-9 sm:px-10">
-        <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{mode === 'login' ? (forPartner ? 'Đăng nhập đối tác.' : 'Đăng nhập.') : 'Nhận lại email.'}</h1>
+        <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{tx(mode === 'login' ? (forPartner ? 'Đăng nhập đối tác.' : 'Đăng nhập.') : 'Nhận lại email.')}</h1>
         {mode === 'login' ? (
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
             <Field label="Email" htmlFor="login-email">
-              <TextInput id="login-email" type="email" inputMode="email" autoComplete="email" placeholder="ban@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+              <TextInput id="login-email" type="email" inputMode="email" autoComplete="email" placeholder={tx("ban@email.com")} value={email} onChange={e => setEmail(e.target.value)} />
             </Field>
             <Field label="Mật khẩu" htmlFor="login-password">
               <PasswordInput id="login-password" autoComplete="current-password" value={password} onChange={setPassword} />
             </Field>
-            {error && <Notice>{error}</Notice>}
+            {error && <Notice>{tx(error)}</Notice>}
             <button type="submit" disabled={busy} className="dv-btn dv-btn-primary w-full">
               {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
-              {busy ? 'Đang đăng nhập…' : 'Đăng nhập'}
+              {tx(busy ? 'Đang đăng nhập…' : 'Đăng nhập')}
             </button>
             <button type="button" onClick={() => setMode('resend')} className="block w-full text-center text-[14px] text-[var(--dv-text-secondary)] underline underline-offset-2 hover:text-[var(--dv-text)]">
-              Quên mật khẩu / chưa nhận được email kích hoạt?
+              {tx("Quên mật khẩu / chưa nhận được email kích hoạt?")}
             </button>
           </form>
         ) : (
@@ -254,23 +262,23 @@ export function ActorLogin() {
       </div>
       {forPartner ? (
         <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
-          Chưa có tài khoản đối tác?{' '}
+          {tx("Chưa có tài khoản đối tác?")}{tx(' ')}
           <Link href={href('/doi-tac/dang-ky')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-            Đăng ký đối tác
+            {tx("Đăng ký đối tác")}
           </Link>
         </p>
       ) : forCrew ? (
         <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
-          Chưa có tài khoản ekip?{' '}
+          {tx("Chưa có tài khoản ekip?")}{tx(' ')}
           <Link href={href('/ekip/dang-ky')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-            Đăng ký tài khoản ekip
+            {tx("Đăng ký tài khoản ekip")}
           </Link>
         </p>
       ) : (
         <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
-          Chưa có hồ sơ?{' '}
+          {tx("Chưa có hồ sơ?")}{tx(' ')}
           <Link href={href('/nop-ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-            Nộp hồ sơ diễn viên
+            {tx("Nộp hồ sơ diễn viên")}
           </Link>
         </p>
       )}
@@ -282,6 +290,7 @@ export function ActorLogin() {
 type LinkType = 'invite' | 'recovery' | 'signup' | 'magiclink' | 'email';
 
 export function SetPassword() {
+  const tx = useTx();
   const href = useDvvnHref();
   const router = useRouter();
   const [phase, setPhase] = useState<'verifying' | 'form' | 'invalid' | 'done'>('verifying');
@@ -399,21 +408,20 @@ export function SetPassword() {
           <>
             {isNetworkError({ message: reason }) ? (
               <>
-                <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">Không kết nối được.</h1>
+                <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{tx("Không kết nối được.")}</h1>
                 <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                  Trình duyệt chưa kết nối được tới máy chủ xác thực. Hãy kiểm tra mạng, tắt trình chặn quảng cáo, hoặc mở link bằng Chrome / Safari
-                  (không mở trong Zalo, Gmail) rồi bấm lại link trong email. Nếu vẫn không được, nhập email để nhận link mới.
+                  {tx("Trình duyệt chưa kết nối được tới máy chủ xác thực. Hãy kiểm tra mạng, tắt trình chặn quảng cáo, hoặc mở link bằng Chrome / Safari (không mở trong Zalo, Gmail) rồi bấm lại link trong email. Nếu vẫn không được, nhập email để nhận link mới.")}
                 </p>
               </>
             ) : (
               <>
-                <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">Link đã hết hạn.</h1>
+                <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{tx("Link đã hết hạn.")}</h1>
                 <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                  Link trong email chỉ dùng được một lần, trong vòng 1 giờ, và chỉ <strong>email mới nhất</strong> còn hiệu lực. Nhập email để nhận link mới, rồi mở link trong email mới nhất.
+                  {tx("Link trong email chỉ dùng được một lần, trong vòng 1 giờ, và chỉ")} <strong>{tx("email mới nhất")}</strong> {tx("còn hiệu lực. Nhập email để nhận link mới, rồi mở link trong email mới nhất.")}
                 </p>
               </>
             )}
-            {reason && <p className="mt-2 text-[12px] text-[var(--dv-text-tertiary)]">Mã lỗi: {reason}</p>}
+            {reason && <p className="mt-2 text-[12px] text-[var(--dv-text-tertiary)]">{tx("Mã lỗi:")} {tx(reason)}</p>}
             <div className="mt-6">
               <ResendForm />
             </div>
@@ -423,15 +431,15 @@ export function SetPassword() {
         {phase === 'form' && (
           <form onSubmit={submit} className="space-y-5" noValidate>
             <div>
-              <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{title}</h1>
+              <h1 className="dv-display text-[28px] font-semibold leading-[1.14]">{tx(title)}</h1>
               <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                {kind === 'invite' && audience === 'crew'
+                {tx(kind === 'invite' && audience === 'crew'
                   ? 'Tạo mật khẩu để đăng nhập, hoàn thiện hồ sơ ekip và ứng tuyển việc làm ekip.'
                   : kind === 'invite' && audience === 'partner'
                   ? 'Tạo mật khẩu để đăng nhập cổng đối tác DienVienVN. Bạn dùng được cổng đối tác sau khi DienVienVN duyệt tài khoản.'
                   : kind === 'invite'
                   ? 'Email của bạn đã được xác nhận. Tạo mật khẩu để đăng nhập, chỉnh sửa hồ sơ và ứng tuyển các dự án đang casting.'
-                  : `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`}
+                  : `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`)}
               </p>
             </div>
             <Field label="Mật khẩu mới" required htmlFor="new-password" hint={`Ít nhất ${MIN_PASSWORD} ký tự.`}>
@@ -440,10 +448,10 @@ export function SetPassword() {
             <Field label="Nhập lại mật khẩu" required htmlFor="confirm-password">
               <PasswordInput id="confirm-password" autoComplete="new-password" value={confirm} onChange={setConfirm} invalid={!!error && password !== confirm} />
             </Field>
-            {error && <Notice>{error}</Notice>}
+            {error && <Notice>{tx(error)}</Notice>}
             <button type="submit" disabled={busy} className="dv-btn dv-btn-primary w-full">
               {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
-              {busy ? 'Đang lưu…' : kind === 'invite' ? 'Tạo mật khẩu' : 'Lưu mật khẩu'}
+              {tx(busy ? 'Đang lưu…' : kind === 'invite' ? 'Tạo mật khẩu' : 'Lưu mật khẩu')}
             </button>
           </form>
         )}
@@ -452,9 +460,9 @@ export function SetPassword() {
           <div className="py-6 text-center">
             <Check className="mx-auto h-10 w-10" strokeWidth={2.5} />
             <p className="dv-display mt-4 text-[24px] font-semibold" role="status">
-              Đã lưu mật khẩu.
+              {tx("Đã lưu mật khẩu.")}
             </p>
-            <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">Đang chuyển tới tài khoản của bạn…</p>
+            <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">{tx("Đang chuyển tới tài khoản của bạn…")}</p>
           </div>
         )}
       </div>
@@ -485,6 +493,7 @@ const REVIEW_LABEL: Record<AccountData['profile']['review_status'], string> = {
 };
 
 export function ActorAccount() {
+  const tx = useTx();
   const href = useDvvnHref();
   const router = useRouter();
   const params = useSearchParams();
@@ -527,7 +536,7 @@ export function ActorAccount() {
     return (
       <Shell>
         <div className="dv-card p-8 text-center">
-          <p className="text-[15px] leading-[1.47]">{problem}</p>
+          <p className="text-[15px] leading-[1.47]">{tx(problem)}</p>
           <LogoutButton to={href('/')} className="dv-btn dv-btn-secondary mt-6" />
         </div>
       </Shell>
@@ -541,10 +550,10 @@ export function ActorAccount() {
 
   return (
     <Shell narrow={false}>
-      <h1 className="dv-display text-[32px] font-semibold leading-[1.125] md:text-[40px]">Xin chào, {profile.full_name.split(' ').slice(-1)[0]}.</h1>
+      <h1 className="dv-display text-[32px] font-semibold leading-[1.125] md:text-[40px]">{tx("Xin chào,")} {tx(profile.full_name.split(' ').slice(-1)[0])}.</h1>
       {saved && (
         <div className="mt-5 md:max-w-[560px]">
-          <Notice tone="info">Đã lưu thay đổi hồ sơ của bạn.</Notice>
+          <Notice tone="info">{tx("Đã lưu thay đổi hồ sơ của bạn.")}</Notice>
         </div>
       )}
 
@@ -561,23 +570,23 @@ export function ActorAccount() {
             )}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[19px] font-semibold leading-[1.21]">{profile.full_name}</p>
-            <p className="mt-0.5 truncate text-[14px] text-[var(--dv-text-secondary)]">{profile.email}</p>
+            <p className="truncate text-[19px] font-semibold leading-[1.21]">{tx(profile.full_name)}</p>
+            <p className="mt-0.5 truncate text-[14px] text-[var(--dv-text-secondary)]">{tx(profile.email)}</p>
             <p className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
-              <span className="rounded-full bg-[var(--dv-bg-alt)] px-2.5 py-1 font-semibold tracking-[0.04em]">{code}</span>
+              <span className="rounded-full bg-[var(--dv-bg-alt)] px-2.5 py-1 font-semibold tracking-[0.04em]">{tx(code)}</span>
               <span className={`rounded-full px-2.5 py-1 ${profile.review_status === 'approved' ? 'bg-[#1d1d1f] text-white' : 'bg-[var(--dv-bg-alt)] text-[var(--dv-text-secondary)]'}`}>
-                {REVIEW_LABEL[profile.review_status]}
+                {tx(REVIEW_LABEL[profile.review_status])}
               </span>
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:flex-col sm:items-stretch">
           <Link href={href('/tai-khoan/ho-so')} className="dv-btn dv-btn-primary">
-            <Pencil className="h-4 w-4" /> Chỉnh sửa hồ sơ
+            <Pencil className="h-4 w-4" /> {tx("Chỉnh sửa hồ sơ")}
           </Link>
           <div className="flex gap-2">
             <Link href={href('/tao-mat-khau')} className="dv-btn dv-btn-secondary flex-1">
-              Đổi mật khẩu
+              {tx("Đổi mật khẩu")}
             </Link>
             <LogoutButton to={href('/')} icon={false} className="dv-btn dv-btn-secondary flex-1" />
           </div>
@@ -595,45 +604,45 @@ export function ActorAccount() {
 
       <SelftapeLibrary initial={profile.selftapes || []} onChange={list => setData(d => (d ? { ...d, profile: { ...d.profile, selftapes: list } } : d))} />
 
-      <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">Dự án đang casting</h2>
+      <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">{tx("Dự án đang casting")}</h2>
       {projects === null ? (
         <Spinner />
       ) : projects.length === 0 ? (
-        <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">Hiện chưa có dự án nào mở. Chúng tôi sẽ email cho bạn khi có vai phù hợp.</p>
+        <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">{tx("Hiện chưa có dự án nào mở. Chúng tôi sẽ email cho bạn khi có vai phù hợp.")}</p>
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           {projects.map(p => (
             <Link key={p.id} href={href(`/du-an/${projectPathName(p.display_name, p.code) || p.id}`)} className="group flex flex-col rounded-[18px] bg-white p-6 transition-colors hover:bg-[#fafafa]">
               <span className="flex items-center justify-between gap-3 text-[14px] font-semibold text-[var(--dv-text-secondary)]">
-                {projectTypeLabel(p.project_type)}
-                {appliedProjects.has(p.id) && <span className="rounded-full bg-[var(--dv-bg-alt)] px-2.5 py-0.5 text-[12px] text-[var(--dv-text)]">Đã ứng tuyển</span>}
+                {tx(projectTypeLabel(p.project_type))}
+                {appliedProjects.has(p.id) && <span className="rounded-full bg-[var(--dv-bg-alt)] px-2.5 py-0.5 text-[12px] text-[var(--dv-text)]">{tx("Đã ứng tuyển")}</span>}
               </span>
-              <span className="dv-display mt-1 text-[22px] font-semibold leading-[1.18]">{p.display_name}</span>
+              <span className="dv-display mt-1 text-[22px] font-semibold leading-[1.18]">{tx(p.display_name)}</span>
               <span className="mt-2 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-                {[p.location ? provinceLabel(p.location) : null, p.shooting_time, `${p.roles.length} vai đang tuyển`, p.deadline ? `Hạn nộp ${formatVnDate(p.deadline)}` : null]
+                {tx([p.location ? provinceLabel(p.location) : null, p.shooting_time, `${p.roles.length} vai đang tuyển`, p.deadline ? `Hạn nộp ${formatVnDate(p.deadline)}` : null]
                   .filter(Boolean)
-                  .join(' · ')}
+                  .join(' · '))}
               </span>
               <span className="dv-link mt-5 text-[15px]">
-                Xem vai &amp; ứng tuyển <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                {tx("Xem vai & ứng tuyển")} <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </span>
             </Link>
           ))}
         </div>
       )}
 
-      <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">Vai đã ứng tuyển</h2>
+      <h2 className="dv-display mt-12 text-[24px] font-semibold md:text-[28px]">{tx("Vai đã ứng tuyển")}</h2>
       {applications.length === 0 ? (
-        <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">Bạn chưa ứng tuyển vai nào.</p>
+        <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">{tx("Bạn chưa ứng tuyển vai nào.")}</p>
       ) : (
         <ul className="dv-card mt-5 divide-y divide-[#f0f0f2]">
           {applications.map(a => (
             <li key={a.id} className="flex items-center justify-between gap-4 px-5 py-4">
               <div className="min-w-0">
-                <p className="truncate text-[16px] font-semibold">{a.project_name}</p>
-                <p className="truncate text-[14px] text-[var(--dv-text-secondary)]">Vai {a.role_name}</p>
+                <p className="truncate text-[16px] font-semibold">{tx(a.project_name)}</p>
+                <p className="truncate text-[14px] text-[var(--dv-text-secondary)]">{tx("Vai")} {tx(a.role_name)}</p>
               </div>
-              <span className="shrink-0 text-[13px] text-[var(--dv-text-secondary)]">{a.created_at ? formatVnDate(a.created_at) : ''}</span>
+              <span className="shrink-0 text-[13px] text-[var(--dv-text-secondary)]">{tx(a.created_at ? formatVnDate(a.created_at) : '')}</span>
             </li>
           ))}
         </ul>
@@ -659,6 +668,7 @@ function PublicProfileCard({
   /** ACT đã khoá hiển thị công khai */
   locked?: boolean;
 }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(username || '');
@@ -669,7 +679,7 @@ function PublicProfileCard({
   const live = isPublic && approved && !locked;
   // Ẩn / hiện lại hồ sơ trên trang công khai (hồ sơ vẫn được dùng cho casting)
   const togglePublic = async () => {
-    if (isPublic && !window.confirm('Ẩn hồ sơ khỏi trang công khai dienvienvn.com? Hồ sơ vẫn được dùng để casting, bạn có thể hiện lại bất kỳ lúc nào.')) return;
+    if (isPublic && !window.confirm(tx('Ẩn hồ sơ khỏi trang công khai dienvienvn.com? Hồ sơ vẫn được dùng để casting, bạn có thể hiện lại bất kỳ lúc nào.'))) return;
     setError('');
     setBusy(true);
     const res = await actorFetch('/api/dienvienvn/me', {
@@ -704,52 +714,52 @@ function PublicProfileCard({
     <section className="dv-card mt-4 p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold">Trang hồ sơ công khai</p>
+          <p className="text-[15px] font-semibold">{tx("Trang hồ sơ công khai")}</p>
           {editing ? (
             <div className="mt-2 flex items-center gap-1 text-[15px]">
-              <span className="shrink-0 text-[var(--dv-text-secondary)]">dienvienvn.com/</span>
-              <TextInput value={value} onChange={e => setValue(e.target.value.toLowerCase())} aria-label="Username" className="h-10 max-w-[260px]" />
+              <span className="shrink-0 text-[var(--dv-text-secondary)]">{tx("dienvienvn.com/")}</span>
+              <TextInput value={value} onChange={e => setValue(e.target.value.toLowerCase())} aria-label={tx("Username")} className="h-10 max-w-[260px]" />
             </div>
           ) : (
             <p className="mt-1 truncate text-[15px] text-[var(--dv-text-secondary)]">
-              dienvienvn.com/<span className="font-semibold text-[var(--dv-text)]">{username}</span>
+              {tx("dienvienvn.com/")}<span className="font-semibold text-[var(--dv-text)]">{tx(username)}</span>
             </p>
           )}
           <p className="mt-1.5 text-[13px] leading-[1.4] text-[var(--dv-text-tertiary)]">
-            {locked
+            {tx(locked
               ? 'DienVienVN đang tạm ẩn hồ sơ của bạn khỏi trang công khai. Hồ sơ vẫn được dùng để casting. Liên hệ DienVienVN nếu cần hiện lại.'
               : live
               ? 'Đang hiển thị công khai: ảnh, nghệ danh, kỹ năng, kinh nghiệm, đào tạo.'
               : !isPublic
                 ? 'Đang ẩn khỏi trang công khai. Hồ sơ vẫn được dùng để casting.'
-                : 'Sẽ hiển thị công khai sau khi hồ sơ được đội ngũ DienVienVN duyệt.'}
+                : 'Sẽ hiển thị công khai sau khi hồ sơ được đội ngũ DienVienVN duyệt.')}
           </p>
-          {error && <p className="dv-field-error">{error}</p>}
+          {error && <p className="dv-field-error">{tx(error)}</p>}
         </div>
         <div className="flex shrink-0 gap-2">
           {editing ? (
             <>
               <button type="button" onClick={save} disabled={busy} className="dv-btn dv-btn-primary">
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Lưu
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} {tx("Lưu")}
               </button>
               <button type="button" onClick={() => { setEditing(false); setValue(username); setError(''); }} className="dv-btn dv-btn-secondary">
-                Huỷ
+                {tx("Huỷ")}
               </button>
             </>
           ) : (
             <>
               {live && (
                 <Link href={href(`/${username}`)} className="dv-btn dv-btn-secondary">
-                  Xem trang
+                  {tx("Xem trang")}
                 </Link>
               )}
               <button type="button" onClick={() => setEditing(true)} className="dv-btn dv-btn-secondary">
-                Đổi username
+                {tx("Đổi username")}
               </button>
               {!locked && (
               <button type="button" onClick={togglePublic} disabled={busy} className="dv-btn dv-btn-ghost">
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isPublic ? 'Ẩn khỏi trang công khai' : 'Hiện lại công khai'}
+                {tx(isPublic ? 'Ẩn khỏi trang công khai' : 'Hiện lại công khai')}
               </button>
               )}
             </>

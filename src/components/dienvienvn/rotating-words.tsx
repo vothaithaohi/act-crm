@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useState } from 'react';
 
 /**
@@ -7,6 +9,7 @@ import { useEffect, useState } from 'react';
  * Khung giữ bề rộng của từ dài nhất để dòng chữ không bị xô lệch. Người bật giảm chuyển động thấy câu đứng yên (`still`).
  */
 export function RotatingWords({ words, still, interval = 2200, className = '' }: { words: string[]; still: string; interval?: number; className?: string }) {
+  const tx = useTx();
   const [i, setI] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [reduced, setReduced] = useState(false);
@@ -30,23 +33,23 @@ export function RotatingWords({ words, still, interval = 2200, className = '' }:
     return () => window.clearInterval(t);
   }, [reduced, words.length, interval]);
 
-  if (reduced) return <span className={className}>{still}</span>;
+  if (reduced) return <span className={className}>{tx(still)}</span>;
 
   return (
     // Khung cắt có đệm trên/dưới để dấu tiếng Việt (ế, ự…) không bị cắt
     <span className={`relative inline-grid overflow-hidden py-[0.14em] -my-[0.14em] align-bottom ${className}`}>
       {words.map((w, k) => (
         <span key={`size-${k}`} aria-hidden="true" className="invisible col-start-1 row-start-1 whitespace-nowrap">
-          {w}
+          {tx(w)}
         </span>
       ))}
       {prev !== null && prev !== i && (
         <span key={`out-${prev}-${i}`} aria-hidden="true" className="dv-rotate-out col-start-1 row-start-1 whitespace-nowrap">
-          {words[prev]}
+          {tx(words[prev])}
         </span>
       )}
       <span key={`in-${i}`} aria-hidden="true" className={`${prev === null ? '' : 'dv-rotate-in '}col-start-1 row-start-1 whitespace-nowrap`}>
-        {words[i]}
+        {tx(words[i])}
       </span>
     </span>
   );

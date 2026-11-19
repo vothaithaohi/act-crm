@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { Check, Copy, ExternalLink, HelpCircle, Loader2, Lock, Mail, Phone, Play, Printer, Video, X } from 'lucide-react';
@@ -38,6 +40,7 @@ function formatPhone(p: string) {
 }
 
 export function ProducerBoard({ token }: { token: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   // "Liên hệ" khi chưa đăng nhập → đăng ký đối tác, xong quay lại đúng link này
   const signupHref = href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/nsx/${token}`))}`);
@@ -69,8 +72,8 @@ export function ProducerBoard({ token }: { token: string }) {
       <>
         <GlobalNav minimal />
         <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
-          <h1 className="dv-display dv-headline">Link không khả dụng.</h1>
-          <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{error || 'Link đã bị thu hồi hoặc không đúng. Vui lòng liên hệ DienVienVN.'}</p>
+          <h1 className="dv-display dv-headline">{tx("Link không khả dụng.")}</h1>
+          <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{tx(error || 'Link đã bị thu hồi hoặc không đúng. Vui lòng liên hệ DienVienVN.')}</p>
         </main>
       </>
     );
@@ -88,16 +91,15 @@ export function ProducerBoard({ token }: { token: string }) {
               <div className="flex items-start gap-3">
                 <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-text-secondary)]" />
                 <p className="text-[14px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  <span className="font-semibold text-[var(--dv-text)]">Chọn / Cân nhắc / Loại diễn viên, số đo và thông tin liên hệ</span> chỉ dành cho
-                  đối tác DienVienVN. Đăng nhập tài khoản đối tác để chọn diễn viên; chưa có tài khoản thì đăng ký — sau khi được duyệt, bạn dùng được đầy đủ.
+                  <span className="font-semibold text-[var(--dv-text)]">{tx("Chọn / Cân nhắc / Loại diễn viên, số đo và thông tin liên hệ")}</span> {tx("chỉ dành cho đối tác DienVienVN. Đăng nhập tài khoản đối tác để chọn diễn viên; chưa có tài khoản thì đăng ký — sau khi được duyệt, bạn dùng được đầy đủ.")}
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Link href={signupHref} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-                  Đăng ký đối tác
+                  {tx("Đăng ký đối tác")}
                 </Link>
                 <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/nsx/${token}`))}`)} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
-                  Đăng nhập
+                  {tx("Đăng nhập")}
                 </Link>
               </div>
             </div>
@@ -105,7 +107,7 @@ export function ProducerBoard({ token }: { token: string }) {
           {/* Chọn / Cân nhắc / Loại: chỉ đối tác đã đăng nhập */}
           <ProducerApplicants view={view} contactHref={view.limited ? signupHref : undefined} decisionTarget={view.limited ? undefined : { token }} />
           <p className="mt-10 text-center text-[12px] text-[var(--dv-text-tertiary)]">
-            Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.
+            {tx("Tài liệu nội bộ do DienVienVN cung cấp cho nhà sản xuất. Vui lòng không chia sẻ công khai.")}
           </p>
         </div>
       </main>
@@ -199,8 +201,9 @@ const DECISION_UI: Record<ProducerDecision, { label: string; icon: typeof Check;
 
 /** Chọn / Cân nhắc / Loại: bấm lại nút đang bật để bỏ đánh dấu. */
 function DecisionButtons({ value, onChange, compact = false }: { value: ProducerDecision | null; onChange: (d: ProducerDecision) => void; compact?: boolean }) {
+  const tx = useTx();
   return (
-    <div className={`grid grid-cols-3 gap-1.5 print:hidden ${compact ? 'w-full md:w-[252px]' : ''}`} role="group" aria-label="Lựa chọn của nhà sản xuất">
+    <div className={`grid grid-cols-3 gap-1.5 print:hidden ${compact ? 'w-full md:w-[252px]' : ''}`} role="group" aria-label={tx("Lựa chọn của nhà sản xuất")}>
       {PRODUCER_DECISIONS.map(d => {
         const ui = DECISION_UI[d];
         const on = value === d;
@@ -217,7 +220,7 @@ function DecisionButtons({ value, onChange, compact = false }: { value: Producer
               on ? ui.on : 'border-[#d2d2d7] bg-white text-[var(--dv-text)] hover:border-[#1d1d1f]'
             }`}
           >
-            <ui.icon className="h-3.5 w-3.5" /> {ui.label}
+            <ui.icon className="h-3.5 w-3.5" /> {tx(ui.label)}
           </button>
         );
       })}
@@ -226,11 +229,12 @@ function DecisionButtons({ value, onChange, compact = false }: { value: Producer
 }
 
 function DecisionBadge({ value }: { value: ProducerDecision | null }) {
+  const tx = useTx();
   if (!value) return null;
   const ui = DECISION_UI[value];
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold shadow-sm ${ui.badge}`}>
-      <ui.icon className="h-3.5 w-3.5" /> {value === 'pick' ? 'Đã chọn' : ui.label}
+      <ui.icon className="h-3.5 w-3.5" /> {tx(value === 'pick' ? 'Đã chọn' : ui.label)}
     </span>
   );
 }
@@ -248,6 +252,7 @@ export function ProducerApplicants({
   /** Có: NSX đánh dấu Chọn / Cân nhắc / Loại (lưu lên hệ thống, ACT xem trong CRM). */
   decisionTarget?: { token: string } | { projectId: string };
 }) {
+  const tx = useTx();
   const [role, setRole] = useState('all');
   const [gender, setGender] = useState<'all' | 'male' | 'female'>('all');
   const [mode, setMode] = useState<ViewMode>('grid');
@@ -325,10 +330,10 @@ export function ProducerApplicants({
   return (
     <>
       <header>
-        <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Shortlist diễn viên · {project.code}</p>
-        <h1 className="dv-display dv-headline mt-1">{project.title}</h1>
+        <p className="text-[14px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Shortlist diễn viên ·")} {tx(project.code)}</p>
+        <h1 className="dv-display dv-headline mt-1">{tx(project.title)}</h1>
         <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">
-          {[
+          {tx([
             project.production_company,
             projectTypeLabel(project.project_type),
             project.location ? provinceLabel(project.location) : null,
@@ -336,16 +341,16 @@ export function ProducerApplicants({
             project.deadline ? `Hạn nộp ${formatVnDate(project.deadline)}` : null
           ]
             .filter(Boolean)
-            .join(' · ')}
+            .join(' · '))}
         </p>
       </header>
 
       {/* Các vai: bấm để xem ứng viên của vai đó */}
       <div className="dv-scroll-x -mx-4 mt-6 flex gap-2.5 overflow-x-auto px-4 pb-1 print:hidden md:mx-0 md:flex-wrap md:px-0">
         <button type="button" className={roleCard(role === 'all')} aria-pressed={role === 'all'} onClick={() => setRole('all')}>
-          <span className="text-[16px] font-semibold">Tất cả vai</span>
+          <span className="text-[16px] font-semibold">{tx("Tất cả vai")}</span>
           <span className={`mt-auto pt-2 text-[13px] ${role === 'all' ? 'text-white/80' : 'text-[var(--dv-text-secondary)]'}`}>
-            {applicants.length} ứng viên{picked.length ? ` · ${picked.length} đã chọn` : ''}
+            {tx(applicants.length)} {tx("ứng viên")}{tx(picked.length ? ` · ${picked.length} đã chọn` : '')}
           </span>
         </button>
         {project.roles
@@ -354,11 +359,11 @@ export function ProducerApplicants({
             const active = role === r.id;
             return (
               <button key={r.id} type="button" className={roleCard(active)} aria-pressed={active} onClick={() => setRole(r.id)}>
-                <span className="truncate text-[16px] font-semibold">{r.name}</span>
-                <span className={`mt-0.5 line-clamp-2 text-[12.5px] leading-[1.35] ${active ? 'text-white/75' : 'text-[var(--dv-text-secondary)]'}`}>{roleSummary(r)}</span>
+                <span className="truncate text-[16px] font-semibold">{tx(r.name)}</span>
+                <span className={`mt-0.5 line-clamp-2 text-[12.5px] leading-[1.35] ${active ? 'text-white/75' : 'text-[var(--dv-text-secondary)]'}`}>{tx(roleSummary(r))}</span>
                 <span className={`mt-auto pt-2 text-[13px] font-medium ${active ? 'text-white' : ''}`}>
-                  {countFor(r.id)} ứng viên
-                  {pickedFor(r.id) ? <span className={active ? 'text-[#7ee2a8]' : 'text-[#1f8f4e]'}> · {pickedFor(r.id)} đã chọn</span> : null}
+                  {tx(countFor(r.id))} {tx("ứng viên")}
+                  {pickedFor(r.id) ? <span className={active ? 'text-[#7ee2a8]' : 'text-[#1f8f4e]'}> · {tx(pickedFor(r.id))} {tx("đã chọn")}</span> : null}
                 </span>
               </button>
             );
@@ -371,7 +376,7 @@ export function ProducerApplicants({
           {decisionTarget ? (
             <label
               className={`inline-flex select-none items-center gap-2.5 text-[14px] font-medium ${picked.length ? 'cursor-pointer' : 'cursor-not-allowed text-[var(--dv-text-tertiary)]'}`}
-              title={picked.length ? undefined : 'Bấm "Chọn" trên thẻ diễn viên để mở bộ lọc này'}
+              title={tx(picked.length ? undefined : 'Bấm "Chọn" trên thẻ diễn viên để mở bộ lọc này')}
             >
               <button
                 type="button"
@@ -383,18 +388,18 @@ export function ProducerApplicants({
               >
                 <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${onlyPicked ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
               </button>
-              Chỉ xem diễn viên đã chọn{picked.length ? ` (${picked.length})` : ''}
+              {tx("Chỉ xem diễn viên đã chọn")}{tx(picked.length ? ` (${picked.length})` : '')}
             </label>
           ) : (
             <span />
           )}
           <div className="flex shrink-0 items-center gap-2">
-            <select value={gender} onChange={e => setGender(e.target.value as typeof gender)} className="dv-input !h-10 !w-auto !rounded-full !text-[14px]" aria-label="Lọc giới tính">
-              <option value="all">Mọi giới tính</option>
-              <option value="female">Nữ</option>
-              <option value="male">Nam</option>
+            <select value={gender} onChange={e => setGender(e.target.value as typeof gender)} className="dv-input !h-10 !w-auto !rounded-full !text-[14px]" aria-label={tx("Lọc giới tính")}>
+              <option value="all">{tx("Mọi giới tính")}</option>
+              <option value="female">{tx("Nữ")}</option>
+              <option value="male">{tx("Nam")}</option>
             </select>
-            <div className="flex h-10 rounded-full border border-[#d2d2d7] bg-white p-0.5" role="group" aria-label="Kiểu hiển thị">
+            <div className="flex h-10 rounded-full border border-[#d2d2d7] bg-white p-0.5" role="group" aria-label={tx("Kiểu hiển thị")}>
               {(['grid', 'list'] as ViewMode[]).map(m => (
                 <button
                   key={m}
@@ -403,26 +408,26 @@ export function ProducerApplicants({
                   aria-pressed={mode === m}
                   className={`whitespace-nowrap rounded-full px-3.5 text-[14px] transition-colors ${mode === m ? 'bg-[var(--dv-accent)] text-white' : 'text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]'}`}
                 >
-                  {m === 'grid' ? 'Lưới' : 'Danh sách'}
+                  {tx(m === 'grid' ? 'Lưới' : 'Danh sách')}
                 </button>
               ))}
             </div>
             <button type="button" onClick={() => window.print()} className="dv-btn dv-btn-ghost !hidden !h-10 !py-0 text-[14px] sm:!inline-flex">
-              <Printer className="h-4 w-4" /> In / PDF
+              <Printer className="h-4 w-4" /> {tx("In / PDF")}
             </button>
           </div>
         </div>
-        {saveError && <p className="mt-2 text-[13px] font-medium text-[#c4314b]">{saveError}</p>}
+        {saveError && <p className="mt-2 text-[13px] font-medium text-[#c4314b]">{tx(saveError)}</p>}
       </div>
 
       {/* Liên hệ của các diễn viên đã chọn */}
       {decisionTarget && picked.length > 0 && (
         <section className="mt-6 rounded-[18px] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-[19px] font-semibold">Diễn viên đã chọn · {picked.length}</h2>
+            <h2 className="text-[19px] font-semibold">{tx("Diễn viên đã chọn ·")} {tx(picked.length)}</h2>
             {!limited && (
               <button type="button" onClick={copyPicked} className="dv-btn dv-btn-secondary !h-9 !px-4 !py-0 text-[13.5px] print:hidden">
-                <Copy className="h-4 w-4" /> {copied ? 'Đã sao chép' : 'Sao chép danh sách liên hệ'}
+                <Copy className="h-4 w-4" /> {tx(copied ? 'Đã sao chép' : 'Sao chép danh sách liên hệ')}
               </button>
             )}
           </div>
@@ -439,20 +444,20 @@ export function ProducerApplicants({
                       )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[15px] font-semibold hover:underline">{t.full_name}</span>
-                      <span className="block truncate text-[13px] text-[var(--dv-text-secondary)]">Vai {roleName(a.application.role_id)}</span>
+                      <span className="block truncate text-[15px] font-semibold hover:underline">{tx(t.full_name)}</span>
+                      <span className="block truncate text-[13px] text-[var(--dv-text-secondary)]">{tx("Vai")} {tx(roleName(a.application.role_id))}</span>
                     </span>
                   </button>
                   {limited ? null : (
                     <div className="flex flex-wrap items-center gap-2">
                       {t.phone && (
                         <a href={`tel:${t.phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3.5 text-[13.5px] font-semibold text-white">
-                          <Phone className="h-4 w-4" /> {formatPhone(t.phone)}
+                          <Phone className="h-4 w-4" /> {tx(formatPhone(t.phone))}
                         </a>
                       )}
                       {t.email && (
                         <a href={`mailto:${t.email}`} className="inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-full border border-[#d2d2d7] px-3.5 text-[13.5px]">
-                          <Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{t.email}</span>
+                          <Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{tx(t.email)}</span>
                         </a>
                       )}
                       {!t.phone && !t.email && <ContactButton code={profileCode(t.id)} compact />}
@@ -465,11 +470,11 @@ export function ProducerApplicants({
           {limited && (
             <div className="mt-3 flex flex-col gap-3 rounded-[14px] bg-[var(--dv-bg-alt)] p-3.5 sm:flex-row sm:items-center sm:justify-between print:hidden">
               <p className="flex items-start gap-2 text-[14px] leading-[1.45]">
-                <Lock className="mt-0.5 h-4 w-4 shrink-0" /> Đăng nhập tài khoản đối tác để xem số điện thoại và email của các diễn viên đã chọn.
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" /> {tx("Đăng nhập tài khoản đối tác để xem số điện thoại và email của các diễn viên đã chọn.")}
               </p>
               {contactHref && (
                 <Link href={contactHref} className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]">
-                  Xem liên hệ
+                  {tx("Xem liên hệ")}
                 </Link>
               )}
             </div>
@@ -479,9 +484,9 @@ export function ProducerApplicants({
 
       {list.length === 0 ? (
         <div className="mt-10 rounded-[18px] bg-white p-12 text-center">
-          <p className="text-[21px] font-semibold">{onlyPicked ? 'Chưa chọn diễn viên nào ở vai này.' : 'Chưa có ứng viên.'}</p>
+          <p className="text-[21px] font-semibold">{tx(onlyPicked ? 'Chưa chọn diễn viên nào ở vai này.' : 'Chưa có ứng viên.')}</p>
           {!onlyPicked && (
-            <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">Danh sách sẽ tự cập nhật khi đội ngũ DienVienVN chọn thêm ứng viên vào shortlist. Bạn chỉ cần mở lại link này.</p>
+            <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">{tx("Danh sách sẽ tự cập nhật khi đội ngũ DienVienVN chọn thêm ứng viên vào shortlist. Bạn chỉ cần mở lại link này.")}</p>
           )}
         </div>
       ) : (
@@ -489,9 +494,9 @@ export function ProducerApplicants({
           {groups.map(g => (
             <section key={g.id} className="break-inside-avoid-page">
               <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[#d2d2d7] pb-2">
-                <h2 className="text-[24px] font-semibold leading-[1.17] tracking-[0.009em]">{g.name}</h2>
-                {g.need && <p className="text-[15px] text-[var(--dv-text-secondary)]">{g.need}</p>}
-                <span className="ml-auto text-[14px] text-[var(--dv-text-tertiary)]">{g.items.length} ứng viên</span>
+                <h2 className="text-[24px] font-semibold leading-[1.17] tracking-[0.009em]">{tx(g.name)}</h2>
+                {g.need && <p className="text-[15px] text-[var(--dv-text-secondary)]">{tx(g.need)}</p>}
+                <span className="ml-auto text-[14px] text-[var(--dv-text-tertiary)]">{tx(g.items.length)} {tx("ứng viên")}</span>
               </div>
               {g.description && <RoleDescription text={g.description} />}
               {g.images.length > 0 && (
@@ -499,7 +504,7 @@ export function ProducerApplicants({
                   {g.images.map(u => (
                     <a key={u} href={u} target="_blank" rel="noreferrer" className="block h-24 w-[72px] overflow-hidden rounded-[10px] bg-white print:h-20 print:w-16">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={u} alt={`Ảnh tham khảo vai ${g.name}`} className="h-full w-full object-cover" />
+                      <img src={u} alt={tx(`Ảnh tham khảo vai ${g.name}`)} className="h-full w-full object-cover" />
                     </a>
                   ))}
                 </div>
@@ -566,6 +571,7 @@ function ShortlistCard({
   onOpen: () => void;
   contactHref?: string;
 }) {
+  const tx = useTx();
   const d = derive(applicant);
   const { t } = d;
   const tapes = tapesOf(d.application);
@@ -576,25 +582,25 @@ function ShortlistCard({
         decision === 'pick' ? 'ring-2 ring-[#1f8f4e]' : ''
       } ${decision === 'reject' ? 'opacity-55 hover:opacity-100' : ''}`}
     >
-      <button type="button" onClick={onOpen} className="group relative block aspect-[3/4] w-full shrink-0 overflow-hidden bg-[#e8e8ed]" aria-label={`Xem hồ sơ ${t.full_name}`}>
+      <button type="button" onClick={onOpen} className="group relative block aspect-[3/4] w-full shrink-0 overflow-hidden bg-[#e8e8ed]" aria-label={tx(`Xem hồ sơ ${t.full_name}`)}>
         {d.photos[0] && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={d.photos[0].url} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%] transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
+          <img src={d.photos[0].url} alt={tx(t.full_name)} className="absolute inset-0 h-full w-full object-cover object-[50%_20%] transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
         )}
         <span className="absolute left-2.5 top-2.5 flex flex-col items-start gap-1.5">
           <DecisionBadge value={decision} />
-          {t.act && <span className="rounded-full bg-[#1d1d1f]/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">ACT Academy</span>}
+          {t.act && <span className="rounded-full bg-[#1d1d1f]/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">{tx("ACT Academy")}</span>}
         </span>
         <span className="absolute bottom-2.5 right-2.5 rounded-full bg-black/45 px-3 py-1 text-[12px] font-semibold text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 print:hidden">
-          Xem hồ sơ
+          {tx("Xem hồ sơ")}
         </span>
       </button>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <button type="button" onClick={onOpen} className="text-left text-[16px] font-semibold leading-[1.25] hover:underline sm:text-[18px]">
-          {t.full_name}
+          {tx(t.full_name)}
         </button>
-        {facts && <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)] sm:text-[14px]">{facts}</p>}
+        {facts && <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)] sm:text-[14px]">{tx(facts)}</p>}
 
         <div className="mt-3 flex flex-wrap gap-2">
           {tapes.length > 0 ? (
@@ -606,11 +612,11 @@ function ShortlistCard({
                 rel="noopener noreferrer"
                 className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--dv-accent)] px-3 text-[13.5px] font-semibold text-white hover:bg-[var(--dv-accent-hover)]"
               >
-                <Play className="h-3.5 w-3.5" fill="currentColor" /> {tapes.length > 1 ? `Self-tape ${i + 1}` : 'Xem self-tape'}
+                <Play className="h-3.5 w-3.5" fill="currentColor" /> {tx(tapes.length > 1 ? `Self-tape ${i + 1}` : 'Xem self-tape')}
               </a>
             ))
           ) : (
-            <span className="inline-flex h-9 flex-1 items-center justify-center rounded-full bg-[var(--dv-bg-alt)] px-3 text-[13px] text-[var(--dv-text-tertiary)]">Chưa có self-tape</span>
+            <span className="inline-flex h-9 flex-1 items-center justify-center rounded-full bg-[var(--dv-bg-alt)] px-3 text-[13px] text-[var(--dv-text-tertiary)]">{tx("Chưa có self-tape")}</span>
           )}
         </div>
 
@@ -622,7 +628,7 @@ function ShortlistCard({
 
         {t.phone ? (
           <a href={`tel:${t.phone}`} className="mt-3 flex items-center gap-2 border-t border-[#f0f0f2] pt-3 text-[14px] font-semibold">
-            <Phone className="h-4 w-4 shrink-0" /> {formatPhone(t.phone)}
+            <Phone className="h-4 w-4 shrink-0" /> {tx(formatPhone(t.phone))}
           </a>
         ) : (
           <div className="mt-3 border-t border-[#f0f0f2] pt-3">
@@ -648,6 +654,7 @@ function ShortlistRow({
   onOpen: () => void;
   contactHref?: string;
 }) {
+  const tx = useTx();
   const d = derive(applicant);
   const { t } = d;
   const facts = [d.age !== null ? `${d.age} tuổi` : t.age_range ? `${t.age_range} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, d.gender].filter(Boolean).join(' · ');
@@ -657,24 +664,24 @@ function ShortlistRow({
         decision === 'pick' ? 'ring-2 ring-[#1f8f4e]' : ''
       } ${decision === 'reject' ? 'opacity-55 hover:opacity-100' : ''}`}
     >
-      <button type="button" onClick={onOpen} className="relative row-span-2 aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#e8e8ed] md:row-span-1" aria-label={`Xem hồ sơ ${t.full_name}`}>
+      <button type="button" onClick={onOpen} className="relative row-span-2 aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#e8e8ed] md:row-span-1" aria-label={tx(`Xem hồ sơ ${t.full_name}`)}>
         {d.photos[0] && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={d.photos[0].url} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
+          <img src={d.photos[0].url} alt={tx(t.full_name)} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
         )}
       </button>
       <div className="min-w-0">
         <button type="button" onClick={onOpen} className="flex max-w-full items-center gap-2 text-left">
-          <span className="truncate text-[16px] font-semibold hover:underline">{t.full_name}</span>
+          <span className="truncate text-[16px] font-semibold hover:underline">{tx(t.full_name)}</span>
           {decision && <DecisionBadge value={decision} />}
         </button>
-        <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[facts, t.act ? 'ACT Academy' : null].filter(Boolean).join(' · ')}</p>
+        <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{tx([facts, t.act ? 'ACT Academy' : null].filter(Boolean).join(' · '))}</p>
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-2 md:col-span-1 md:justify-end">
         <SelftapeButtons urls={tapesOf(d.application)} compact />
         {t.phone ? (
           <a href={`tel:${t.phone}`} className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d2d2d7] px-3 text-[13px] font-semibold">
-            <Phone className="h-3.5 w-3.5" /> {formatPhone(t.phone)}
+            <Phone className="h-3.5 w-3.5" /> {tx(formatPhone(t.phone))}
           </a>
         ) : (
           <ContactButton code={profileCode(t.id)} href={contactHref} compact />
@@ -709,6 +716,7 @@ function ApplicantDrawer({
   profileHref: string | null;
   onClose: () => void;
 }) {
+  const tx = useTx();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -725,16 +733,16 @@ function ApplicantDrawer({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Hồ sơ ${applicant.talent.full_name}`}
+        aria-label={tx(`Hồ sơ ${applicant.talent.full_name}`)}
         onClick={e => e.stopPropagation()}
         className="dv-slide-in-right flex h-full w-full max-w-[1080px] flex-col bg-[var(--dv-bg-alt)] shadow-2xl"
       >
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-black/[0.06] bg-white/90 px-3 py-2.5 backdrop-blur md:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <button type="button" onClick={onClose} aria-label="Đóng" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1d1d1f] text-white hover:bg-black">
+            <button type="button" onClick={onClose} aria-label={tx("Đóng")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1d1d1f] text-white hover:bg-black">
               <X className="h-5 w-5" />
             </button>
-            <p className="truncate text-[14px] font-semibold">Ứng tuyển vai {roleName}</p>
+            <p className="truncate text-[14px] font-semibold">{tx("Ứng tuyển vai")} {tx(roleName)}</p>
           </div>
           <div className="flex items-center gap-2">
             {onDecide && (
@@ -744,7 +752,7 @@ function ApplicantDrawer({
             )}
             {profileHref && (
               <Link href={profileHref} target="_blank" rel="noopener" className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[14px] text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)] md:inline-flex">
-                Tab mới <ExternalLink className="h-4 w-4" />
+                {tx("Tab mới")} <ExternalLink className="h-4 w-4" />
               </Link>
             )}
           </div>
@@ -759,6 +767,7 @@ function ApplicantDrawer({
 
 /** Tách link trong lời nhắn thành thẻ <a> (link dài rút gọn, không làm vỡ bố cục). */
 function Linkified({ text }: { text: string }) {
+  const tx = useTx();
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
   return (
     <>
@@ -766,10 +775,10 @@ function Linkified({ text }: { text: string }) {
         /^https?:\/\//.test(part) ? (
           <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-2">
             {part.replace(/^https?:\/\//, '').slice(0, 40)}
-            {part.replace(/^https?:\/\//, '').length > 40 ? '…' : ''}
+            {tx(part.replace(/^https?:\/\//, '').length > 40 ? '…' : '')}
           </a>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={i}>{tx(part)}</span>
         )
       )}
     </>
@@ -777,29 +786,32 @@ function Linkified({ text }: { text: string }) {
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-tertiary)]">{children}</p>;
+  const tx = useTx();
+  return <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-tertiary)]">{tx(children)}</p>;
 }
 
 function Chips({ items, max = 5 }: { items: string[]; max?: number }) {
+  const tx = useTx();
   return (
     <div className="flex flex-wrap gap-1">
       {items.slice(0, max).map(item => (
         <span key={item} className="rounded-full bg-[var(--dv-bg-alt)] px-2 py-[3px] text-[12px] leading-tight">
-          {item}
+          {tx(item)}
         </span>
       ))}
-      {items.length > max && <span className="px-1 py-[3px] text-[12px] leading-tight text-[var(--dv-text-tertiary)]">+{items.length - max}</span>}
+      {items.length > max && <span className="px-1 py-[3px] text-[12px] leading-tight text-[var(--dv-text-tertiary)]">+{tx(items.length - max)}</span>}
     </div>
   );
 }
 
 function Name({ name, href, className }: { name: string; href?: string | null; className: string }) {
+  const tx = useTx();
   return href ? (
     <Link href={href} className={`${className} hover:underline`}>
-      {name}
+      {tx(name)}
     </Link>
   ) : (
-    <span className={className}>{name}</span>
+    <span className={className}>{tx(name)}</span>
   );
 }
 
@@ -819,6 +831,7 @@ function SelftapeButtons({ urls, compact }: { urls: string[]; compact?: boolean 
 }
 
 function SelftapeButton({ url, compact, label = 'Self-tape' }: { url: string; compact?: boolean; label?: string }) {
+  const tx = useTx();
   return (
     <a
       href={url}
@@ -826,7 +839,7 @@ function SelftapeButton({ url, compact, label = 'Self-tape' }: { url: string; co
       rel="noopener noreferrer"
       className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[var(--dv-accent)] font-medium text-white hover:bg-[var(--dv-accent-hover)] ${compact ? 'h-8 px-3 text-[13px]' : 'h-9 px-4 text-[14px]'}`}
     >
-      <Video className="h-4 w-4" /> {label}
+      <Video className="h-4 w-4" /> {tx(label)}
     </a>
   );
 }
@@ -843,6 +856,7 @@ export function ApplicantCard({
   limited?: boolean;
   contactHref?: string;
 }) {
+  const tx = useTx();
   const d = derive(applicant);
   const { t } = d;
   const [photo, setPhoto] = useState(d.photos[0]?.url || '');
@@ -863,7 +877,7 @@ export function ApplicantCard({
       <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden bg-[#e8e8ed]">
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
+          <img src={photo} alt={tx(t.full_name)} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
         )}
         {d.photos.length > 1 && (
           <div className="absolute bottom-2.5 left-2.5 flex gap-1 rounded-[10px] bg-black/30 p-1 backdrop-blur print:hidden">
@@ -873,7 +887,7 @@ export function ApplicantCard({
                 type="button"
                 onClick={() => setPhoto(p.url)}
                 className={`h-10 w-[30px] overflow-hidden rounded-[6px] ring-2 transition ${photo === p.url ? 'ring-white' : 'ring-transparent opacity-70 hover:opacity-100'}`}
-                aria-label={p.label}
+                aria-label={tx(p.label)}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" className="h-full w-full object-cover object-top" />
@@ -883,12 +897,12 @@ export function ApplicantCard({
         )}
         {t.act && (
           <span className="absolute left-2.5 top-2.5 inline-flex items-center rounded-full bg-[#1d1d1f]/85 px-2.5 py-1 text-[11px] font-semibold tracking-[0.02em] text-white backdrop-blur">
-            ACT Academy
+            {tx("ACT Academy")}
           </span>
         )}
         {tapesOf(d.application).length > 0 && (
           <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold shadow-sm">
-            <Video className="h-3.5 w-3.5" /> {tapesOf(d.application).length > 1 ? `${tapesOf(d.application).length} self-tape` : 'Có self-tape'}
+            <Video className="h-3.5 w-3.5" /> {tx(tapesOf(d.application).length > 1 ? `${tapesOf(d.application).length} self-tape` : 'Có self-tape')}
           </span>
         )}
       </div>
@@ -899,19 +913,19 @@ export function ApplicantCard({
           <Name name={t.full_name} href={limited ? null : profileHref} className="text-[18px] font-semibold leading-[1.22]" />
           {(
             <span className="shrink-0 rounded-full bg-[var(--dv-bg-alt)] px-2 py-0.5 text-[11px] font-semibold tracking-[0.03em] text-[var(--dv-text-secondary)]">
-              {profileCode(t.id)}
+              {tx(profileCode(t.id))}
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
+        <p className="mt-0.5 text-[13px] text-[var(--dv-text-secondary)]">{tx([d.gender, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · '))}</p>
 
         {/* Chỉ số ngoại hình: đọc lướt theo cột (bản công khai không có tuổi, số đo 3 vòng) */}
         {(
         <dl className={`mt-3 grid ${stats.length > 3 ? 'grid-cols-[0.8fr_0.9fr_0.9fr_1.7fr]' : stats.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-1 rounded-[12px] bg-[var(--dv-bg-alt)] px-2 py-2 text-center`}>
           {stats.map(([k, v]) => (
             <div key={k} className="min-w-0">
-              <dt className="text-[10px] uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{k}</dt>
-              <dd className="whitespace-nowrap text-[14px] font-semibold leading-tight tracking-[-0.01em]">{v || '–'}</dd>
+              <dt className="text-[10px] uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx(k)}</dt>
+              <dd className="whitespace-nowrap text-[14px] font-semibold leading-tight tracking-[-0.01em]">{tx(v || '–')}</dd>
             </div>
           ))}
         </dl>
@@ -920,20 +934,20 @@ export function ApplicantCard({
         <div className="mt-3 space-y-2.5">
           {d.credits.length > 0 && (
             <div>
-              <Label>Kinh nghiệm</Label>
+              <Label>{tx("Kinh nghiệm")}</Label>
               <ul className="mt-1 space-y-0.5 text-[13px] leading-[1.4]">
                 {d.credits.slice(0, 2).map(c => (
                   <li key={c} className="truncate">
-                    {c}
+                    {tx(c)}
                   </li>
                 ))}
               </ul>
-              {d.credits.length > 2 && <p className="text-[12px] text-[var(--dv-text-tertiary)]">+{d.credits.length - 2} dự án khác</p>}
+              {d.credits.length > 2 && <p className="text-[12px] text-[var(--dv-text-tertiary)]">+{tx(d.credits.length - 2)} {tx("dự án khác")}</p>}
             </div>
           )}
           {d.skills.length > 0 && (
             <div>
-              <Label>Kỹ năng</Label>
+              <Label>{tx("Kỹ năng")}</Label>
               <div className="mt-1">
                 <Chips items={d.skills} />
               </div>
@@ -947,30 +961,30 @@ export function ApplicantCard({
           <div className={`${open ? 'block' : 'hidden'} mt-3 space-y-2.5 border-t border-[#f0f0f2] pt-3 text-[13px] leading-[1.45] print:block`}>
             {d.credits.length > 2 && (
               <div>
-                <Label>Toàn bộ kinh nghiệm</Label>
+                <Label>{tx("Toàn bộ kinh nghiệm")}</Label>
                 <ul className="mt-1 space-y-0.5">
                   {d.credits.map(c => (
-                    <li key={c}>{c}</li>
+                    <li key={c}>{tx(c)}</li>
                   ))}
                 </ul>
               </div>
             )}
             {d.training.length > 0 && (
               <div>
-                <Label>Đào tạo</Label>
-                <p className="mt-1">{d.training.join(' · ')}</p>
+                <Label>{tx("Đào tạo")}</Label>
+                <p className="mt-1">{tx(d.training.join(' · '))}</p>
               </div>
             )}
             {!showWillingInline && (d.willingness.length > 0 || d.workCities.length > 0) && <WillingBlock willingness={d.willingness} cities={d.workCities} />}
             {t.shoe_size && (
               <div>
-                <Label>Size giày</Label>
-                <p className="mt-1">{t.shoe_size}</p>
+                <Label>{tx("Size giày")}</Label>
+                <p className="mt-1">{tx(t.shoe_size)}</p>
               </div>
             )}
             {d.note && (
               <div>
-                <Label>Lời nhắn</Label>
+                <Label>{tx("Lời nhắn")}</Label>
                 <p className="mt-1 whitespace-pre-line break-words rounded-[10px] bg-[var(--dv-bg-alt)] px-3 py-2">
                   <Linkified text={d.note} />
                 </p>
@@ -981,12 +995,12 @@ export function ApplicantCard({
                 {d.socials.map(sc => (
                   <a key={sc.label} href={sc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">
                     {sc.label === 'Showreel' && <ExternalLink className="h-3 w-3" />}
-                    {sc.label}
+                    {tx(sc.label)}
                   </a>
                 ))}
                 {t.email && (
                   <a href={`mailto:${t.email}`} className="inline-flex items-center gap-1 break-all text-[var(--dv-text-secondary)]">
-                    <Mail className="h-3 w-3" /> {t.email}
+                    <Mail className="h-3 w-3" /> {tx(t.email)}
                   </a>
                 )}
               </div>
@@ -1005,13 +1019,13 @@ export function ApplicantCard({
                 className="inline-flex h-9 items-center rounded-full border border-[#d2d2d7] px-3.5 text-[14px] hover:border-[var(--dv-accent)] print:hidden"
                 aria-expanded={open}
               >
-                {open ? 'Thu gọn' : 'Chi tiết'}
+                {tx(open ? 'Thu gọn' : 'Chi tiết')}
               </button>
             )}
           </div>
           {t.phone && (
             <a href={`tel:${t.phone}`} className="mt-3 flex items-center gap-2 border-t border-[#f0f0f2] pt-3 text-[14px] font-semibold">
-              <Phone className="h-4 w-4 shrink-0" /> {formatPhone(t.phone)}
+              <Phone className="h-4 w-4 shrink-0" /> {tx(formatPhone(t.phone))}
             </a>
           )}
         </div>
@@ -1032,6 +1046,7 @@ export function ApplicantRow({
   limited?: boolean;
   contactHref?: string;
 }) {
+  const tx = useTx();
   const d = derive(applicant);
   const { t } = d;
   const thumb = d.photos[0]?.url;
@@ -1040,32 +1055,32 @@ export function ApplicantRow({
       <div className="relative row-span-2 aspect-[4/5] w-full overflow-hidden rounded-[10px] bg-[#e8e8ed] md:row-span-1">
         {thumb && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt={t.full_name} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
+          <img src={thumb} alt={tx(t.full_name)} className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" loading="lazy" />
         )}
       </div>
       <div className="min-w-0">
         <Name name={t.full_name} href={profileHref} className="block truncate text-[16px] font-semibold" />
-        <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{[d.gender, t.act ? 'ACT Academy' : null, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · ')}</p>
+        <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">{tx([d.gender, t.act ? 'ACT Academy' : null, t.city ? provinceLabel(t.city) : null].filter(Boolean).join(' · '))}</p>
       </div>
       <p className="col-start-2 flex flex-wrap gap-x-2 text-[13px] md:col-start-auto md:text-[14px]">
         {[d.age !== null ? `${d.age} tuổi` : t.age_range ? `${t.age_range} tuổi` : null, t.height_cm ? `${t.height_cm} cm` : null, t.weight_kg ? `${t.weight_kg} kg` : null, d.measurements]
           .filter(Boolean)
           .map(x => (
             <span key={x as string} className="whitespace-nowrap">
-              {x}
+              {tx(x)}
             </span>
           ))}
       </p>
       <div className="col-span-2 min-w-0 md:col-span-1">
-        {d.credits[0] && <p className="truncate text-[13px]">{d.credits.slice(0, 2).join(' · ')}</p>}
-        {d.skills.length > 0 && <p className="truncate text-[12px] text-[var(--dv-text-secondary)]">{d.skills.slice(0, 5).join(' · ')}</p>}
+        {d.credits[0] && <p className="truncate text-[13px]">{tx(d.credits.slice(0, 2).join(' · '))}</p>}
+        {d.skills.length > 0 && <p className="truncate text-[12px] text-[var(--dv-text-secondary)]">{tx(d.skills.slice(0, 5).join(' · '))}</p>}
       </div>
       <div className="col-span-2 flex items-center gap-2 md:col-span-1 md:justify-end">
         <SelftapeButtons urls={tapesOf(d.application)} compact />
         {(contactHref || !t.phone) && <ContactButton code={profileCode(t.id)} href={contactHref} compact />}
         {t.phone && (
           <a href={`tel:${t.phone}`} className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d2d2d7] px-3 text-[13px] font-semibold">
-            <Phone className="h-3.5 w-3.5" /> {formatPhone(t.phone)}
+            <Phone className="h-3.5 w-3.5" /> {tx(formatPhone(t.phone))}
           </a>
         )}
       </div>
@@ -1075,11 +1090,12 @@ export function ApplicantRow({
 
 /** Định hướng & mức độ sẵn sàng cho vai diễn. */
 function WillingBlock({ willingness, cities }: { willingness: string[]; cities: string[] }) {
+  const tx = useTx();
   return (
     <div className="space-y-2.5">
       {willingness.length > 0 && (
         <div>
-          <Label>Sẵn sàng</Label>
+          <Label>{tx("Sẵn sàng")}</Label>
           <div className="mt-1">
             <Chips items={willingness} max={8} />
           </div>
@@ -1087,8 +1103,8 @@ function WillingBlock({ willingness, cities }: { willingness: string[]; cities: 
       )}
       {cities.length > 0 && (
         <div>
-          <Label>Nhận quay tại</Label>
-          <p className="mt-1 text-[13px] leading-[1.4]">{cities.join(' · ')}</p>
+          <Label>{tx("Nhận quay tại")}</Label>
+          <p className="mt-1 text-[13px] leading-[1.4]">{tx(cities.join(' · '))}</p>
         </div>
       )}
     </div>
@@ -1100,6 +1116,7 @@ function WillingBlock({ willingness, cities }: { willingness: string[]; cities: 
  * Đối tác đã duyệt: thẻ hiện thẳng SĐT; nút này chỉ hiện khi hồ sơ không có SĐT → liên hệ qua DienVienVN.
  */
 function ContactButton({ code, href, compact = false }: { code: string; href?: string; compact?: boolean }) {
+  const tx = useTx();
   const [open, setOpen] = useState(false);
   const cls = `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#1d1d1f] font-semibold hover:bg-[#1d1d1f] hover:text-white print:hidden ${
     compact ? 'h-8 px-3 text-[13px]' : 'h-9 px-3.5 text-[14px]'
@@ -1107,18 +1124,18 @@ function ContactButton({ code, href, compact = false }: { code: string; href?: s
   if (href) {
     return (
       <Link href={href} className={cls}>
-        <Mail className="h-3.5 w-3.5" /> Liên hệ
+        <Mail className="h-3.5 w-3.5" /> {tx("Liên hệ")}
       </Link>
     );
   }
   return (
     <span className="relative">
       <button type="button" onClick={() => setOpen(v => !v)} className={cls} aria-expanded={open}>
-        <Mail className="h-3.5 w-3.5" /> Liên hệ
+        <Mail className="h-3.5 w-3.5" /> {tx("Liên hệ")}
       </button>
       {open && (
         <span role="status" className="absolute bottom-full left-0 z-10 mb-2 w-[240px] rounded-[12px] bg-[#1d1d1f] p-3 text-[13px] leading-[1.4] text-white shadow-lg">
-          Hồ sơ chưa có số điện thoại. Gửi mã hồ sơ <span className="font-semibold">{code}</span> cho đội ngũ DienVienVN để được kết nối với diễn viên.
+          {tx("Hồ sơ chưa có số điện thoại. Gửi mã hồ sơ")} <span className="font-semibold">{tx(code)}</span> {tx("cho đội ngũ DienVienVN để được kết nối với diễn viên.")}
         </span>
       )}
     </span>
@@ -1127,6 +1144,7 @@ function ContactButton({ code, href, compact = false }: { code: string; href?: s
 
 /** Mô tả vai dưới tên vai: tối đa 3 dòng + "Xem thêm"; bản in hiện đầy đủ. */
 function RoleDescription({ text }: { text: string }) {
+  const tx = useTx();
   const ref = React.useRef<HTMLParagraphElement>(null);
   const [open, setOpen] = useState(false);
   const [long, setLong] = useState(false);
@@ -1137,11 +1155,11 @@ function RoleDescription({ text }: { text: string }) {
   return (
     <div className="-mt-1 mb-5 max-w-[70ch]">
       <p ref={ref} className={`whitespace-pre-line text-[15px] leading-[1.5] text-[var(--dv-text-secondary)] ${open ? '' : 'line-clamp-3 print:line-clamp-none'}`}>
-        {text}
+        {tx(text)}
       </p>
       {(long || open) && (
         <button type="button" onClick={() => setOpen(o => !o)} className="mt-1 text-[14px] font-medium text-[var(--dv-text)] underline underline-offset-2 print:hidden">
-          {open ? 'Thu gọn' : 'Xem thêm'}
+          {tx(open ? 'Thu gọn' : 'Xem thêm')}
         </button>
       )}
     </div>

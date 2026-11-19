@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import {
@@ -94,12 +96,13 @@ export function crewFormBFrom(p?: Partial<CrewProfile> | null, email = ''): Crew
 }
 
 function Options({ list, placeholder }: { list: Option[]; placeholder: string }) {
+  const tx = useTx();
   return (
     <>
-      <option value="">{placeholder}</option>
+      <option value="">{tx(placeholder)}</option>
       {list.map(o => (
         <option key={o.id} value={o.id}>
-          {o.label}
+          {tx(o.label)}
         </option>
       ))}
     </>
@@ -108,6 +111,7 @@ function Options({ list, placeholder }: { list: Option[]; placeholder: string })
 
 /** Phân nhóm → vị trí cụ thể (cùng danh mục với form đăng tuyển), có "Khác" để tự nhập. */
 function RolePicker({ id, value, onChange, required }: { id: string; value: RoleForm; onChange: (v: RoleForm) => void; required?: boolean }) {
+  const tx = useTx();
   const dept = departmentOf(value.department);
   return (
     <div className="space-y-3">
@@ -121,24 +125,24 @@ function RolePicker({ id, value, onChange, required }: { id: string; value: Role
               onChange({ department: d, role_title: d === OTHER_ID ? OTHER_ID : '', role_other: d === OTHER_ID ? value.role_other : '' });
             }}
           >
-            <Options list={DEPARTMENT_OPTIONS} placeholder="Chọn phân nhóm" />
+            <Options list={DEPARTMENT_OPTIONS} placeholder={tx("Chọn phân nhóm")} />
           </SelectInput>
         </Field>
         <Field label="Vị trí" required={required} htmlFor={`${id}-role`}>
           <SelectInput id={`${id}-role`} value={value.role_title} disabled={!dept} onChange={e => onChange({ ...value, role_title: e.target.value })}>
-            <option value="">{dept ? 'Chọn vị trí' : 'Chọn phân nhóm trước'}</option>
+            <option value="">{tx(dept ? 'Chọn vị trí' : 'Chọn phân nhóm trước')}</option>
             {dept?.roles.map(r => (
               <option key={r.id} value={r.id}>
-                {r.vi} ({r.en})
+                {tx(r.vi)} ({tx(r.en)})
               </option>
             ))}
-            {dept && <option value={OTHER_ID}>Khác (tự nhập)</option>}
+            {dept && <option value={OTHER_ID}>{tx("Khác (tự nhập)")}</option>}
           </SelectInput>
         </Field>
       </div>
       {value.role_title === OTHER_ID && (
         <Field label="Tên vị trí" required={required} htmlFor={`${id}-other`}>
-          <TextInput id={`${id}-other`} maxLength={120} value={value.role_other} onChange={e => onChange({ ...value, role_other: e.target.value })} placeholder="Nhập vị trí không có trong danh sách" />
+          <TextInput id={`${id}-other`} maxLength={120} value={value.role_other} onChange={e => onChange({ ...value, role_other: e.target.value })} placeholder={tx("Nhập vị trí không có trong danh sách")} />
         </Field>
       )}
     </div>
@@ -149,6 +153,7 @@ const digits = (v: string, max = 12) => v.replace(/\D/g, '').slice(0, max);
 
 /** Form B: Hồ sơ ứng viên / Ekip Freelancer — đúng 5 mục trong tài liệu Trang tuyển dụng. */
 export function CrewProfileFields({ value, onChange, emailLocked = false }: { value: CrewFormB; onChange: (v: CrewFormB) => void; emailLocked?: boolean }) {
+  const tx = useTx();
   const set = (patch: Partial<CrewFormB>) => onChange({ ...value, ...patch });
   const [skill, setSkill] = useState('');
   const addSkill = (raw: string) => {
@@ -166,31 +171,31 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
     <div className="space-y-4">
       {/* 1. Thông tin cá nhân & nghệ danh */}
       <section className={section}>
-        <p className={title}>1. Thông tin cá nhân &amp; nghệ danh</p>
+        <p className={title}>{tx("1. Thông tin cá nhân & nghệ danh")}</p>
         <div className={grid}>
           <Field label="Họ và tên thật" required htmlFor="cb-name">
             <TextInput id="cb-name" value={value.full_name} onChange={e => set({ full_name: e.target.value })} autoComplete="name" />
           </Field>
           <Field label="Nghệ danh / Tên hiển thị làm nghề" htmlFor="cb-display">
-            <TextInput id="cb-display" value={value.display_name} onChange={e => set({ display_name: e.target.value })} placeholder="VD: Tuấn Colorist, Alex D.O.P" />
+            <TextInput id="cb-display" value={value.display_name} onChange={e => set({ display_name: e.target.value })} placeholder={tx("VD: Tuấn Colorist, Alex D.O.P")} />
           </Field>
         </div>
         <Field label="Khu vực hoạt động chính" required htmlFor="cb-city">
           <SelectInput id="cb-city" value={value.base_city} onChange={e => set({ base_city: e.target.value })}>
-            <Options list={BASE_CITIES} placeholder="Chọn khu vực" />
+            <Options list={BASE_CITIES} placeholder={tx("Chọn khu vực")} />
           </SelectInput>
         </Field>
         <CheckOption checked={value.willing_to_travel} onChange={() => set({ willing_to_travel: !value.willing_to_travel })}>
-          Có thể đi tỉnh / ngoại cảnh (đi quay xa)
+          {tx("Có thể đi tỉnh / ngoại cảnh (đi quay xa)")}
         </CheckOption>
       </section>
 
       {/* 2. Định vị chuyên môn chính */}
       <section className={section}>
-        <p className={title}>2. Chuyên môn chính</p>
+        <p className={title}>{tx("2. Chuyên môn chính")}</p>
         <div>
           <p className="dv-field-label">
-            Vai trò chính<span className="ml-0.5 text-[var(--dv-red)]">*</span>
+            {tx("Vai trò chính")}<span className="ml-0.5 text-[var(--dv-red)]">*</span>
           </p>
           <RolePicker
             id="cb-primary"
@@ -200,13 +205,13 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
           />
         </div>
         <div className="space-y-3">
-          <p className="dv-field-label">Vai trò phụ (tối đa {CREW_MAX_SECONDARY})</p>
+          <p className="dv-field-label">{tx("Vai trò phụ (tối đa")} {tx(CREW_MAX_SECONDARY)})</p>
           {value.secondary_roles.map((r, i) => (
             <div key={i} className="rounded-[14px] border border-[#e5e5ea] p-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-[14px] font-semibold">Vai trò phụ {i + 1}</p>
+                <p className="text-[14px] font-semibold">{tx("Vai trò phụ")} {tx(i + 1)}</p>
                 <button type="button" onClick={() => set({ secondary_roles: value.secondary_roles.filter((_, j) => j !== i) })} className="inline-flex items-center gap-1 text-[13px] text-[#b00020] hover:underline">
-                  <Trash2 className="h-4 w-4" /> Xoá
+                  <Trash2 className="h-4 w-4" /> {tx("Xoá")}
                 </button>
               </div>
               <RolePicker id={`cb-sec-${i}`} value={r} onChange={v => set({ secondary_roles: value.secondary_roles.map((x, j) => (j === i ? v : x)) })} />
@@ -218,42 +223,42 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
               onClick={() => set({ secondary_roles: [...value.secondary_roles, { department: '', role_title: '', role_other: '' }] })}
               className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]"
             >
-              <Plus className="h-4 w-4" /> Thêm vai trò phụ
+              <Plus className="h-4 w-4" /> {tx("Thêm vai trò phụ")}
             </button>
           )}
         </div>
         <Field label="Số năm kinh nghiệm" required htmlFor="cb-years">
           <SelectInput id="cb-years" value={value.years_of_experience} onChange={e => set({ years_of_experience: e.target.value })}>
-            <Options list={SENIORITY_LEVELS} placeholder="Chọn mức kinh nghiệm" />
+            <Options list={SENIORITY_LEVELS} placeholder={tx("Chọn mức kinh nghiệm")} />
           </SelectInput>
         </Field>
       </section>
 
       {/* 3. Năng lực & Showreel Portfolio */}
       <section className={section}>
-        <p className={title}>3. Năng lực &amp; showreel / portfolio</p>
+        <p className={title}>{tx("3. Năng lực & showreel / portfolio")}</p>
         <Field
           label="Link showreel chính"
           required={showreelRequired}
           htmlFor="cb-reel"
           hint="Vimeo / YouTube / Behance / Google Drive. Bắt buộc với Đạo diễn, D.O.P, Dựng phim, Chỉnh màu, VFX."
         >
-          <TextInput id="cb-reel" type="url" inputMode="url" value={value.primary_showreel_url} onChange={e => set({ primary_showreel_url: e.target.value })} placeholder="https://" />
+          <TextInput id="cb-reel" type="url" inputMode="url" value={value.primary_showreel_url} onChange={e => set({ primary_showreel_url: e.target.value })} placeholder={tx("https://")} />
         </Field>
         <Field label="Portfolio / Trang cá nhân" htmlFor="cb-portfolio" hint="Website riêng, ArtStation…">
-          <TextInput id="cb-portfolio" type="url" inputMode="url" value={value.portfolio_url} onChange={e => set({ portfolio_url: e.target.value })} placeholder="https://" />
+          <TextInput id="cb-portfolio" type="url" inputMode="url" value={value.portfolio_url} onChange={e => set({ portfolio_url: e.target.value })} placeholder={tx("https://")} />
         </Field>
 
         <div className="space-y-3">
-          <p className="dv-field-label">Dự án tiêu biểu</p>
+          <p className="dv-field-label">{tx("Dự án tiêu biểu")}</p>
           {value.filmography_credits.map((c, i) => {
             const setC = (patch: Partial<CreditForm>) => set({ filmography_credits: value.filmography_credits.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
             return (
               <div key={i} className="space-y-3 rounded-[14px] border border-[#e5e5ea] p-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[14px] font-semibold">Dự án {i + 1}</p>
+                  <p className="text-[14px] font-semibold">{tx("Dự án")} {tx(i + 1)}</p>
                   <button type="button" onClick={() => set({ filmography_credits: value.filmography_credits.filter((_, j) => j !== i) })} className="inline-flex items-center gap-1 text-[13px] text-[#b00020] hover:underline">
-                    <Trash2 className="h-4 w-4" /> Xoá
+                    <Trash2 className="h-4 w-4" /> {tx("Xoá")}
                   </button>
                 </div>
                 <div className={grid}>
@@ -266,7 +271,7 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
                     </Field>
                     <Field label="Loại hình" htmlFor={`cb-cr-type-${i}`}>
                       <SelectInput id={`cb-cr-type-${i}`} value={c.type} onChange={e => setC({ type: e.target.value })}>
-                        <Options list={CREDIT_TYPES} placeholder="Chọn" />
+                        <Options list={CREDIT_TYPES} placeholder={tx("Chọn")} />
                       </SelectInput>
                     </Field>
                   </div>
@@ -274,7 +279,7 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
                     <TextInput id={`cb-cr-role-${i}`} value={c.role_in_project} onChange={e => setC({ role_in_project: e.target.value })} />
                   </Field>
                   <Field label="Link xem sản phẩm" htmlFor={`cb-cr-link-${i}`}>
-                    <TextInput id={`cb-cr-link-${i}`} type="url" inputMode="url" value={c.project_link} onChange={e => setC({ project_link: e.target.value })} placeholder="https://" />
+                    <TextInput id={`cb-cr-link-${i}`} type="url" inputMode="url" value={c.project_link} onChange={e => setC({ project_link: e.target.value })} placeholder={tx("https://")} />
                   </Field>
                 </div>
               </div>
@@ -286,19 +291,19 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
               onClick={() => set({ filmography_credits: [...value.filmography_credits, { project_name: '', year: '', type: '', role_in_project: '', project_link: '' }] })}
               className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]"
             >
-              <Plus className="h-4 w-4" /> Thêm dự án
+              <Plus className="h-4 w-4" /> {tx("Thêm dự án")}
             </button>
           )}
         </div>
 
         <div>
-          <p className="dv-field-label">Phần mềm sử dụng thành thạo</p>
+          <p className="dv-field-label">{tx("Phần mềm sử dụng thành thạo")}</p>
           {value.software_skills.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">
               {value.software_skills.map(x => (
                 <span key={x} className="inline-flex items-center gap-1 rounded-full bg-[var(--dv-bg-alt)] px-3 py-1 text-[13px] font-medium">
-                  {x}
-                  <button type="button" aria-label={`Bỏ ${x}`} onClick={() => set({ software_skills: value.software_skills.filter(y => y !== x) })}>
+                  {tx(x)}
+                  <button type="button" aria-label={tx(`Bỏ ${x}`)} onClick={() => set({ software_skills: value.software_skills.filter(y => y !== x) })}>
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </span>
@@ -317,10 +322,10 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
                   addSkill(skill);
                 }
               }}
-              placeholder="VD: DaVinci Resolve — Enter để thêm"
+              placeholder={tx("VD: DaVinci Resolve — Enter để thêm")}
             />
             <button type="button" onClick={() => addSkill(skill)} className="dv-btn dv-btn-secondary !h-[44px] shrink-0 !py-0 text-[14px]">
-              Thêm
+              {tx("Thêm")}
             </button>
           </div>
           <datalist id="cb-skill-list">
@@ -336,11 +341,11 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
 
       {/* 4. Tình trạng nhận việc & Thù lao kỳ vọng */}
       <section className={section}>
-        <p className={title}>4. Tình trạng nhận việc &amp; thù lao kỳ vọng</p>
+        <p className={title}>{tx("4. Tình trạng nhận việc & thù lao kỳ vọng")}</p>
         <div className={grid}>
           <Field label="Trạng thái nhận dự án" required htmlFor="cb-avail">
             <SelectInput id="cb-avail" value={value.availability_status} onChange={e => set({ availability_status: e.target.value })}>
-              <Options list={AVAILABILITY_STATUSES} placeholder="Chọn trạng thái" />
+              <Options list={AVAILABILITY_STATUSES} placeholder={tx("Chọn trạng thái")} />
             </SelectInput>
           </Field>
           {value.availability_status === 'busy_until' && (
@@ -351,36 +356,36 @@ export function CrewProfileFields({ value, onChange, emailLocked = false }: { va
         </div>
         <div className={grid}>
           <Field label="Rate theo ngày quay (VND/ngày)" htmlFor="cb-day">
-            <TextInput id="cb-day" inputMode="numeric" value={value.day_rate} onChange={e => set({ day_rate: digits(e.target.value) })} placeholder="VD: 1500000" />
+            <TextInput id="cb-day" inputMode="numeric" value={value.day_rate} onChange={e => set({ day_rate: digits(e.target.value) })} placeholder={tx("VD: 1500000")} />
           </Field>
           <Field label="Rate dự án trung bình (VND/project)" htmlFor="cb-project">
-            <TextInput id="cb-project" inputMode="numeric" value={value.project_rate} onChange={e => set({ project_rate: digits(e.target.value) })} placeholder="VD: 15000000" />
+            <TextInput id="cb-project" inputMode="numeric" value={value.project_rate} onChange={e => set({ project_rate: digits(e.target.value) })} placeholder={tx("VD: 15000000")} />
           </Field>
         </div>
         <CheckOption checked={value.rate_negotiable} onChange={() => set({ rate_negotiable: !value.rate_negotiable })}>
-          Thương lượng theo quy mô dự án
+          {tx("Thương lượng theo quy mô dự án")}
         </CheckOption>
       </section>
 
       {/* 5. Kênh liên hệ cho tuyển dụng */}
       <section className={section}>
         <div>
-          <p className={title}>5. Kênh liên hệ cho tuyển dụng</p>
-          <p className="mt-1 text-[13px] text-[var(--dv-text-secondary)]">Chỉ nhà tuyển dụng của tin bạn ứng tuyển và DienVienVN xem được.</p>
+          <p className={title}>{tx("5. Kênh liên hệ cho tuyển dụng")}</p>
+          <p className="mt-1 text-[13px] text-[var(--dv-text-secondary)]">{tx("Chỉ nhà tuyển dụng của tin bạn ứng tuyển và DienVienVN xem được.")}</p>
         </div>
         <div className={grid}>
           <Field label="Email công việc" required htmlFor="cb-email" hint={emailLocked ? 'Email đăng nhập, không đổi được tại đây.' : 'Dùng làm email đăng nhập DienVienVN.'}>
-            <TextInput id="cb-email" type="email" inputMode="email" autoComplete="email" value={value.public_email} readOnly={emailLocked} onChange={e => set({ public_email: e.target.value })} placeholder="ban@email.com" />
+            <TextInput id="cb-email" type="email" inputMode="email" autoComplete="email" value={value.public_email} readOnly={emailLocked} onChange={e => set({ public_email: e.target.value })} placeholder={tx("ban@email.com")} />
           </Field>
           <Field label="Số điện thoại / Zalo" htmlFor="cb-phone">
             <TextInput id="cb-phone" type="tel" inputMode="tel" autoComplete="tel" value={value.public_phone} onChange={e => set({ public_phone: e.target.value })} placeholder="0901 234 567" />
           </Field>
         </div>
         <CheckOption checked={value.phone_verified_only} onChange={() => set({ phone_verified_only: !value.phone_verified_only })}>
-          Chỉ hiển thị số điện thoại cho nhà tuyển dụng đã xác minh
+          {tx("Chỉ hiển thị số điện thoại cho nhà tuyển dụng đã xác minh")}
         </CheckOption>
         <Field label="Link mạng xã hội / Nhắn tin nhanh" htmlFor="cb-social" hint="Facebook / Telegram / Instagram profile">
-          <TextInput id="cb-social" type="url" inputMode="url" value={value.social_link} onChange={e => set({ social_link: e.target.value })} placeholder="https://" />
+          <TextInput id="cb-social" type="url" inputMode="url" value={value.social_link} onChange={e => set({ social_link: e.target.value })} placeholder={tx("https://")} />
         </Field>
       </section>
     </div>

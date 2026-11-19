@@ -4,9 +4,10 @@ import { CrewApply } from '@/components/dienvienvn/crew-apply';
 import { getServiceDb } from '@/lib/projects/server';
 import { CrewJob, crewJobActive, crewJobPath, toPublicCrewJob } from '@/lib/dienvienvn/crew-jobs';
 import { headers } from 'next/headers';
+import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Ứng tuyển — Việc làm ekip DienVienVN', robots: { index: false, follow: false } };
+const META: Metadata = { title: 'Ứng tuyển — Việc làm ekip DienVienVN', robots: { index: false, follow: false } };
 
 // Link cũ theo id (VD: đã gửi qua Zalo / email): tin có mã ngắn thì chuyển sang link gọn /ekip/<tên>-<mã>.
 export default async function CrewApplyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,3 +21,6 @@ export default async function CrewApplyPage({ params }: { params: Promise<{ id: 
   if (job?.short_code) permanentRedirect(`${(await headers()).get('x-dienvienvn-base') ?? '/dienvienvn'}${crewJobPath(job)}`);
   return <CrewApply job={job && crewJobActive(job) ? toPublicCrewJob(job) : null} />;
 }
+
+/** Tiêu đề / mô tả theo ngôn ngữ trang (bản /en dịch sang tiếng Anh). */
+export const generateMetadata = () => localizeMetadata(META);

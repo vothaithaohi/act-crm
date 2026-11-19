@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Loader2, Send, Share2, Video, X } from 'lucide-react';
@@ -26,7 +28,7 @@ import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
 
 /** Chia sẻ link: điện thoại mở bảng chia sẻ của máy (Zalo, Messenger…); máy tính sao chép link. Trả true khi đã sao chép. */
-async function shareLink(url: string, title: string): Promise<boolean> {
+async function shareLink(url: string, title: string, copyPrompt = 'Sao chép link:'): Promise<boolean> {
   const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   if (touch && navigator.share) {
     try {
@@ -39,7 +41,7 @@ async function shareLink(url: string, title: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(url);
   } catch {
-    window.prompt('Sao chép link:', url);
+    window.prompt(copyPrompt, url);
     return false;
   }
   return true;
@@ -47,12 +49,13 @@ async function shareLink(url: string, title: string): Promise<boolean> {
 
 /** Nút "Chia sẻ": bấm xong đổi thành "Đã sao chép link" trong 2 giây. */
 function ShareButton({ url, title, label = 'Chia sẻ', className = '' }: { url: () => string; title: string; label?: string; className?: string }) {
+  const tx = useTx();
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
       onClick={async () => {
-        if (await shareLink(url(), title)) {
+        if (await shareLink(url(), title, tx('Sao chép link:'))) {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         }
@@ -60,12 +63,13 @@ function ShareButton({ url, title, label = 'Chia sẻ', className = '' }: { url:
       className={className}
     >
       {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-      {copied ? 'Đã sao chép link' : label}
+      {tx(copied ? 'Đã sao chép link' : label)}
     </button>
   );
 }
 
 export function ProjectDetail({ projectId, roleParam }: { projectId: string; roleParam?: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [project, setProject] = useState<PublicProject | null | undefined>(undefined);
   const [error, setError] = useState('');
@@ -106,10 +110,10 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
       <>
         <GlobalNav />
         <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
-          <h1 className="dv-display dv-headline">Không tìm thấy dự án.</h1>
-          <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{error || 'Dự án có thể đã kết thúc hoặc đường dẫn chưa đúng.'}</p>
+          <h1 className="dv-display dv-headline">{tx("Không tìm thấy dự án.")}</h1>
+          <p className="dv-subhead mt-3 text-[var(--dv-text-secondary)]">{tx(error || 'Dự án có thể đã kết thúc hoặc đường dẫn chưa đúng.')}</p>
           <Link href={href('/')} className="dv-btn dv-btn-primary mt-8">
-            Về trang chủ
+            {tx("Về trang chủ")}
           </Link>
         </main>
       </>
@@ -131,25 +135,25 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
       <main className="min-h-screen bg-[var(--dv-bg-alt)] pb-20">
         <div className="mx-auto max-w-[980px] px-4 pt-6 md:px-6 lg:pt-10">
           <Link href={href(session.status === 'signed-in' ? '/tai-khoan' : '/')} className="dv-link text-[14px]">
-            <ChevronLeft className="h-4 w-4" /> {session.status === 'signed-in' ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN'}
+            <ChevronLeft className="h-4 w-4" /> {tx(session.status === 'signed-in' ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN')}
           </Link>
 
           <header className="mt-4">
-            <p className="text-[17px] font-semibold text-[var(--dv-text-secondary)]">{projectTypeLabel(project.project_type)}</p>
-            <h1 className="dv-display dv-hero-headline mt-1">{project.display_name}</h1>
+            <p className="text-[17px] font-semibold text-[var(--dv-text-secondary)]">{tx(projectTypeLabel(project.project_type))}</p>
+            <h1 className="dv-display dv-hero-headline mt-1">{tx(project.display_name)}</h1>
             {project.production_company && (
-              <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">{project.production_company}</p>
+              <p className="mt-2 text-[17px] text-[var(--dv-text-secondary)]">{tx(project.production_company)}</p>
             )}
             {/* Nhãn: dự án từ đâu, casting thế nào */}
             {(project.source || project.casting_mode) && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {project.source && <span className="rounded-full bg-white px-3 py-1 text-[14px] font-medium">{sourceLabel(project.source)}</span>}
-                {project.casting_mode && <span className="rounded-full bg-white px-3 py-1 text-[14px] font-medium">{castingModeLabel(project.casting_mode)}</span>}
+                {project.source && <span className="rounded-full bg-white px-3 py-1 text-[14px] font-medium">{tx(sourceLabel(project.source))}</span>}
+                {project.casting_mode && <span className="rounded-full bg-white px-3 py-1 text-[14px] font-medium">{tx(castingModeLabel(project.casting_mode))}</span>}
               </div>
             )}
             <ShareButton
               url={() => `${window.location.origin}${href(`/du-an/${projectPath}`)}`}
-              title={project.display_name}
+              title={tx(project.display_name)}
               label="Chia sẻ dự án"
               className="dv-btn dv-btn-secondary mt-4 !h-10 !py-0 text-[15px]"
             />
@@ -158,28 +162,28 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
           {/* Hết hạn / đã đóng: không để người xem kẹt lại, dẫn tới dự án khác và đăng nhập / nộp hồ sơ */}
           {!open && (
             <section className="mt-6 rounded-[18px] bg-[#1d1d1f] p-6 text-white md:p-8">
-              <p className="dv-display text-[24px] font-semibold leading-[1.17] md:text-[28px]">Dự án đã hết hạn casting.</p>
+              <p className="dv-display text-[24px] font-semibold leading-[1.17] md:text-[28px]">{tx("Dự án đã hết hạn casting.")}</p>
               <p className="mt-2 text-[15px] leading-[1.47] text-white/70">
-                Dự án này không còn nhận hồ sơ. Xem các dự án đang casting khác và ứng tuyển vai phù hợp với bạn.
+                {tx("Dự án này không còn nhận hồ sơ. Xem các dự án đang casting khác và ứng tuyển vai phù hợp với bạn.")}
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link href={href('/du-an')} className="dv-btn dv-btn-light">
-                  Xem các dự án casting khác
+                  {tx("Xem các dự án casting khác")}
                 </Link>
                 {session.status === 'signed-in' ? (
                   <Link href={href('/tai-khoan')} className="dv-btn border border-white/40 text-white hover:bg-white/10">
-                    Tài khoản của tôi
+                    {tx("Tài khoản của tôi")}
                   </Link>
                 ) : (
                   <>
                     <Link href={href('/nop-ho-so')} className="dv-btn border border-white/40 text-white hover:bg-white/10">
-                      Nộp hồ sơ diễn viên
+                      {tx("Nộp hồ sơ diễn viên")}
                     </Link>
                     <Link
                       href={href(`/dang-nhap?next=${encodeURIComponent(href('/tai-khoan'))}`)}
                       className="inline-flex h-11 items-center justify-center px-3 text-[17px] font-medium text-white underline-offset-4 hover:underline"
                     >
-                      Đăng nhập
+                      {tx("Đăng nhập")}
                     </Link>
                   </>
                 )}
@@ -193,15 +197,15 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
                   {facts.map(f => (
                     <div key={f.label}>
-                      <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{f.label}</dt>
-                      <dd className="mt-1 text-[17px] leading-[1.3]">{f.value}</dd>
+                      <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx(f.label)}</dt>
+                      <dd className="mt-1 text-[17px] leading-[1.3]">{tx(f.value)}</dd>
                     </div>
                   ))}
                 </dl>
               )}
               {project.description && (
                 <p className={`whitespace-pre-line text-[17px] leading-[1.47] text-[var(--dv-text)] ${facts.length ? 'mt-6 border-t border-[#f0f0f2] pt-6' : ''}`}>
-                  {project.description}
+                  {tx(project.description)}
                 </p>
               )}
             </section>
@@ -210,19 +214,19 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
           <section className="mt-6 flex items-start gap-3 rounded-[18px] bg-white p-5 md:p-6">
             <Video className="mt-0.5 h-5 w-5 shrink-0 text-[var(--dv-accent)]" />
             <div className="text-[15px] leading-[1.47]">
-              <p className="font-semibold">{project.selftape_required ? 'Bắt buộc gửi self-tape' : 'Self-tape không bắt buộc'}</p>
+              <p className="font-semibold">{tx(project.selftape_required ? 'Bắt buộc gửi self-tape' : 'Self-tape không bắt buộc')}</p>
               <p className="mt-0.5 whitespace-pre-line text-[var(--dv-text-secondary)]">
-                {project.selftape_brief ||
+                {tx(project.selftape_brief ||
                   (project.selftape_required
                     ? 'Quay một đoạn video thử vai, tải lên YouTube (chế độ không công khai) hoặc Google Drive rồi dán link khi ứng tuyển.'
-                    : 'Bạn có thể gửi kèm link video thử vai để tăng cơ hội được chọn.')}
+                    : 'Bạn có thể gửi kèm link video thử vai để tăng cơ hội được chọn.'))}
               </p>
             </div>
           </section>
 
-          <h2 className="dv-display mt-12 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[32px]">Vai đang tuyển</h2>
+          <h2 className="dv-display mt-12 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[32px]">{tx("Vai đang tuyển")}</h2>
           {project.roles.length === 0 ? (
-            <p className="mt-4 text-[17px] text-[var(--dv-text-secondary)]">Dự án chưa công bố vai cụ thể.</p>
+            <p className="mt-4 text-[17px] text-[var(--dv-text-secondary)]">{tx("Dự án chưa công bố vai cụ thể.")}</p>
           ) : (
             <ul className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
               {project.roles.map(r => (
@@ -236,16 +240,16 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
                       {roleImages(r).map(u => (
                         <a key={u} href={u} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-[12px] bg-[var(--dv-bg-alt)]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={u} alt={`Ảnh tham khảo vai ${r.name}`} loading="lazy" className={`w-full object-cover ${roleImages(r).length === 1 ? 'aspect-[16/9]' : 'aspect-[3/4]'}`} />
+                          <img src={u} alt={tx(`Ảnh tham khảo vai ${r.name}`)} loading="lazy" className={`w-full object-cover ${roleImages(r).length === 1 ? 'aspect-[16/9]' : 'aspect-[3/4]'}`} />
                         </a>
                       ))}
                     </div>
                   )}
-                  <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">{r.name}</p>
+                  <p className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em]">{tx(r.name)}</p>
                   <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">
-                    {[roleSummary(r), r.quantity ? `Cần ${r.quantity} người` : null].filter(Boolean).join(' · ')}
+                    {tx([roleSummary(r), r.quantity ? `Cần ${r.quantity} người` : null].filter(Boolean).join(' · '))}
                   </p>
-                  {r.description && <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.47]">{r.description}</p>}
+                  {r.description && <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.47]">{tx(r.description)}</p>}
                   <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
                     <button
                       type="button"
@@ -253,11 +257,11 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
                       onClick={() => setApplyRole(r)}
                       className={`dv-btn w-full sm:w-auto ${open ? 'dv-btn-primary' : 'dv-btn-muted'}`}
                     >
-                      Ứng tuyển vai này
+                      {tx("Ứng tuyển vai này")}
                     </button>
                     <ShareButton
                       url={() => `${window.location.origin}${href(`/du-an/${projectPath}/${roleSlug(r, project.roles)}`)}`}
-                      title={`Vai ${r.name} – ${project.display_name}`}
+                      title={tx(`Vai ${r.name} – ${project.display_name}`)}
                       label="Chia sẻ vai"
                       className="dv-btn dv-btn-secondary w-full sm:w-auto"
                     />
@@ -297,6 +301,7 @@ function ApplySheet({
   canLogin: boolean;
   onClose: () => void;
 }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [selftape, setSelftape] = useState('');
   // Self-tape có sẵn trong hồ sơ: diễn viên tick các video phù hợp với dự án
@@ -357,16 +362,16 @@ function ApplySheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Ứng tuyển vai ${role.name}`}
+        aria-label={tx(`Ứng tuyển vai ${role.name}`)}
         onClick={e => e.stopPropagation()}
         className="dv-pop max-h-[92vh] w-full overflow-y-auto rounded-t-[22px] bg-white px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-5 sm:max-w-[520px] sm:rounded-[22px] sm:p-8"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{project.display_name}</p>
-            <h2 className="dv-display mt-0.5 text-[24px] font-semibold leading-[1.17]">Ứng tuyển · {role.name}</h2>
+            <p className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{tx(project.display_name)}</p>
+            <h2 className="dv-display mt-0.5 text-[24px] font-semibold leading-[1.17]">{tx("Ứng tuyển ·")} {tx(role.name)}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Đóng" className="-mr-1 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+          <button type="button" onClick={onClose} aria-label={tx("Đóng")} className="-mr-1 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -378,17 +383,17 @@ function ApplySheet({
               <path className="dv-check-mark" d="M17 29.5l7 7 15-16" fill="none" stroke="#1d1d1f" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <p className="dv-display mt-5 text-[24px] font-semibold" role="status">
-              Đã ứng tuyển thành công.
+              {tx("Đã ứng tuyển thành công.")}
             </p>
             <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Cảm ơn {doneName || 'bạn'}. Đội ngũ casting sẽ liên hệ nếu hồ sơ phù hợp với vai {role.name}.
+              {tx("Cảm ơn")} {tx(doneName || 'bạn')}{tx(". Đội ngũ casting sẽ liên hệ nếu hồ sơ phù hợp với vai")} {tx(role.name)}.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <button type="button" onClick={onClose} className="dv-btn dv-btn-primary">
-                Xong
+                {tx("Xong")}
               </button>
               <Link href={href('/tai-khoan')} className="dv-btn dv-btn-secondary">
-                Vai đã ứng tuyển
+                {tx("Vai đã ứng tuyển")}
               </Link>
             </div>
           </div>
@@ -396,20 +401,20 @@ function ApplySheet({
           // Chưa đăng nhập: nộp hồ sơ mới kèm vai này, hoặc đăng nhập để ứng tuyển bằng hồ sơ có sẵn
           <div className="mt-6">
             <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Điền hồ sơ diễn viên 7 bước. Vai <span className="font-semibold text-[var(--dv-text)]">{role.name}</span> sẽ được chọn sẵn
-              {project.selftape_required ? ', và bạn sẽ dán link self-tape ở bước Hình ảnh.' : '.'}
+              {tx("Điền hồ sơ diễn viên 7 bước. Vai")} <span className="font-semibold text-[var(--dv-text)]">{tx(role.name)}</span> {tx("sẽ được chọn sẵn")}
+              {tx(project.selftape_required ? ', và bạn sẽ dán link self-tape ở bước Hình ảnh.' : '.')}
             </p>
             <Link href={formHref} className="dv-btn dv-btn-primary mt-6 w-full">
-              Điền hồ sơ &amp; ứng tuyển <ChevronRight className="h-4 w-4" />
+              {tx("Điền hồ sơ & ứng tuyển")} <ChevronRight className="h-4 w-4" />
             </Link>
             {canLogin && (
               <p className="mt-4 text-center text-[14px] text-[var(--dv-text-secondary)]">
-                Đã có hồ sơ trên DienVienVN?{' '}
+                {tx("Đã có hồ sơ trên DienVienVN?")}{tx(' ')}
                 <Link
                   href={href(`/dang-nhap?next=${encodeURIComponent(href(`/du-an/${projectPathName(project.display_name, project.code) || project.id}`))}`)}
                   className="font-semibold text-[var(--dv-text)] underline underline-offset-2"
                 >
-                  Đăng nhập để ứng tuyển
+                  {tx("Đăng nhập để ứng tuyển")}
                 </Link>
               </p>
             )}
@@ -417,16 +422,16 @@ function ApplySheet({
         ) : (
           <div className="mt-6 space-y-4">
             <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-              Hồ sơ diễn viên trong tài khoản của bạn sẽ được gửi tới đội ngũ casting của dự án.{' '}
+              {tx("Hồ sơ diễn viên trong tài khoản của bạn sẽ được gửi tới đội ngũ casting của dự án.")}{tx(' ')}
               <Link href={href('/tai-khoan/ho-so')} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-                Cập nhật hồ sơ
-              </Link>{' '}
-              trước khi ứng tuyển nếu cần.
+                {tx("Cập nhật hồ sơ")}
+              </Link>{tx(' ')}
+              {tx("trước khi ứng tuyển nếu cần.")}
             </p>
             {library.length > 0 && (
               <fieldset>
                 <legend className="mb-2 text-[14px] font-semibold">
-                  Chọn self-tape phù hợp với dự án{project.selftape_required && <span className="text-[#b00020]"> *</span>}
+                  {tx("Chọn self-tape phù hợp với dự án")}{project.selftape_required && <span className="text-[#b00020]"> *</span>}
                 </legend>
                 <ul className="divide-y divide-[#f0f0f2] rounded-[14px] border border-[#e8e8ed]">
                   {library.map((t, k) => (
@@ -434,8 +439,8 @@ function ApplySheet({
                       <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
                         <input type="checkbox" checked={picked.includes(t.url)} onChange={() => togglePick(t.url)} className="h-[18px] w-[18px] shrink-0 accent-[#1d1d1f]" />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[15px] font-semibold">{t.title || `Self-tape ${k + 1}`}</span>
-                          <span className="block truncate text-[12px] text-[var(--dv-text-tertiary)]">{t.url}</span>
+                          <span className="block truncate text-[15px] font-semibold">{tx(t.title || `Self-tape ${k + 1}`)}</span>
+                          <span className="block truncate text-[12px] text-[var(--dv-text-tertiary)]">{tx(t.url)}</span>
                         </span>
                       </label>
                     </li>
@@ -449,24 +454,24 @@ function ApplySheet({
               htmlFor="qa-tape"
               hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
             >
-              <TextInput id="qa-tape" type="url" inputMode="url" placeholder="https://" value={selftape} onChange={e => setSelftape(e.target.value)} />
+              <TextInput id="qa-tape" type="url" inputMode="url" placeholder={tx("https://")} value={selftape} onChange={e => setSelftape(e.target.value)} />
             </Field>
             <Field label="Lời nhắn cho đội casting" htmlFor="qa-note">
-              <TextInput id="qa-note" placeholder="Không bắt buộc" value={note} onChange={e => setNote(e.target.value)} />
+              <TextInput id="qa-note" placeholder={tx("Không bắt buộc")} value={note} onChange={e => setNote(e.target.value)} />
             </Field>
             {error && (
               <p role="alert" className="rounded-[12px] bg-[#fff0f0] p-3 text-[14px] leading-[1.43] text-[#b00020]">
-                {error}{' '}
+                {tx(error)}{tx(' ')}
                 {authRequired && (
                   <Link href={href(`/dang-nhap?next=${encodeURIComponent(href(`/du-an/${project.id}`))}`)} className="font-semibold underline">
-                    Đăng nhập lại
+                    {tx("Đăng nhập lại")}
                   </Link>
                 )}
               </p>
             )}
             <button type="button" onClick={submit} disabled={submitting} className="dv-btn dv-btn-primary w-full">
               {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
-              {submitting ? 'Đang gửi…' : 'Gửi ứng tuyển'}
+              {tx(submitting ? 'Đang gửi…' : 'Gửi ứng tuyển')}
             </button>
           </div>
         )}

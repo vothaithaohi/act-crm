@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, ExternalLink, Loader2, LogOut, X } from 'lucide-react';
@@ -16,6 +18,7 @@ type Item = { table: string; id: string; action: 'created' | 'updated'; label: s
 
 /** /gia-lap?code=…: đổi mã dùng 1 lần lấy phiên giả lập rồi mở trang tài khoản. */
 export function ImpersonationStart() {
+  const tx = useTx();
   const params = useSearchParams();
   const href = useDvvnHref();
   const [error, setError] = useState('');
@@ -54,13 +57,13 @@ export function ImpersonationStart() {
       <div className="dv-card w-full max-w-[420px] p-8 text-center">
         {error ? (
           <>
-            <h1 className="dv-display text-[22px] font-semibold">Không mở được giả lập.</h1>
-            <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{error}</p>
+            <h1 className="dv-display text-[22px] font-semibold">{tx("Không mở được giả lập.")}</h1>
+            <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{tx(error)}</p>
           </>
         ) : (
           <>
             <Loader2 className="mx-auto h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
-            <p className="mt-4 text-[15px] text-[var(--dv-text-secondary)]">Đang mở phiên giả lập…</p>
+            <p className="mt-4 text-[15px] text-[var(--dv-text-secondary)]">{tx("Đang mở phiên giả lập…")}</p>
           </>
         )}
       </div>
@@ -70,6 +73,7 @@ export function ImpersonationStart() {
 
 /** Đặt trong layout: chỉ hiện khi đang giả lập. */
 export function ImpersonationBar() {
+  const tx = useTx();
   const imp = useImpersonation();
   const href = useDvvnHref();
   const [open, setOpen] = useState(false);
@@ -94,8 +98,8 @@ export function ImpersonationBar() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[#f59e0b]" />
               </span>
               <span className="max-w-[46vw] truncate text-[13px] sm:max-w-[280px]">
-                <span className="font-semibold text-[#fbbf24]">Đang giả lập</span>
-                <span className="text-white/80"> · {imp.label} · {KIND[imp.kind] || ''}</span>
+                <span className="font-semibold text-[#fbbf24]">{tx("Đang giả lập")}</span>
+                <span className="text-white/80"> · {tx(imp.label)} · {tx(KIND[imp.kind] || '')}</span>
               </span>
               <button
                 type="button"
@@ -103,7 +107,7 @@ export function ImpersonationBar() {
                 className="ml-1 inline-flex items-center gap-1 rounded-full bg-[#f59e0b] px-3 py-1.5 text-[13px] font-semibold text-[#1d1d1f] hover:bg-[#fbbf24]"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                Thoát
+                {tx("Thoát")}
               </button>
             </div>
           </div>
@@ -115,6 +119,7 @@ export function ImpersonationBar() {
 }
 
 function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const tx = useTx();
   const [items, setItems] = useState<Item[] | null>(null);
   const [phase, setPhase] = useState<'review' | 'ending' | 'ended'>('review');
   const [error, setError] = useState('');
@@ -130,7 +135,7 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
   }, []);
 
   const end = async (purge: boolean) => {
-    if (purge && !window.confirm(`Xoá toàn bộ ${(items || []).length} thao tác vừa làm trong phiên giả lập? Không hoàn tác được.`)) return;
+    if (purge && !window.confirm(tx(`Xoá toàn bộ ${(items || []).length} thao tác vừa làm trong phiên giả lập? Không hoàn tác được.`))) return;
     setPhase('ending');
     setError('');
     try {
@@ -157,9 +162,9 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
     <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true">
       <div className="max-h-[88vh] w-full overflow-y-auto rounded-t-[20px] bg-[var(--dv-bg,#fff)] p-6 text-[var(--dv-text)] shadow-xl sm:max-w-[520px] sm:rounded-[20px]">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="dv-display text-[21px] font-semibold">{phase === 'ended' ? 'Đã thoát giả lập.' : 'Thoát giả lập?'}</h2>
+          <h2 className="dv-display text-[21px] font-semibold">{tx(phase === 'ended' ? 'Đã thoát giả lập.' : 'Thoát giả lập?')}</h2>
           {phase !== 'ended' && (
-            <button type="button" onClick={onClose} aria-label="Đóng" className="-mr-2 -mt-1 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-black/5">
+            <button type="button" onClick={onClose} aria-label={tx("Đóng")} className="-mr-2 -mt-1 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-black/5">
               <X className="h-5 w-5" />
             </button>
           )}
@@ -167,32 +172,31 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
 
         {purged ? (
           <p className="mt-3 text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">
-            Đã xoá toàn bộ dữ liệu test của phiên này{purged.failed ? ` (${purged.failed} mục chưa xoá được — kiểm tra lại trong CRM)` : ''}.
+            {tx("Đã xoá toàn bộ dữ liệu test của phiên này")}{tx(purged.failed ? ` (${purged.failed} mục chưa xoá được — kiểm tra lại trong CRM)` : '')}.
           </p>
         ) : items === null ? (
           <div className="py-8 text-center">
             <Loader2 className="mx-auto h-5 w-5 animate-spin text-[var(--dv-text-secondary)]" />
           </div>
         ) : list.length === 0 ? (
-          <p className="mt-3 text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">Trong phiên này chưa có thao tác thật nào được lưu.</p>
+          <p className="mt-3 text-[15px] leading-[1.5] text-[var(--dv-text-secondary)]">{tx("Trong phiên này chưa có thao tác thật nào được lưu.")}</p>
         ) : (
           <>
             <div className="mt-3 flex gap-2 rounded-[12px] bg-[#fef3c7] p-3 text-[14px] leading-[1.45] text-[#78350f]">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                Bạn đã thao tác thật {list.length} mục{forProducer ? `, ${forProducer} mục đang hiện với NSX (link shortlist / trang tuyển dụng)` : ''}. Nên xoá để
-                không làm loãng / hiểu nhầm dữ liệu. Nếu giữ lại, các mục này được đánh dấu <b>TEST</b> trong CRM.
+                {tx("Bạn đã thao tác thật")} {tx(list.length)} {tx("mục")}{tx(forProducer ? `, ${forProducer} mục đang hiện với NSX (link shortlist / trang tuyển dụng)` : '')}{tx(". Nên xoá để không làm loãng / hiểu nhầm dữ liệu. Nếu giữ lại, các mục này được đánh dấu")} <b>{tx("TEST")}</b> {tx("trong CRM.")}
               </p>
             </div>
             <ul className="mt-3 divide-y divide-[var(--dv-border,#e5e5ea)]">
               {list.map(i => (
                 <li key={`${i.table}-${i.id}-${i.action}`} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="text-[14px] leading-[1.4]">{i.label}</p>
-                    {i.visible_to_producer && <span className="mt-0.5 inline-block rounded-full bg-[#fde68a] px-2 py-0.5 text-[11px] font-semibold text-[#78350f]">NSX thấy</span>}
+                    <p className="text-[14px] leading-[1.4]">{tx(i.label)}</p>
+                    {i.visible_to_producer && <span className="mt-0.5 inline-block rounded-full bg-[#fde68a] px-2 py-0.5 text-[11px] font-semibold text-[#78350f]">{tx("NSX thấy")}</span>}
                   </div>
                   <a href={i.crm_url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-[var(--dv-link,#0066cc)] hover:underline">
-                    Mở CRM
+                    {tx("Mở CRM")}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 </li>
@@ -201,32 +205,32 @@ function ExitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
           </>
         )}
 
-        {error && <p className="mt-3 text-[14px] text-[#d70015]">{error}</p>}
+        {error && <p className="mt-3 text-[14px] text-[#d70015]">{tx(error)}</p>}
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           {phase === 'ended' ? (
             <button type="button" onClick={onDone} className="dv-btn dv-btn-primary">
-              Về trang chủ
+              {tx("Về trang chủ")}
             </button>
           ) : (
             <>
               <button type="button" onClick={onClose} className="dv-btn dv-btn-secondary">
-                Tiếp tục giả lập
+                {tx("Tiếp tục giả lập")}
               </button>
               {list.length > 0 ? (
                 <>
                   <button type="button" onClick={() => end(false)} disabled={phase === 'ending'} className="dv-btn dv-btn-secondary">
-                    Thoát, giữ dữ liệu
+                    {tx("Thoát, giữ dữ liệu")}
                   </button>
                   <button type="button" onClick={() => end(true)} disabled={phase === 'ending'} className="dv-btn dv-btn-primary">
                     {phase === 'ending' && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Xoá toàn bộ & thoát
+                    {tx("Xoá toàn bộ & thoát")}
                   </button>
                 </>
               ) : (
                 <button type="button" onClick={() => end(false)} disabled={phase === 'ending'} className="dv-btn dv-btn-primary">
                   {phase === 'ending' && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Kết thúc giả lập
+                  {tx("Kết thúc giả lập")}
                 </button>
               )}
             </>

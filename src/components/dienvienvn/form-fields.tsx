@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useId, useRef, useState } from 'react';
 import { Check, ImagePlus, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 
@@ -20,19 +22,20 @@ export function Field({
   htmlFor?: string;
   className?: string;
 }) {
+  const tx = useTx();
   return (
     <div className={className}>
       <label className="dv-field-label" htmlFor={htmlFor}>
-        {label}
+        {tx(label)}
         {required && <span className="ml-0.5 text-[var(--dv-red)]">*</span>}
       </label>
-      {children}
+      {tx(children)}
       {error ? (
         <p className="dv-field-error" role="alert">
-          {error}
+          {tx(error)}
         </p>
       ) : hint ? (
-        <p className="dv-field-hint">{hint}</p>
+        <p className="dv-field-hint">{tx(hint)}</p>
       ) : null}
     </div>
   );
@@ -50,21 +53,23 @@ export function SelectInput({
   children,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
+  const tx = useTx();
   return (
     <select {...props} aria-invalid={invalid || undefined} className={`dv-input ${invalid ? 'dv-invalid' : ''} ${className}`}>
-      {children}
+      {tx(children)}
     </select>
   );
 }
 
 export function SectionTitle({ title, desc, action }: { title: string; desc?: string; action?: React.ReactNode }) {
+  const tx = useTx();
   return (
     <div className="flex items-end justify-between gap-4">
       <div>
-        <h3 className="text-[19px] font-semibold leading-[1.21] tracking-[0.012em]">{title}</h3>
-        {desc && <p className="mt-1 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{desc}</p>}
+        <h3 className="text-[19px] font-semibold leading-[1.21] tracking-[0.012em]">{tx(title)}</h3>
+        {desc && <p className="mt-1 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{tx(desc)}</p>}
       </div>
-      {action}
+      {tx(action)}
     </div>
   );
 }
@@ -84,6 +89,7 @@ export function ChipGroup({
   exclusive?: string;
   label: string;
 }) {
+  const tx = useTx();
   const items = (options as (string | { id: string; label: string })[]).map(o =>
     typeof o === 'string' ? { id: o, label: o } : o
   );
@@ -94,11 +100,11 @@ export function ChipGroup({
     return onChange([...value.filter(v => v !== exclusive), id]);
   };
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
+    <div className="flex flex-wrap gap-2" role="group" aria-label={tx(label)}>
       {items.map(item => (
         <button key={item.id} type="button" className="dv-chip" aria-pressed={value.includes(item.id)} onClick={() => toggle(item.id)}>
           {value.includes(item.id) && <Check className="h-3.5 w-3.5" strokeWidth={2.5} />}
-          {item.label}
+          {tx(item.label)}
         </button>
       ))}
     </div>
@@ -106,6 +112,7 @@ export function ChipGroup({
 }
 
 export function CheckOption({ checked, onChange, children }: { checked: boolean; onChange: () => void; children: React.ReactNode }) {
+  const tx = useTx();
   return (
     <button type="button" role="checkbox" aria-checked={checked} className="dv-option" onClick={onChange}>
       <span
@@ -115,7 +122,7 @@ export function CheckOption({ checked, onChange, children }: { checked: boolean;
       >
         {checked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
       </span>
-      <span className={checked ? 'text-[var(--dv-text)]' : 'text-[var(--dv-text)]'}>{children}</span>
+      <span className={checked ? 'text-[var(--dv-text)]' : 'text-[var(--dv-text)]'}>{tx(children)}</span>
     </button>
   );
 }
@@ -203,6 +210,7 @@ export function PhotoUpload({
   onChange: (url: string) => void;
   error?: string;
 }) {
+  const tx = useTx();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -244,7 +252,7 @@ export function PhotoUpload({
   return (
     <div>
       <label className="dv-field-label" htmlFor={inputId}>
-        {label}
+        {tx(label)}
         {required && <span className="ml-0.5 text-[var(--dv-red)]">*</span>}
       </label>
       <div
@@ -259,7 +267,7 @@ export function PhotoUpload({
       >
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt={label} className="h-full w-full object-cover object-top" />
+          <img src={value} alt={tx(label)} className="h-full w-full object-cover object-top" />
         ) : (
           <button
             type="button"
@@ -268,15 +276,15 @@ export function PhotoUpload({
             className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center"
           >
             <ImagePlus className="h-8 w-8 text-[var(--dv-accent)]" strokeWidth={1.4} />
-            <span className="text-[15px] font-medium text-[var(--dv-accent)]">Chọn ảnh</span>
-            <span className="text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">{hint}</span>
+            <span className="text-[15px] font-medium text-[var(--dv-accent)]">{tx("Chọn ảnh")}</span>
+            <span className="text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">{tx(hint)}</span>
           </button>
         )}
 
         {busy && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/85 backdrop-blur-sm">
             <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-accent)]" />
-            <span className="text-[13px] text-[var(--dv-text-secondary)]">Đang tải lên… {progress}%</span>
+            <span className="text-[13px] text-[var(--dv-text-secondary)]">{tx("Đang tải lên…")} {tx(progress)}%</span>
             <div className="h-1 w-2/3 overflow-hidden rounded-full bg-[#e8e8ed]">
               <div className="h-full bg-[var(--dv-accent)] transition-all" style={{ width: `${progress}%` }} />
             </div>
@@ -296,16 +304,16 @@ export function PhotoUpload({
       {value && !busy && (
         <div className="mt-2 flex items-center gap-4 text-[14px]">
           <button type="button" className="dv-link" onClick={() => inputRef.current?.click()}>
-            <RefreshCw className="h-3.5 w-3.5" /> Đổi ảnh
+            <RefreshCw className="h-3.5 w-3.5" /> {tx("Đổi ảnh")}
           </button>
           <button type="button" className="inline-flex items-center gap-1 text-[var(--dv-text-secondary)] hover:text-[var(--dv-red)]" onClick={() => onChange('')}>
-            <Trash2 className="h-3.5 w-3.5" /> Xoá
+            <Trash2 className="h-3.5 w-3.5" /> {tx("Xoá")}
           </button>
         </div>
       )}
       {shownError && (
         <p className="dv-field-error" role="alert">
-          {shownError}
+          {tx(shownError)}
         </p>
       )}
     </div>

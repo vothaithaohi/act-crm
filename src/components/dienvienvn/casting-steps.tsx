@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { EXTERNAL_PROGRAM_LABELS, ExternalProgramType } from '@/lib/types/crm';
@@ -38,19 +40,20 @@ import { CheckOption, ChipGroup, Field, PhotoUpload, SectionTitle, SelectInput, 
 
 /** Danh sách 34 tỉnh/thành, nhóm theo thành phố trực thuộc trung ương / tỉnh. */
 function ProvinceOptions({ exclude = [] }: { exclude?: string[] }) {
+  const tx = useTx();
   return (
     <>
       <optgroup label="Thành phố trực thuộc trung ương">
         {VN_CITIES.filter(p => !exclude.includes(p.value)).map(p => (
           <option key={p.value} value={p.value}>
-            {p.label}
+            {tx(p.label)}
           </option>
         ))}
       </optgroup>
       <optgroup label="Tỉnh">
         {VN_PROVINCES.filter(p => !exclude.includes(p.value)).map(p => (
           <option key={p.value} value={p.value}>
-            {p.label}
+            {tx(p.label)}
           </option>
         ))}
       </optgroup>
@@ -81,6 +84,7 @@ const Divider = () => <div className="h-px bg-[#e8e8ed]" />;
 
 /* ---------------- Bước 1 ---------------- */
 export function StepPersonal({ draft, update, errors, emailLocked, namePlaceholder = 'Võ Thái Thảo' }: StepProps) {
+  const tx = useTx();
   const [emailTouched, setEmailTouched] = useState(false);
   const age = ageFromDob(draft.dob);
   const today = new Date().toISOString().slice(0, 10);
@@ -91,7 +95,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
           <TextInput
             id="full_name"
             autoComplete="name"
-            placeholder={`VD: ${namePlaceholder}`}
+            placeholder={tx(`VD: ${namePlaceholder}`)}
             value={draft.full_name}
             invalid={!!errors.full_name}
             maxLength={120} onChange={e => update({ full_name: e.target.value })}
@@ -99,9 +103,9 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
         </Field>
         <Field label="Giới tính" required htmlFor="gender">
           <SelectInput id="gender" value={draft.gender} onChange={e => update({ gender: e.target.value as CastingDraft['gender'] })}>
-            <option value="female">Nữ</option>
-            <option value="male">Nam</option>
-            <option value="other">Khác</option>
+            <option value="female">{tx("Nữ")}</option>
+            <option value="male">{tx("Nam")}</option>
+            <option value="other">{tx("Khác")}</option>
           </SelectInput>
         </Field>
       </div>
@@ -134,13 +138,13 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             className={draft.city ? '' : 'text-[#a1a1a6]'}
           >
             <option value="" disabled>
-              Chọn tỉnh / thành phố
+              {tx("Chọn tỉnh / thành phố")}
             </option>
             {draft.city && draft.city !== ABROAD && !ALL_PROVINCES.some(p => p.value === draft.city) && (
-              <option value={draft.city}>{draft.city}</option>
+              <option value={draft.city}>{tx(draft.city)}</option>
             )}
             <ProvinceOptions />
-            <option value={ABROAD}>{ABROAD}</option>
+            <option value={ABROAD}>{tx(ABROAD)}</option>
           </SelectInput>
         </Field>
       </div>
@@ -176,7 +180,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="ban@email.com"
+            placeholder={tx("ban@email.com")}
             value={draft.email}
             invalid={!!errors.email || (emailTouched && !!draft.email.trim() && !isValidEmail(draft.email))}
             onBlur={() => setEmailTouched(true)}
@@ -189,7 +193,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
         <TextInput
           id="address"
           autoComplete="street-address"
-          placeholder="Số nhà, đường…"
+          placeholder={tx("Số nhà, đường…")}
           value={draft.address}
           maxLength={300} onChange={e => update({ address: e.target.value })}
         />
@@ -205,7 +209,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
           >
             <TextInput
               id="guardian"
-              placeholder="Họ tên phụ huynh – Số điện thoại"
+              placeholder={tx("Họ tên phụ huynh – Số điện thoại")}
               value={draft.parent_guardian_name}
               invalid={!!errors.parent_guardian_name}
               maxLength={200} onChange={e => update({ parent_guardian_name: e.target.value })}
@@ -237,6 +241,7 @@ function NumberField({
   placeholder: string;
   onChange: (v: string) => void;
 }) {
+  const tx = useTx();
   return (
     <Field label={label} required={required} htmlFor={id} error={error}>
       <div className="relative">
@@ -244,19 +249,20 @@ function NumberField({
           id={id}
           type="text"
           inputMode="decimal"
-          placeholder={placeholder}
+          placeholder={tx(placeholder)}
           value={value}
           invalid={!!error}
           onChange={e => onChange(e.target.value.replace(',', '.').replace(/[^\d.]/g, '').slice(0, 5))}
           className={unit ? 'pr-12' : ''}
         />
-        {unit && <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[15px] text-[var(--dv-text-secondary)]">{unit}</span>}
+        {unit && <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[15px] text-[var(--dv-text-secondary)]">{tx(unit)}</span>}
       </div>
     </Field>
   );
 }
 
 export function StepBody({ draft, update, errors }: StepProps) {
+  const tx = useTx();
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5">
@@ -271,7 +277,7 @@ export function StepBody({ draft, update, errors }: StepProps) {
       </div>
       <Divider />
       <div>
-        <p className="dv-field-label">Hình xăm</p>
+        <p className="dv-field-label">{tx("Hình xăm")}</p>
         <ChipGroup
           label="Vị trí hình xăm"
           options={TATTOO_OPTIONS}
@@ -279,7 +285,7 @@ export function StepBody({ draft, update, errors }: StepProps) {
           value={draft.tattoos_piercings.filter(v => !isPiercing(v))}
           onChange={v => update({ tattoos_piercings: [...v, ...draft.tattoos_piercings.filter(isPiercing)] })}
         />
-        <p className="dv-field-label mt-5">Xỏ khuyên</p>
+        <p className="dv-field-label mt-5">{tx("Xỏ khuyên")}</p>
         <ChipGroup
           label="Vị trí xỏ khuyên"
           options={PIERCING_OPTIONS}
@@ -298,11 +304,12 @@ const EXPERIENCE_TEXT_MAX = 200;
 
 /** Bộ đếm ký tự nhỏ, chỉ hiện khi gần chạm giới hạn. */
 function CharCount({ value, max }: { value: string; max: number }) {
+  const tx = useTx();
   if (value.length < max * 0.75) return null;
   return (
     <p className={`mt-1 text-right text-[12px] ${value.length >= max ? 'text-[var(--dv-red)]' : 'text-[var(--dv-text-tertiary)]'}`}>
-      {value.length}/{max}
-      {value.length > max ? ` · vượt ${value.length - max} ký tự, vui lòng rút gọn` : value.length === max ? ' · đã đủ giới hạn' : ''}
+      {tx(value.length)}/{tx(max)}
+      {tx(value.length > max ? ` · vượt ${value.length - max} ký tự, vui lòng rút gọn` : value.length === max ? ' · đã đủ giới hạn' : '')}
     </p>
   );
 }
@@ -315,6 +322,7 @@ const EXPERIENCE_SECTIONS: { kind: ExperienceKind; title: string; titleLabel: st
 ];
 
 export function StepExperience({ draft, update }: StepProps) {
+  const tx = useTx();
   const setList = (kind: ExperienceKind, list: ExperienceEntry[]) => update({ experience: { ...draft.experience, [kind]: list } });
   const total = Object.values(draft.experience).reduce((n, l) => n + l.length, 0);
 
@@ -322,7 +330,7 @@ export function StepExperience({ draft, update }: StepProps) {
     <div className="space-y-6">
       {total === 0 && (
         <p className="rounded-[14px] bg-[var(--dv-bg-alt)] p-4 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-          Chưa có kinh nghiệm? Không sao — bạn có thể bỏ qua bước này. Nhiều dự án đang tìm gương mặt mới.
+          {tx("Chưa có kinh nghiệm? Không sao — bạn có thể bỏ qua bước này. Nhiều dự án đang tìm gương mặt mới.")}
         </p>
       )}
       {EXPERIENCE_SECTIONS.map((sec, si) => {
@@ -331,19 +339,19 @@ export function StepExperience({ draft, update }: StepProps) {
           <div key={sec.kind} className="space-y-4">
             {si > 0 && <Divider />}
             <SectionTitle
-              title={sec.title}
+              title={tx(sec.title)}
               action={
                 <button
                   type="button"
                   className="dv-link shrink-0 text-[15px]"
                   onClick={() => setList(sec.kind, [...list, { id: newId(), title: '', role: 'supporting', character: '', year: '' }])}
                 >
-                  <Plus className="h-4 w-4" /> Thêm
+                  <Plus className="h-4 w-4" /> {tx("Thêm")}
                 </button>
               }
             />
             {sec.kind === 'commercials' && list.length > 0 && (
-              <p className="-mt-2 text-[13px] text-[var(--dv-text-secondary)]">Mỗi nhãn hàng để 1 dòng riêng, bấm “+ Thêm” để thêm nhãn hàng khác.</p>
+              <p className="-mt-2 text-[13px] text-[var(--dv-text-secondary)]">{tx("Mỗi nhãn hàng để 1 dòng riêng, bấm “+ Thêm” để thêm nhãn hàng khác.")}</p>
             )}
             {list.map((item, idx) => {
               const patch = (p: Partial<ExperienceEntry>) => setList(sec.kind, list.map((x, i) => (i === idx ? { ...x, ...p } : x)));
@@ -351,11 +359,11 @@ export function StepExperience({ draft, update }: StepProps) {
                 <div key={item.id} className="rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
                     <Field label={sec.titleLabel} htmlFor={`${item.id}-t`}>
-                      <TextInput id={`${item.id}-t`} placeholder={sec.titlePh} value={item.title} maxLength={EXPERIENCE_TEXT_MAX} onChange={e => patch({ title: e.target.value })} />
+                      <TextInput id={`${item.id}-t`} placeholder={tx(sec.titlePh)} value={item.title} maxLength={EXPERIENCE_TEXT_MAX} onChange={e => patch({ title: e.target.value })} />
                       <CharCount value={item.title} max={EXPERIENCE_TEXT_MAX} />
                     </Field>
                     <Field label={sec.extraLabel} htmlFor={`${item.id}-c`}>
-                      <TextInput id={`${item.id}-c`} placeholder={sec.extraPh} value={item.character} maxLength={EXPERIENCE_TEXT_MAX} onChange={e => patch({ character: e.target.value })} />
+                      <TextInput id={`${item.id}-c`} placeholder={tx(sec.extraPh)} value={item.character} maxLength={EXPERIENCE_TEXT_MAX} onChange={e => patch({ character: e.target.value })} />
                       <CharCount value={item.character} max={EXPERIENCE_TEXT_MAX} />
                     </Field>
                   </div>
@@ -364,7 +372,7 @@ export function StepExperience({ draft, update }: StepProps) {
                       <SelectInput id={`${item.id}-r`} value={item.role} onChange={e => patch({ role: e.target.value as ExperienceEntry['role'] })}>
                         {FILM_ROLE_OPTIONS.map(o => (
                           <option key={o.id} value={o.id}>
-                            {o.label}
+                            {tx(o.label)}
                           </option>
                         ))}
                       </SelectInput>
@@ -380,7 +388,7 @@ export function StepExperience({ draft, update }: StepProps) {
                     </Field>
                     <button
                       type="button"
-                      aria-label="Xoá dòng này"
+                      aria-label={tx("Xoá dòng này")}
                       onClick={() => setList(sec.kind, list.filter((_, i) => i !== idx))}
                       className="flex h-12 w-12 items-center justify-center rounded-[12px] text-[var(--dv-text-secondary)] transition-colors hover:bg-white hover:text-[var(--dv-red)]"
                     >
@@ -399,6 +407,7 @@ export function StepExperience({ draft, update }: StepProps) {
 
 /* ---------------- Bước 4 ---------------- */
 export function StepSkills({ draft, update }: StepProps) {
+  const tx = useTx();
   const groups: { key: keyof CastingDraft; label: string; options: string[]; format?: (s: string) => string; placeholder?: string }[] = [
     { key: 'accents', label: 'Giọng nói vùng miền', options: ACCENT_OPTIONS, format: s => `Giọng ${s}` },
     { key: 'languages', label: 'Ngoại ngữ', options: LANGUAGE_OPTIONS, placeholder: 'VD: Tiếng Indonesia' },
@@ -412,13 +421,13 @@ export function StepSkills({ draft, update }: StepProps) {
       {groups.map((g, i) => (
         <div key={g.key} className="space-y-3">
           {i > 0 && <Divider />}
-          <p className="dv-field-label !mb-0 pt-1">{g.label}</p>
+          <p className="dv-field-label !mb-0 pt-1">{tx(g.label)}</p>
           {g.placeholder ? (
             <SkillChips
               label={g.label}
               options={g.options}
               value={draft[g.key] as string[]}
-              placeholder={g.placeholder}
+              placeholder={tx(g.placeholder)}
               onChange={v => update({ [g.key]: v } as Partial<CastingDraft>)}
             />
           ) : (
@@ -449,6 +458,7 @@ function SkillChips({
   placeholder: string;
   onChange: (next: string[]) => void;
 }) {
+  const tx = useTx();
   const [adding, setAdding] = useState(false);
   const [text, setText] = useState('');
   // Mục tự thêm hiện thành chip ngay sau danh sách có sẵn; bỏ chọn thì ẩn đi
@@ -471,8 +481,8 @@ function SkillChips({
             autoFocus
             value={text}
             maxLength={CUSTOM_SKILL_MAX_LENGTH}
-            placeholder={placeholder}
-            aria-label={`Thêm ${label.toLowerCase()} khác`}
+            placeholder={tx(placeholder)}
+            aria-label={tx(`Thêm ${label.toLowerCase()} khác`)}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter') {
@@ -489,7 +499,7 @@ function SkillChips({
             disabled={!text.trim()}
             className="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[var(--dv-accent)] px-5 text-[14px] font-medium tracking-[-0.016em] text-white transition-opacity hover:bg-[var(--dv-accent-hover)] disabled:cursor-not-allowed disabled:opacity-30"
           >
-            Thêm
+            {tx("Thêm")}
           </button>
           <button
             type="button"
@@ -499,14 +509,14 @@ function SkillChips({
             }}
             className="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 text-[14px] tracking-[-0.016em] text-[var(--dv-text-secondary)] transition-colors hover:bg-[var(--dv-bg-alt)] hover:text-[var(--dv-text)]"
           >
-            Huỷ
+            {tx("Huỷ")}
           </button>
         </div>
       ) : (
         !full && (
           <button type="button" onClick={() => setAdding(true)} className="dv-chip !gap-1.5 !pr-4 text-[var(--dv-accent)]">
             <Plus className="h-4 w-4" strokeWidth={2.2} />
-            <span>Thêm khác</span>
+            <span>{tx("Thêm khác")}</span>
           </button>
         )
       )}
@@ -516,6 +526,7 @@ function SkillChips({
 
 /* ---------------- Bước 5 ---------------- */
 export function StepWillingness({ draft, update }: StepProps) {
+  const tx = useTx();
   const cities = draft.willing_work_cities;
   // Chip hiển thị: địa bàn mặc định + các tỉnh/thành người điền đã thêm
   const extraCities = cities.filter(c => !CITY_OPTIONS.includes(c));
@@ -532,7 +543,7 @@ export function StepWillingness({ draft, update }: StepProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <p className="dv-field-label !mb-0">Sẵn sàng quay tại</p>
+        <p className="dv-field-label !mb-0">{tx("Sẵn sàng quay tại")}</p>
         <div className="flex flex-wrap items-center gap-2">
           <ChipGroup
             label="Địa bàn sẵn sàng quay"
@@ -545,9 +556,9 @@ export function StepWillingness({ draft, update }: StepProps) {
           />
           <label className="dv-chip relative !gap-1.5 !pr-4 text-[var(--dv-accent)]">
             <Plus className="h-4 w-4" strokeWidth={2.2} />
-            <span>Thêm tỉnh / thành</span>
+            <span>{tx("Thêm tỉnh / thành")}</span>
             <select
-              aria-label="Thêm tỉnh / thành phố sẵn sàng quay"
+              aria-label={tx("Thêm tỉnh / thành phố sẵn sàng quay")}
               value=""
               onChange={e => {
                 const v = e.target.value;
@@ -555,7 +566,7 @@ export function StepWillingness({ draft, update }: StepProps) {
               }}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             >
-              <option value="">Chọn tỉnh / thành phố</option>
+              <option value="">{tx("Chọn tỉnh / thành phố")}</option>
               <ProvinceOptions exclude={[...CITY_OPTIONS, ...cities]} />
             </select>
           </label>
@@ -564,13 +575,13 @@ export function StepWillingness({ draft, update }: StepProps) {
       <Divider />
       <div className="space-y-3">
         <div>
-          <p className="dv-field-label !mb-1">Mức độ cởi mở với các phân cảnh đặc biệt</p>
-          <p className="dv-field-hint !mt-0">Chỉ chọn những gì bạn thật sự thoải mái. Thông tin này chỉ dùng để ghép vai phù hợp.</p>
+          <p className="dv-field-label !mb-1">{tx("Mức độ cởi mở với các phân cảnh đặc biệt")}</p>
+          <p className="dv-field-hint !mt-0">{tx("Chỉ chọn những gì bạn thật sự thoải mái. Thông tin này chỉ dùng để ghép vai phù hợp.")}</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {ROLE_WILLINGNESS_OPTIONS.map(o => (
             <CheckOption key={o.key} checked={isChecked(o.ids)} onChange={() => toggle(o.ids)}>
-              {o.label}
+              {tx(o.label)}
             </CheckOption>
           ))}
         </div>
@@ -581,6 +592,7 @@ export function StepWillingness({ draft, update }: StepProps) {
 
 /* ---------------- Bước 6 ---------------- */
 export function StepMedia({ draft, update, errors, application }: StepProps) {
+  const tx = useTx();
   const socials: { key: keyof CastingDraft['social_links']; label: string; ph: string }[] = [
     { key: 'facebook', label: 'Facebook', ph: 'facebook.com/…' },
     { key: 'instagram', label: 'Instagram', ph: 'instagram.com/…' },
@@ -599,14 +611,14 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
         </div>
       </div>
       <p className="text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
-        Ảnh JPG, PNG hoặc ảnh chụp từ điện thoại. Ảnh sẽ được tự động tối ưu dung lượng trước khi tải lên.
+        {tx("Ảnh JPG, PNG hoặc ảnh chụp từ điện thoại. Ảnh sẽ được tự động tối ưu dung lượng trước khi tải lên.")}
       </p>
       <GalleryEditor draft={draft} update={update} />
       {application && (
         <>
           <Divider />
           <SectionTitle
-            title={`Self-tape · ${application.roleName}`}
+            title={tx(`Self-tape · ${application.roleName}`)}
             desc={
               application.selftapeBrief ||
               `Video thử vai cho ${application.projectName}. Tải lên YouTube (không công khai) hoặc Google Drive rồi dán link. Tên kênh / tài khoản không nên chứa SĐT, email.`
@@ -623,7 +635,7 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
               id="selftape"
               type="url"
               inputMode="url"
-              placeholder="https://youtube.com/… hoặc https://drive.google.com/…"
+              placeholder={tx("https://youtube.com/… hoặc https://drive.google.com/…")}
               value={draft.selftape_url}
               invalid={!!errors.selftape_url}
               onChange={e => update({ selftape_url: e.target.value })}
@@ -632,7 +644,7 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
         </>
       )}
       <Divider />
-      <SectionTitle title="Mạng xã hội & Showreel" desc="Giúp đạo diễn xem thêm hình ảnh và khả năng diễn xuất của bạn." />
+      <SectionTitle title={tx("Mạng xã hội & Showreel")} desc="Giúp đạo diễn xem thêm hình ảnh và khả năng diễn xuất của bạn." />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {socials.map(s => (
           <Field key={s.key} label={s.label} htmlFor={`social-${s.key}`}>
@@ -640,7 +652,7 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
               id={`social-${s.key}`}
               type="url"
               inputMode="url"
-              placeholder={s.ph}
+              placeholder={tx(s.ph)}
               value={draft.social_links[s.key]}
               onChange={e => update({ social_links: { ...draft.social_links, [s.key]: e.target.value } })}
             />
@@ -673,19 +685,20 @@ function emptyTraining(school: string): TrainingEntry {
 const REGIONS: SchoolRegion[] = ['north', 'central', 'south'];
 
 function SchoolSelect({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  const tx = useTx();
   return (
     <SelectInput id={id} value={value} onChange={e => onChange(e.target.value)}>
-      <option value={ACT_ACADEMY_SCHOOL}>ACT Academy</option>
+      <option value={ACT_ACADEMY_SCHOOL}>{tx("ACT Academy")}</option>
       {REGIONS.map(region => (
         <optgroup key={region} label={SCHOOL_REGION_LABELS[region]}>
           {ART_SCHOOLS.filter(s => s.region === region).map(s => (
             <option key={s.name} value={s.name}>
-              {s.name}
+              {tx(s.name)}
             </option>
           ))}
         </optgroup>
       ))}
-      <option value={OTHER_SCHOOL}>{OTHER_SCHOOL}</option>
+      <option value={OTHER_SCHOOL}>{tx(OTHER_SCHOOL)}</option>
     </SelectInput>
   );
 }
@@ -703,6 +716,7 @@ function TrainingCard({
   onChange: (p: Partial<TrainingEntry>) => void;
   onRemove: () => void;
 }) {
+  const tx = useTx();
   const isAct = item.school === ACT_ACADEMY_SCHOOL;
   const isCustom = item.school === OTHER_SCHOOL;
   const school = ART_SCHOOLS.find(s => s.name === item.school);
@@ -711,9 +725,9 @@ function TrainingCard({
   return (
     <div className="rounded-[18px] border border-[#e8e8ed] bg-white p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">Khóa học {index + 1}</span>
+        <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{tx("Khóa học")} {tx(index + 1)}</span>
         <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-[14px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-red)]">
-          <Trash2 className="h-4 w-4" /> Xoá
+          <Trash2 className="h-4 w-4" /> {tx("Xoá")}
         </button>
       </div>
 
@@ -726,7 +740,7 @@ function TrainingCard({
           <Field label="Tên cơ sở đào tạo" required htmlFor={`${pid}-custom`} error={errors[`training_${index}_school`]}>
             <TextInput
               id={`${pid}-custom`}
-              placeholder="Lớp tư nhân, workshop, trường khác…"
+              placeholder={tx("Lớp tư nhân, workshop, trường khác…")}
               value={item.custom_school}
               invalid={!!errors[`training_${index}_school`]}
               maxLength={200} onChange={e => onChange({ custom_school: e.target.value })}
@@ -740,7 +754,7 @@ function TrainingCard({
               <SelectInput id={`${pid}-level`} value={item.act_level} onChange={e => onChange({ act_level: e.target.value as TrainingEntry['act_level'] })}>
                 {ACT_LEVEL_OPTIONS.map(o => (
                   <option key={o.id} value={o.id}>
-                    {o.label}
+                    {tx(o.label)}
                   </option>
                 ))}
               </SelectInput>
@@ -750,7 +764,7 @@ function TrainingCard({
               <SelectInput id={`${pid}-program`} value={item.program_type} onChange={e => onChange({ program_type: e.target.value as ExternalProgramType })}>
                 {(Object.keys(EXTERNAL_PROGRAM_LABELS) as ExternalProgramType[]).map(k => (
                   <option key={k} value={k}>
-                    {EXTERNAL_PROGRAM_LABELS[k]}
+                    {tx(EXTERNAL_PROGRAM_LABELS[k])}
                   </option>
                 ))}
               </SelectInput>
@@ -759,7 +773,7 @@ function TrainingCard({
           <Field label={isAct ? 'Mã lớp học' : 'Mã lớp / Chuyên ngành'} required={isAct} htmlFor={`${pid}-class`} error={errors[`training_${index}_class`]}>
             <TextInput
               id={`${pid}-class`}
-              placeholder={isAct ? 'VD: ACT1-37B, ACT2-38B…' : 'VD: Diễn viên kịch – điện ảnh'}
+              placeholder={tx(isAct ? 'VD: ACT1-37B, ACT2-38B…' : 'VD: Diễn viên kịch – điện ảnh')}
               value={isAct ? item.class_code : item.major}
               invalid={!!errors[`training_${index}_class`]}
               maxLength={isAct ? 60 : 200} onChange={e => onChange(isAct ? { class_code: e.target.value } : { major: e.target.value })}
@@ -768,7 +782,7 @@ function TrainingCard({
           <Field label={isAct ? 'Tên Term / Khóa' : 'Niên khóa / Khóa'} htmlFor={`${pid}-term`}>
             <TextInput
               id={`${pid}-term`}
-              placeholder={isAct ? 'VD: Khóa 37B (11/2025)' : 'VD: K42 (2020–2024)'}
+              placeholder={tx(isAct ? 'VD: Khóa 37B (11/2025)' : 'VD: K42 (2020–2024)')}
               value={item.term_name}
               maxLength={120} onChange={e => onChange({ term_name: e.target.value })}
             />
@@ -786,14 +800,14 @@ function TrainingCard({
             <SelectInput id={`${pid}-status`} value={item.status} onChange={e => onChange({ status: e.target.value as TrainingEntry['status'] })}>
               {ENROLLMENT_STATUS_OPTIONS.map(o => (
                 <option key={o.id} value={o.id}>
-                  {o.label}
+                  {tx(o.label)}
                 </option>
               ))}
             </SelectInput>
           </Field>
           {isAct && (
             <Field label="Giảng viên phụ trách" htmlFor={`${pid}-instructor`}>
-              <TextInput id={`${pid}-instructor`} placeholder="VD: Đạo diễn Vũ Trần" value={item.instructor} maxLength={120} onChange={e => onChange({ instructor: e.target.value })} />
+              <TextInput id={`${pid}-instructor`} placeholder={tx("VD: Đạo diễn Vũ Trần")} value={item.instructor} maxLength={120} onChange={e => onChange({ instructor: e.target.value })} />
             </Field>
           )}
         </div>
@@ -801,7 +815,7 @@ function TrainingCard({
         <Field label={isAct ? 'Đánh giá / Nhận xét chuyên môn của giảng viên' : 'Đánh giá / Thành tích nổi bật'} htmlFor={`${pid}-eval`}>
           <TextInput
             id={`${pid}-eval`}
-            placeholder={isAct ? 'VD: Nắm vững kỹ thuật đài từ, biểu cảm tốt trước ống kính…' : 'VD: Tốt nghiệp loại Giỏi, vai chính vở diễn tốt nghiệp…'}
+            placeholder={tx(isAct ? 'VD: Nắm vững kỹ thuật đài từ, biểu cảm tốt trước ống kính…' : 'VD: Tốt nghiệp loại Giỏi, vai chính vở diễn tốt nghiệp…')}
             value={item.evaluation}
             maxLength={1000} onChange={e => onChange({ evaluation: e.target.value })}
           />
@@ -812,12 +826,12 @@ function TrainingCard({
 }
 
 export function StepTraining({ draft, update, errors }: StepProps) {
+  const tx = useTx();
   const setTrainings = (t: TrainingEntry[]) => update({ trainings: t });
   return (
     <div className="space-y-5">
       <p className="text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-        Khai báo các khóa diễn xuất bạn đã hoặc đang theo học — tại ACT Academy hoặc các trường nghệ thuật khác. Bạn có thể thêm
-        nhiều nơi đào tạo. Nếu chưa từng học, có thể bỏ qua bước này.
+        {tx("Khai báo các khóa diễn xuất bạn đã hoặc đang theo học — tại ACT Academy hoặc các trường nghệ thuật khác. Bạn có thể thêm nhiều nơi đào tạo. Nếu chưa từng học, có thể bỏ qua bước này.")}
       </p>
 
       {draft.trainings.map((t, i) => (
@@ -837,14 +851,14 @@ export function StepTraining({ draft, update, errors }: StepProps) {
           onClick={() => setTrainings([...draft.trainings, emptyTraining(ACT_ACADEMY_SCHOOL)])}
           className="flex min-h-[64px] items-center justify-center gap-2 rounded-[14px] border border-dashed border-[#c7c7cc] text-[15px] font-medium text-[var(--dv-accent)] transition-colors hover:border-[var(--dv-accent)] hover:bg-[rgba(29,29,31,0.04)]"
         >
-          <Plus className="h-4 w-4" /> Đã học tại ACT Academy
+          <Plus className="h-4 w-4" /> {tx("Đã học tại ACT Academy")}
         </button>
         <button
           type="button"
           onClick={() => setTrainings([...draft.trainings, emptyTraining(ART_SCHOOLS[0].name)])}
           className="flex min-h-[64px] items-center justify-center gap-2 rounded-[14px] border border-dashed border-[#c7c7cc] text-[15px] font-medium text-[var(--dv-accent)] transition-colors hover:border-[var(--dv-accent)] hover:bg-[rgba(29,29,31,0.04)]"
         >
-          <Plus className="h-4 w-4" /> Đã học tại trường khác
+          <Plus className="h-4 w-4" /> {tx("Đã học tại trường khác")}
         </button>
       </div>
     </div>
@@ -853,6 +867,7 @@ export function StepTraining({ draft, update, errors }: StepProps) {
 
 /** Ảnh cá nhân thêm (tối đa 6), mỗi ảnh có chú thích — VD: ảnh từ dự án đã tham gia. */
 function GalleryEditor({ draft, update }: Pick<StepProps, 'draft' | 'update'>) {
+  const tx = useTx();
   const gallery = draft.gallery || [];
   const setAt = (i: number, patch: Partial<{ url: string; caption: string }>) =>
     update({ gallery: gallery.map((g, k) => (k === i ? { ...g, ...patch } : g)) });
@@ -861,7 +876,7 @@ function GalleryEditor({ draft, update }: Pick<StepProps, 'draft' | 'update'>) {
     <div>
       <Divider />
       <SectionTitle
-        title="Ảnh cá nhân khác"
+        title={tx("Ảnh cá nhân khác")}
         desc={`Không bắt buộc · tối đa ${MAX_GALLERY} ảnh. Thêm ảnh từ dự án đã tham gia, ảnh hậu trường… kèm chú thích ngắn.`}
       />
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5">
@@ -877,8 +892,8 @@ function GalleryEditor({ draft, update }: Pick<StepProps, 'draft' | 'update'>) {
             <TextInput
               value={g.caption}
               onChange={e => setAt(i, { caption: e.target.value.slice(0, 200) })}
-              placeholder="Chú thích, VD: Phim Mai (2024) — vai Linh"
-              aria-label={`Chú thích ảnh ${i + 1}`}
+              placeholder={tx("Chú thích, VD: Phim Mai (2024) — vai Linh")}
+              aria-label={tx(`Chú thích ảnh ${i + 1}`)}
             />
           </div>
         ))}
@@ -888,7 +903,7 @@ function GalleryEditor({ draft, update }: Pick<StepProps, 'draft' | 'update'>) {
             onClick={() => update({ gallery: [...gallery, { url: '', caption: '' }] })}
             className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 rounded-[16px] border border-dashed border-[#c7c7cc] bg-[#fbfbfd] text-[15px] font-medium hover:border-[#86868b] sm:mt-[26px]"
           >
-            <span className="text-[28px] leading-none">+</span> Thêm ảnh
+            <span className="text-[28px] leading-none">+</span> {tx("Thêm ảnh")}
           </button>
         )}
       </div>

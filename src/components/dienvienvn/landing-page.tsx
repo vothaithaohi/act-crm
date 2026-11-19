@@ -1,5 +1,7 @@
 'use client';
 
+
+import { LangSwitch, useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Check, ChevronDown, ChevronRight, Clapperboard, Menu, X } from 'lucide-react';
@@ -40,6 +42,7 @@ function hiringLinks(href: (p: string) => string) {
 
 /** Rê chuột: mở menu. Bấm: chuyển trang chủ sang "Tôi tìm diễn viên". */
 function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active: boolean; onSelect: () => void }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -61,15 +64,15 @@ function HiringDropdown({ linkCls, active, onSelect }: { linkCls: string; active
         aria-haspopup="menu"
         className={`${linkCls} inline-flex items-center gap-1 ${open ? '!text-black' : ''} ${active ? '!text-black font-semibold' : ''}`}
       >
-        Dành cho nhà sản xuất <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {tx("Dành cho nhà sản xuất")} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3">
           <div role="menu" className="w-[320px] rounded-[18px] border border-black/[0.06] bg-white p-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)]">
             {hiringLinks(href).map(l => (
               <Link key={l.label} role="menuitem" href={l.href} onClick={() => setOpen(false)} className="block rounded-[12px] px-4 py-3 hover:bg-[var(--dv-bg-alt)]">
-                <span className="block text-[15px] font-semibold text-[#1d1d1f]">{l.label}</span>
-                <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{l.desc}</span>
+                <span className="block text-[15px] font-semibold text-[#1d1d1f]">{tx(l.label)}</span>
+                <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{tx(l.desc)}</span>
               </Link>
             ))}
           </div>
@@ -88,11 +91,12 @@ const CONTACT_LINKS: { label: string; desc: string; href?: string }[] = [
 
 /** Menu "Liên hệ": nhóm Zalo cộng đồng, fanpage (đang cập nhật). */
 function ContactDropdown({ linkCls }: { linkCls: string }) {
+  const tx = useTx();
   const [open, setOpen] = useState(false);
   return (
     <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button type="button" onClick={() => setOpen(o => !o)} onFocus={() => setOpen(true)} aria-expanded={open} aria-haspopup="menu" className={`${linkCls} inline-flex items-center gap-1 ${open ? '!text-black' : ''}`}>
-        Liên hệ <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {tx("Liên hệ")} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3">
@@ -100,13 +104,13 @@ function ContactDropdown({ linkCls }: { linkCls: string }) {
             {CONTACT_LINKS.map(c =>
               c.href ? (
                 <a key={c.label} role="menuitem" href={c.href} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="block rounded-[12px] px-4 py-3 hover:bg-[var(--dv-bg-alt)]">
-                  <span className="block text-[15px] font-semibold text-[#1d1d1f]">{c.label}</span>
-                  <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{c.desc}</span>
+                  <span className="block text-[15px] font-semibold text-[#1d1d1f]">{tx(c.label)}</span>
+                  <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{tx(c.desc)}</span>
                 </a>
               ) : (
                 <div key={c.label} role="menuitem" aria-disabled="true" className="block rounded-[12px] px-4 py-3">
-                  <span className="block text-[15px] font-semibold text-[#1d1d1f]/40">{c.label}</span>
-                  <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-tertiary)]">{c.desc}</span>
+                  <span className="block text-[15px] font-semibold text-[#1d1d1f]/40">{tx(c.label)}</span>
+                  <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-tertiary)]">{tx(c.desc)}</span>
                 </div>
               )
             )}
@@ -119,6 +123,7 @@ function ContactDropdown({ linkCls }: { linkCls: string }) {
 
 /** Nút "Đăng ký" ở trang đăng nhập: chọn đăng ký diễn viên / nhà sản xuất / ekip. */
 function SignupDropdown() {
+  const tx = useTx();
   const href = useDvvnHref();
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -140,14 +145,14 @@ function SignupDropdown() {
   return (
     <div className="relative" data-signup-menu>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="menu" className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
-        Đăng ký <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {tx("Đăng ký")} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-[280px] rounded-[18px] border border-black/[0.06] bg-white p-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)]">
           {items.map(i => (
             <Link key={i.label} role="menuitem" href={i.href} onClick={() => setOpen(false)} className="block rounded-[12px] px-4 py-3 hover:bg-[var(--dv-bg-alt)]">
-              <span className="block text-[15px] font-semibold text-[#1d1d1f]">{i.label}</span>
-              <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{i.desc}</span>
+              <span className="block text-[15px] font-semibold text-[#1d1d1f]">{tx(i.label)}</span>
+              <span className="mt-0.5 block text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">{tx(i.desc)}</span>
             </Link>
           ))}
         </div>
@@ -158,6 +163,7 @@ function SignupDropdown() {
 
 /** compact: cao 44px như thanh đầu trang cũ (các trang bên trong có thanh công cụ dính ngay dưới menu). */
 export function LandingNav({ audience: pageAudience, onAudience, compact = false }: { audience: NavAudience; onAudience: (a: Audience) => void; compact?: boolean }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const session = useActorSession();
   const [open, setOpen] = useState(false);
@@ -176,61 +182,62 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
   const linkCls = 'text-[14px] text-black/75 transition-colors hover:text-black';
   const mobileCls = 'block w-full border-b border-[#f0f0f2] py-3.5 text-left text-[17px] font-semibold';
   return (
-    <nav className="sticky top-0 z-50 border-b border-black/[0.08] bg-[rgba(250,250,252,0.85)] backdrop-blur-xl backdrop-saturate-150" aria-label="DienVienVN">
+    <nav className="sticky top-0 z-50 border-b border-black/[0.08] bg-[rgba(250,250,252,0.85)] backdrop-blur-xl backdrop-saturate-150" aria-label={tx("DienVienVN")}>
       <div className={`mx-auto flex ${compact ? 'h-11' : 'h-[52px]'} max-w-[1200px] items-center justify-between gap-4 px-4 md:px-6`}>
-        <Link href={href('/')} className="text-[17px] text-[#1d1d1f]" aria-label="DienVienVN — Trang chủ">
+        <Link href={href('/')} className="text-[17px] text-[#1d1d1f]" aria-label={tx("DienVienVN — Trang chủ")}>
           <DvLogo />
         </Link>
         <div className="hidden items-center gap-7 md:flex">
           <button type="button" onClick={() => go('talent')} className={`${linkCls} ${audience === 'talent' ? '!text-black font-semibold' : ''}`}>
-            Dành cho diễn viên
+            {tx("Dành cho diễn viên")}
           </button>
           <HiringDropdown linkCls={linkCls} active={audience === 'hiring'} onSelect={() => go('hiring')} />
           <Link href={href('/ekip')} className={`${linkCls} ${audience === 'crew' ? '!text-black font-semibold' : ''}`}>
-            Dành cho ekip
+            {tx("Dành cho ekip")}
           </Link>
           {!HIDDEN_MENU.talents && (
             <Link href={href('/dien-vien')} className={linkCls}>
-              Diễn viên
+              {tx("Diễn viên")}
             </Link>
           )}
           {!HIDDEN_MENU.projects && (
             <Link href={href('/du-an')} className={linkCls}>
-              Dự án đang casting
+              {tx("Dự án đang casting")}
             </Link>
           )}
           <ContactDropdown linkCls={linkCls} />
         </div>
         <div className="flex items-center gap-2">
+          <LangSwitch className="hidden md:inline-flex" />
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} className="hidden px-2 text-[14px] text-black/75 hover:text-black sm:inline">
-            {signedIn ? 'Tài khoản' : 'Đăng nhập'}
+            {tx(signedIn ? 'Tài khoản' : 'Đăng nhập')}
           </Link>
           {role === 'actor' ? (
             <Link href={href('/du-an')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
-              Dự án đang casting
+              {tx("Dự án đang casting")}
             </Link>
           ) : !signedIn && onLogin ? (
             // Trang đăng nhập: không đẩy sang nộp hồ sơ diễn viên, cho chọn đăng ký theo vai
             <SignupDropdown />
           ) : (roleAudience || audience) === 'talent' ? (
             <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
-              Nộp hồ sơ
+              {tx("Nộp hồ sơ")}
             </Link>
           ) : (roleAudience || audience) === 'crew' ? (
             // Đã đăng nhập: "Tài khoản" bên cạnh đã mở trang hồ sơ → nút chính mở danh sách việc làm
             <Link href={href(signedIn ? '/ekip' : '/ekip/dang-ky')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
-              {signedIn ? 'Việc làm ekip' : 'Đăng ký ekip'}
+              {tx(signedIn ? 'Việc làm ekip' : 'Đăng ký ekip')}
             </Link>
           ) : (
             <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-primary !h-9 !px-4 !py-0 text-[14px]">
-              Đăng casting
+              {tx("Đăng casting")}
             </Link>
           )}
           <button
             type="button"
             onClick={() => setOpen(v => !v)}
             className="-mr-2 flex h-10 w-10 items-center justify-center rounded-full md:hidden"
-            aria-label={open ? 'Đóng menu' : 'Mở menu'}
+            aria-label={tx(open ? 'Đóng menu' : 'Mở menu')}
             aria-expanded={open}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -240,52 +247,55 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
       {open && (
         <div className="border-t border-black/[0.06] bg-white px-4 pb-5 pt-2 md:hidden">
           <button type="button" onClick={() => go('talent')} className={mobileCls}>
-            Dành cho diễn viên
+            {tx("Dành cho diễn viên")}
           </button>
           <div className="border-b border-[#f0f0f2] py-3.5">
             <button type="button" onClick={() => go('hiring')} className="w-full text-left text-[17px] font-semibold">
-              Dành cho nhà sản xuất
+              {tx("Dành cho nhà sản xuất")}
             </button>
             <div className="mt-1.5 space-y-0.5">
               {hiringLinks(href).map(l => (
                 <Link key={l.label} href={l.href} onClick={() => setOpen(false)} className="block py-1.5 pl-3 text-[15px] text-black/75">
-                  {l.label}
+                  {tx(l.label)}
                 </Link>
               ))}
             </div>
           </div>
           <Link href={href('/ekip')} onClick={() => setOpen(false)} className={mobileCls}>
-            Dành cho ekip
+            {tx("Dành cho ekip")}
           </Link>
           {!HIDDEN_MENU.talents && (
             <Link href={href('/dien-vien')} onClick={() => setOpen(false)} className={mobileCls}>
-              Diễn viên
+              {tx("Diễn viên")}
             </Link>
           )}
           {!HIDDEN_MENU.projects && (
             <Link href={href('/du-an')} onClick={() => setOpen(false)} className={mobileCls}>
-              Dự án đang casting
+              {tx("Dự án đang casting")}
             </Link>
           )}
           <div className="border-b border-[#f0f0f2] py-3.5">
-            <p className="text-[17px] font-semibold">Liên hệ</p>
+            <p className="text-[17px] font-semibold">{tx("Liên hệ")}</p>
             <div className="mt-1.5 space-y-0.5">
               {CONTACT_LINKS.map(c =>
                 c.href ? (
                   <a key={c.label} href={c.href} target="_blank" rel="noopener noreferrer" className="block py-1.5 pl-3 text-[15px] text-black/75">
-                    {c.label}
+                    {tx(c.label)}
                   </a>
                 ) : (
                   <p key={c.label} className="py-1.5 pl-3 text-[15px] text-black/40">
-                    {c.label} · {c.desc}
+                    {tx(c.label)} · {tx(c.desc)}
                   </p>
                 )
               )}
             </div>
           </div>
           <Link href={href(signedIn ? '/tai-khoan' : '/dang-nhap')} onClick={() => setOpen(false)} className={`${mobileCls} border-0`}>
-            {signedIn ? 'Tài khoản' : 'Đăng nhập'}
+            {tx(signedIn ? 'Tài khoản' : 'Đăng nhập')}
           </Link>
+          <div className="pt-4">
+            <LangSwitch />
+          </div>
         </div>
       )}
     </nav>
@@ -297,6 +307,7 @@ export function LandingNav({ audience: pageAudience, onAudience, compact = false
 export const MOSAIC_FACES = 12;
 
 function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pending?: boolean }) {
+  const tx = useTx();
   const href = useDvvnHref();
   // Đang bốc ngẫu nhiên gương mặt (trên trình duyệt): giữ đúng khung để trang không bị nhảy
   if (pending) return <div className="h-[340px] sm:h-[420px] md:h-[560px]" aria-hidden="true" />;
@@ -305,7 +316,7 @@ function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pen
       <div className="flex aspect-[4/5] w-full items-center justify-center rounded-[28px] bg-[#1d1d1f]">
         <div className="text-center">
           <Clapperboard className="mx-auto h-24 w-24 text-[#f5f5f7] md:h-32 md:w-32" strokeWidth={0.8} />
-          <p className="dv-display mt-6 text-[24px] font-semibold text-[#f5f5f7]">Đúng người. Đúng vai.</p>
+          <p className="dv-display mt-6 text-[24px] font-semibold text-[#f5f5f7]">{tx("Đúng người. Đúng vai.")}</p>
         </div>
       </div>
     );
@@ -319,7 +330,7 @@ function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pen
   });
   const durations = ['46s', '38s', '52s'];
   return (
-    <div className="dv-marquee relative grid h-[340px] grid-cols-3 gap-2 overflow-hidden sm:h-[420px] sm:gap-3 md:h-[560px]" aria-label="Gương mặt diễn viên trên DienVienVN">
+    <div className="dv-marquee relative grid h-[340px] grid-cols-3 gap-2 overflow-hidden sm:h-[420px] sm:gap-3 md:h-[560px]" aria-label={tx("Gương mặt diễn viên trên DienVienVN")}>
       {cols.map((col, c) => (
         <div key={c} className={c === 1 ? '-mt-24' : c === 2 ? '-mt-10' : ''}>
           <div className="dv-marquee-up" style={{ ['--dv-marquee-dur' as string]: durations[c] }}>
@@ -332,9 +343,9 @@ function FaceMosaic({ faces, pending = false }: { faces: HomeStats['faces']; pen
                 className="group relative mb-2 block aspect-[3/4] overflow-hidden rounded-[18px] bg-[#1d1d1f] sm:mb-3"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.photo} alt={i >= col.length ? '' : f.name} loading="lazy" className="h-full w-full object-cover object-[50%_20%] transition-transform duration-700 group-hover:scale-[1.04]" />
+                <img src={f.photo} alt={tx(i >= col.length ? '' : f.name)} loading="lazy" className="h-full w-full object-cover object-[50%_20%] transition-transform duration-700 group-hover:scale-[1.04]" />
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2.5 pt-8 text-left text-[13px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  {f.name}
+                  {tx(f.name)}
                 </span>
               </TalentLink>
             ))}
@@ -373,13 +384,14 @@ export function Hero({
   /** Trang chủ mới 02: gương mặt đang được bốc ngẫu nhiên trên trình duyệt */
   facesPending?: boolean;
 }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const talent = audience === 'talent';
   return (
     <section className="bg-black text-[#f5f5f7]">
       <div className="mx-auto grid max-w-[1200px] items-center gap-10 px-4 pb-14 pt-10 md:grid-cols-[1.05fr_1fr] md:gap-14 md:px-6 md:pb-20 md:pt-16">
         <div>
-          <div role="tablist" aria-label="Bạn là" className="inline-flex rounded-full bg-white/10 p-1">
+          <div role="tablist" aria-label={tx("Bạn là")} className="inline-flex rounded-full bg-white/10 p-1">
             {(
               [
                 ['talent', 'Tôi là diễn viên'],
@@ -394,26 +406,26 @@ export function Hero({
                 onClick={() => onAudience(k)}
                 className={`h-9 rounded-full px-4 text-[14px] font-semibold transition-colors ${audience === k ? 'bg-[#f5f5f7] text-black' : 'text-[#a1a1a6] hover:text-white'}`}
               >
-                {label}
+                {tx(label)}
               </button>
             ))}
           </div>
 
           <div key={audience} className="dv-pop">
-            {eyebrow && <h2 className="mt-7 text-[20px] font-semibold leading-[1.2] text-[#a1a1a6] md:text-[24px]">{eyebrow}</h2>}
+            {eyebrow && <h2 className="mt-7 text-[20px] font-semibold leading-[1.2] text-[#a1a1a6] md:text-[24px]">{tx(eyebrow)}</h2>}
             <h1
-              aria-label={headlineLabel}
+              aria-label={tx(headlineLabel)}
               className={`dv-display ${eyebrow ? 'mt-2' : 'mt-7'} text-[40px] font-semibold leading-[1.08] tracking-[-0.01em] md:text-[60px] md:leading-[1.04]`}
             >
               {headline ? (
                 headline
               ) : talent ? (
                 <>
-                  Vào vai.<span className="text-[#86868b]"> Vào việc. Vào nghề.</span>
+                  {tx("Vào vai.")}<span className="text-[#86868b]"> {tx("Vào việc. Vào nghề.")}</span>
                 </>
               ) : (
                 <>
-                  Tìm đúng người,<span className="text-[#86868b]"> cho đúng vai.</span>
+                  {tx("Tìm đúng người,")}<span className="text-[#86868b]"> {tx("cho đúng vai.")}</span>
                 </>
               )}
             </h1>
@@ -422,14 +434,14 @@ export function Hero({
               {talent ? (
                 stats.roles > 0 ? (
                   <>
-                    Có <span className="font-semibold text-[#f5f5f7]">{fmt(stats.roles)} vai diễn</span> đang chờ bạn.
+                    {tx("Có")} <span className="font-semibold text-[#f5f5f7]">{tx(fmt(stats.roles))} {tx("vai diễn")}</span> {tx("đang chờ bạn.")}
                   </>
                 ) : (
                   'Vai diễn tiếp theo có thể là của bạn.'
                 )
               ) : stats.talents > 0 ? (
                 <>
-                  Có <span className="font-semibold text-[#f5f5f7]">{fmt(stats.talents)} diễn viên tài năng</span> đang sẵn sàng tỏa sáng.
+                  {tx("Có")} <span className="font-semibold text-[#f5f5f7]">{tx(fmt(stats.talents))} {tx("diễn viên tài năng")}</span> {tx("đang sẵn sàng tỏa sáng.")}
                 </>
               ) : (
                 'Những diễn viên tài năng đang sẵn sàng tỏa sáng.'
@@ -442,19 +454,19 @@ export function Hero({
             {talent ? (
               <>
                 <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-light">
-                  Nộp hồ sơ miễn phí
+                  {tx("Nộp hồ sơ miễn phí")}
                 </Link>
                 <Link href={href('/du-an')} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
-                  Xem dự án đang casting <ChevronRight className="h-4 w-4" />
+                  {tx("Xem dự án đang casting")} <ChevronRight className="h-4 w-4" />
                 </Link>
               </>
             ) : (
               <>
                 <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-light">
-                  Đăng casting call
+                  {tx("Đăng casting call")}
                 </Link>
                 <Link href={href('/doi-tac/dang-ky')} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
-                  Đăng ký tài khoản đối tác <ChevronRight className="h-4 w-4" />
+                  {tx("Đăng ký tài khoản đối tác")} <ChevronRight className="h-4 w-4" />
                 </Link>
               </>
             )}
@@ -469,15 +481,16 @@ export function Hero({
 
 /* ---------------- Những gương mặt tài năng ---------------- */
 function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
+  const tx = useTx();
   const href = useDvvnHref();
   if (faces.length < 4) return null;
   return (
     <section className="bg-[var(--dv-bg-alt)] px-4 py-16 md:py-24">
       <div className="mx-auto max-w-[1100px]">
         <Reveal className="flex flex-wrap items-end justify-between gap-4">
-          <h2 className="dv-display dv-headline">Những gương mặt tài năng.</h2>
+          <h2 className="dv-display dv-headline">{tx("Những gương mặt tài năng.")}</h2>
           <Link href={href('/dien-vien')} className="dv-link text-[17px]">
-            Xem tất cả <ChevronRight className="h-4 w-4" />
+            {tx("Xem tất cả")} <ChevronRight className="h-4 w-4" />
           </Link>
         </Reveal>
         {/* Điện thoại: cuộn ngang; máy tính: 6 thẻ một hàng. Ảnh cùng tỉ lệ, cùng tông, tên đặt trên ảnh */}
@@ -492,17 +505,17 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={f.photo}
-                    alt={f.name}
+                    alt={tx(f.name)}
                     loading="lazy"
                     className="absolute inset-0 h-full w-full object-cover object-[50%_18%] [filter:saturate(0.9)_contrast(1.03)] transition duration-500 group-hover:scale-[1.04] group-hover:[filter:none]"
                   />
                   <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-3.5 pb-3.5 pt-14">
                     {f.act && (
                       <span className="mb-1.5 inline-flex rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#1d1d1f]">
-                        ACT Academy
+                        {tx("ACT Academy")}
                       </span>
                     )}
-                    <span className="line-clamp-2 block text-[15px] font-semibold leading-[1.25] text-white">{f.name}</span>
+                    <span className="line-clamp-2 block text-[15px] font-semibold leading-[1.25] text-white">{tx(f.name)}</span>
                   </span>
                 </TalentLink>
               </Reveal>
@@ -516,6 +529,7 @@ function FacesSection({ faces }: { faces: HomeStats['faces'] }) {
 
 /* ---------------- Khối lợi ích của từng luồng ---------------- */
 export function AudienceTile({ audience }: { audience: Audience }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const t =
     audience === 'talent'
@@ -550,10 +564,10 @@ export function AudienceTile({ audience }: { audience: Audience }) {
         className={`mx-auto grid scroll-mt-16 gap-8 rounded-[28px] px-6 py-12 md:grid-cols-2 md:gap-12 md:px-14 md:py-16 ${t.dark ? 'bg-black text-[#f5f5f7]' : 'bg-[var(--dv-bg-alt)]'}`}
       >
         <Reveal>
-          <p className={`text-[14px] font-semibold ${t.dark ? 'text-[#a1a1a6]' : 'text-[var(--dv-text-secondary)]'}`}>{t.eyebrow}</p>
-          <h2 className="dv-display dv-headline mt-2">{t.title}</h2>
+          <p className={`text-[14px] font-semibold ${t.dark ? 'text-[#a1a1a6]' : 'text-[var(--dv-text-secondary)]'}`}>{tx(t.eyebrow)}</p>
+          <h2 className="dv-display dv-headline mt-2">{tx(t.title)}</h2>
           <Link href={t.cta.href} className={`dv-btn mt-8 ${t.dark ? 'dv-btn-light' : 'dv-btn-primary'}`}>
-            {t.cta.label} <ArrowRight className="h-4 w-4" />
+            {tx(t.cta.label)} <ArrowRight className="h-4 w-4" />
           </Link>
         </Reveal>
         <Reveal delay={100}>
@@ -561,7 +575,7 @@ export function AudienceTile({ audience }: { audience: Audience }) {
             {t.points.map(p => (
               <li key={p} className="flex gap-3 text-[17px] leading-[1.42] md:text-[19px]">
                 <Check className={`mt-1 h-5 w-5 shrink-0 ${t.dark ? 'text-[#f5f5f7]' : 'text-[#1d1d1f]'}`} />
-                <span className={t.dark ? 'text-[#d2d2d7]' : 'text-[var(--dv-text)]'}>{p}</span>
+                <span className={t.dark ? 'text-[#d2d2d7]' : 'text-[var(--dv-text)]'}>{tx(p)}</span>
               </li>
             ))}
           </ul>
@@ -580,6 +594,7 @@ const PARTNER_STEPS = [
 ];
 
 export function Process({ audience }: { audience: Audience }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const talent = audience === 'talent';
   const steps = talent ? CASTING_STEPS : PARTNER_STEPS;
@@ -587,9 +602,9 @@ export function Process({ audience }: { audience: Audience }) {
   return (
     <section id="quy-trinh" className="scroll-mt-16 bg-white px-4 py-16 text-center md:py-24">
       <Reveal>
-        <h2 className="dv-display dv-headline">{talent ? 'Vai diễn phù hợp chỉ cách bạn 07 bước.' : 'Từ casting call đến shortlist.'}</h2>
+        <h2 className="dv-display dv-headline">{tx(talent ? 'Vai diễn phù hợp chỉ cách bạn 07 bước.' : 'Từ casting call đến shortlist.')}</h2>
         <p className="dv-subhead mx-auto mt-3 max-w-[640px] text-[var(--dv-text-secondary)]">
-          {talent ? 'Điền theo từng phần, quay lại chỉnh sửa bất kỳ lúc nào trước khi nộp.' : 'Bốn bước trên cùng một nền tảng.'}
+          {tx(talent ? 'Điền theo từng phần, quay lại chỉnh sửa bất kỳ lúc nào trước khi nộp.' : 'Bốn bước trên cùng một nền tảng.')}
         </p>
       </Reveal>
       <ol className={`mx-auto mt-12 grid max-w-[1100px] grid-cols-1 gap-3 text-left sm:grid-cols-2 ${talent ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`}>
@@ -597,9 +612,9 @@ export function Process({ audience }: { audience: Audience }) {
           <li key={s.id}>
             <Reveal delay={i * 60} className="h-full">
               <div className="h-full rounded-[18px] bg-[var(--dv-bg-alt)] p-6">
-                <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">Bước {s.id}</span>
-                <p className="mt-1 text-[19px] font-semibold leading-[1.21] tracking-[0.012em]">{s.title}</p>
-                <p className="mt-2 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{s.desc}</p>
+                <span className="text-[14px] font-semibold text-[var(--dv-text-secondary)]">{tx("Bước")} {tx(s.id)}</span>
+                <p className="mt-1 text-[19px] font-semibold leading-[1.21] tracking-[0.012em]">{tx(s.title)}</p>
+                <p className="mt-2 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{tx(s.desc)}</p>
               </div>
             </Reveal>
           </li>
@@ -607,9 +622,9 @@ export function Process({ audience }: { audience: Audience }) {
         <li>
           <Reveal delay={steps.length * 60} className="h-full">
             <Link href={cta.href} className="group flex h-full flex-col justify-between rounded-[18px] bg-[#1d1d1f] p-6 text-white transition-colors hover:bg-[#424245]">
-              <span className="text-[14px] font-semibold text-white/75">Sẵn sàng?</span>
+              <span className="text-[14px] font-semibold text-white/75">{tx("Sẵn sàng?")}</span>
               <span className="mt-1 flex items-center gap-1 text-[19px] font-semibold leading-[1.21]">
-                {cta.label} <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                {tx(cta.label)} <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
               </span>
             </Link>
           </Reveal>
@@ -621,6 +636,7 @@ export function Process({ audience }: { audience: Audience }) {
 
 /* ---------------- Kết: đếm ngược ra mắt (trước 11.11) ---------------- */
 export function Closing({ audience }: { audience: Audience }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const launched = useLaunched();
   const talent = audience === 'talent';
@@ -629,9 +645,9 @@ export function Closing({ audience }: { audience: Audience }) {
   return (
     <section id="ra-mat" className="dv-tile dv-tile-dark scroll-mt-16 px-4 py-16 md:py-24">
       <Reveal>
-        <p className="dv-eyebrow text-[#86868b]">{launched ? 'Đã ra mắt' : 'Coming Soon'}</p>
+        <p className="dv-eyebrow text-[#86868b]">{tx(launched ? 'Đã ra mắt' : 'Coming Soon')}</p>
         <h2 className="dv-display dv-headline mt-2 text-[#f5f5f7]">
-          {launched ? (talent ? 'Vai diễn tiếp theo có thể là của bạn.' : 'Tìm đúng người, cho đúng vai.') : 'Chính thức ra mắt 11.11.2026.'}
+          {tx(launched ? (talent ? 'Vai diễn tiếp theo có thể là của bạn.' : 'Tìm đúng người, cho đúng vai.') : 'Chính thức ra mắt 11.11.2026.')}
         </h2>
       </Reveal>
       {!launched && (
@@ -642,15 +658,15 @@ export function Closing({ audience }: { audience: Audience }) {
       <Reveal delay={200} className="mt-10 flex flex-wrap items-center justify-center gap-3">
         {talent ? (
           <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-light">
-            Nộp hồ sơ diễn viên
+            {tx("Nộp hồ sơ diễn viên")}
           </Link>
         ) : (
           <>
             <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-light">
-              Đăng casting call
+              {tx("Đăng casting call")}
             </Link>
             <Link href={href('/doi-tac/dang-ky')} className="inline-flex h-11 items-center gap-1.5 px-3 text-[17px] font-medium text-[#f5f5f7] underline-offset-4 hover:underline">
-              Đăng ký đối tác <ChevronRight className="h-4 w-4" />
+              {tx("Đăng ký đối tác")} <ChevronRight className="h-4 w-4" />
             </Link>
           </>
         )}
@@ -666,6 +682,7 @@ export function Closing({ audience }: { audience: Audience }) {
  * Link có #nha-san-xuat mở thẳng luồng tìm diễn viên.
  */
 export function DienVienVNLanding({ stats }: { stats: HomeStats }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const [audience, setAudience] = useState<Audience>('talent');
 

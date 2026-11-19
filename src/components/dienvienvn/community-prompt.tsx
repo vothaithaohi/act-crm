@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
@@ -28,6 +30,7 @@ function remember(v: string) {
 }
 
 export function CommunityPrompt() {
+  const tx = useTx();
   const role = useAccountRole();
   const path = usePathname() || '';
   const [open, setOpen] = useState(false);
@@ -46,13 +49,13 @@ export function CommunityPrompt() {
     setOpen(false);
   };
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[80] flex justify-center p-3 sm:bottom-6 sm:p-0" role="dialog" aria-label="Tham gia nhóm Zalo cộng đồng">
+    <div className="fixed inset-x-0 bottom-0 z-[80] flex justify-center p-3 sm:bottom-6 sm:p-0" role="dialog" aria-label={tx("Tham gia nhóm Zalo cộng đồng")}>
       <div className="relative w-full max-w-[420px] rounded-[20px] bg-white p-5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06]">
-        <button type="button" onClick={later} aria-label="Đóng" className="absolute right-3 top-3 rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+        <button type="button" onClick={later} aria-label={tx("Đóng")} className="absolute right-3 top-3 rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
           <X className="h-4 w-4" />
         </button>
-        <p className="pr-8 text-[17px] font-semibold leading-[1.3]">Tham gia nhóm cộng đồng trên Zalo</p>
-        <p className="mt-1.5 text-[15px] leading-[1.45] text-[var(--dv-text-secondary)]">Để được hỗ trợ và nhận thông tin casting nhanh chóng.</p>
+        <p className="pr-8 text-[17px] font-semibold leading-[1.3]">{tx("Tham gia nhóm cộng đồng trên Zalo")}</p>
+        <p className="mt-1.5 text-[15px] leading-[1.45] text-[var(--dv-text-secondary)]">{tx("Để được hỗ trợ và nhận thông tin casting nhanh chóng.")}</p>
         <div className="mt-4 flex gap-2">
           <a
             href={ZALO_GROUP_URL}
@@ -64,10 +67,10 @@ export function CommunityPrompt() {
             }}
             className="dv-btn dv-btn-primary !h-10 flex-1 !py-0 text-[15px]"
           >
-            Tham gia nhóm Zalo
+            {tx("Tham gia nhóm Zalo")}
           </a>
           <button type="button" onClick={later} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[15px]">
-            Để sau
+            {tx("Để sau")}
           </button>
         </div>
       </div>

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -10,6 +12,7 @@ import { GlobalNav } from './site-chrome';
 
 /** Đối tác tự đăng ký: gửi thông tin + email → nhận email xác thực, tạo mật khẩu → DienVienVN duyệt. */
 export function PartnerSignup() {
+  const tx = useTx();
   const href = useDvvnHref();
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', company: '', partner_type: 'producer' as PartnerType, note: '', website: '' });
   const [busy, setBusy] = useState(false);
@@ -53,7 +56,7 @@ export function PartnerSignup() {
       <main className="min-h-screen bg-[var(--dv-bg-alt)] px-4 pb-20 pt-8 md:pt-14">
         <div className="mx-auto max-w-[560px]">
           <Link href={href('/doi-tac')} className="dv-link text-[14px]">
-            <ChevronLeft className="h-4 w-4" /> Cổng đối tác
+            <ChevronLeft className="h-4 w-4" /> {tx("Cổng đối tác")}
           </Link>
           {done ? (
             <div className="dv-card mt-6 px-6 py-10 text-center sm:px-10">
@@ -62,27 +65,27 @@ export function PartnerSignup() {
                 <path className="dv-check-mark" d="M17 29.5l7 7 15-16" fill="none" stroke="#1d1d1f" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <h1 className="dv-display mt-5 text-[28px] font-semibold leading-[1.14]" role="status">
-                Đã nhận đăng ký.
+                {tx("Đã nhận đăng ký.")}
               </h1>
               <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-                {done} Hãy kiểm tra hộp thư (cả mục Spam) tại <span className="font-semibold text-[var(--dv-text)]">{form.email.trim()}</span>.
+                {tx(done)} {tx("Hãy kiểm tra hộp thư (cả mục Spam) tại")} <span className="font-semibold text-[var(--dv-text)]">{tx(form.email.trim())}</span>.
               </p>
               <Link href={next.includes('/nsx/') ? next : `${href('/')}#nha-san-xuat`} className="dv-btn dv-btn-secondary mt-8">
-                {next.includes('/nsx/') ? 'Quay lại danh sách diễn viên' : 'Về trang chủ'}
+                {tx(next.includes('/nsx/') ? 'Quay lại danh sách diễn viên' : 'Về trang chủ')}
               </Link>
             </div>
           ) : (
             <>
-              <h1 className="dv-display dv-headline mt-4">Đăng ký tài khoản đối tác.</h1>
+              <h1 className="dv-display dv-headline mt-4">{tx("Đăng ký tài khoản đối tác.")}</h1>
               <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-                Dành cho đạo diễn, nhà sản xuất, casting director và agency. Đăng casting call, xem đầy đủ shortlist diễn viên và liên hệ diễn viên qua DienVienVN.
+                {tx("Dành cho đạo diễn, nhà sản xuất, casting director và agency. Đăng casting call, xem đầy đủ shortlist diễn viên và liên hệ diễn viên qua DienVienVN.")}
               </p>
               <div className="mt-6 flex flex-col gap-3 rounded-[18px] border border-[#1d1d1f] bg-white p-4 sm:flex-row sm:items-center sm:justify-between md:p-5">
                 <p className="text-[15px] leading-[1.45]">
-                  <span className="font-semibold">Bạn là diễn viên?</span> Form này dành cho nhà sản xuất / đạo diễn.
+                  <span className="font-semibold">{tx("Bạn là diễn viên?")}</span> {tx("Form này dành cho nhà sản xuất / đạo diễn.")}
                 </p>
                 <Link href={href('/nop-ho-so')} className="dv-btn dv-btn-primary !h-10 shrink-0 !py-0 text-[14px]">
-                  Nộp hồ sơ diễn viên tại đây <ChevronRight className="h-4 w-4" />
+                  {tx("Nộp hồ sơ diễn viên tại đây")} <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
               <form onSubmit={submit} className="dv-card mt-4 space-y-5 p-6 md:p-8" noValidate>
@@ -102,7 +105,7 @@ export function PartnerSignup() {
                     <SelectInput id="ps-type" value={form.partner_type} onChange={e => set({ partner_type: e.target.value as PartnerType })}>
                       {(Object.keys(PARTNER_TYPE_LABELS) as PartnerType[]).map(k => (
                         <option key={k} value={k}>
-                          {PARTNER_TYPE_LABELS[k]}
+                          {tx(PARTNER_TYPE_LABELS[k])}
                         </option>
                       ))}
                     </SelectInput>
@@ -118,21 +121,21 @@ export function PartnerSignup() {
                 <input type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={form.website} onChange={e => set({ website: e.target.value })} />
                 {error && (
                   <p role="alert" className="rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">
-                    {error}
+                    {tx(error)}
                   </p>
                 )}
                 <button type="submit" disabled={busy} className="dv-btn dv-btn-primary w-full">
                   {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
-                  Gửi đăng ký
+                  {tx("Gửi đăng ký")}
                 </button>
                 <p className="text-center text-[13px] leading-[1.45] text-[var(--dv-text-secondary)]">
-                  Sau khi gửi, bạn nhận email để xác nhận và tạo mật khẩu. DienVienVN xem xét từng đăng ký; khi được duyệt, bạn dùng được cổng đối tác.
+                  {tx("Sau khi gửi, bạn nhận email để xác nhận và tạo mật khẩu. DienVienVN xem xét từng đăng ký; khi được duyệt, bạn dùng được cổng đối tác.")}
                 </p>
               </form>
               <p className="mt-6 text-center text-[14px] text-[var(--dv-text-secondary)]">
-                Đã có tài khoản?{' '}
+                {tx("Đã có tài khoản?")}{tx(' ')}
                 <Link href={href(`/dang-nhap?next=${encodeURIComponent(next)}`)} className="font-semibold text-[var(--dv-text)] underline underline-offset-2">
-                  Đăng nhập
+                  {tx("Đăng nhập")}
                 </Link>
               </p>
             </>

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -29,6 +31,7 @@ const thumbOf = (m: Media) => (m.kind === 'image' ? m.url : m.yt ? `https://i.yt
 
 /** Xem ảnh / video phóng to: mũi tên hoặc phím ← → để chuyển, bấm vào ảnh để zoom kỹ, Esc để đóng. */
 function Lightbox({ items, index, onIndex, onClose }: { items: Media[]; index: number; onIndex: (i: number) => void; onClose: () => void }) {
+  const tx = useTx();
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
   const n = items.length;
   const m = items[index];
@@ -52,12 +55,12 @@ function Lightbox({ items, index, onIndex, onClose }: { items: Media[]; index: n
 
   // Gắn thẳng vào <body>: phủ toàn màn hình (không bị giới hạn trong cửa sổ hồ sơ đang trượt)
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex flex-col bg-black/95 text-white" onClick={onClose} role="dialog" aria-modal="true" aria-label="Xem ảnh">
+    <div className="fixed inset-0 z-[90] flex flex-col bg-black/95 text-white" onClick={onClose} role="dialog" aria-modal="true" aria-label={tx("Xem ảnh")}>
       <div className="flex items-center justify-between px-4 py-3" onClick={e => e.stopPropagation()}>
         <p className="truncate text-[14px] text-white/80">
-          {m.label} · {index + 1}/{n}
+          {tx(m.label)} · {tx(index + 1)}/{tx(n)}
         </p>
-        <button type="button" onClick={onClose} aria-label="Đóng" className="rounded-full p-2 hover:bg-white/10">
+        <button type="button" onClick={onClose} aria-label={tx("Đóng")} className="rounded-full p-2 hover:bg-white/10">
           <X className="h-6 w-6" />
         </button>
       </div>
@@ -66,7 +69,7 @@ function Lightbox({ items, index, onIndex, onClose }: { items: Media[]; index: n
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={m.url}
-            alt={m.label}
+            alt={tx(m.label)}
             onClick={e => {
               if (zoom) return setZoom(null);
               const r = (e.currentTarget as HTMLImageElement).getBoundingClientRect();
@@ -77,37 +80,38 @@ function Lightbox({ items, index, onIndex, onClose }: { items: Media[]; index: n
           />
         ) : m.yt ? (
           <div className="aspect-video w-full max-w-[1100px] overflow-hidden rounded-[12px] bg-black">
-            <iframe src={`https://www.youtube-nocookie.com/embed/${m.yt}?autoplay=1`} title={m.label} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen className="h-full w-full" />
+            <iframe src={`https://www.youtube-nocookie.com/embed/${m.yt}?autoplay=1`} title={tx(m.label)} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen className="h-full w-full" />
           </div>
         ) : (
           <a href={m.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-[15px] font-semibold text-[#1d1d1f]">
-            <Video className="h-5 w-5" /> Mở video {m.label}
+            <Video className="h-5 w-5" /> {tx("Mở video")} {tx(m.label)}
           </a>
         )}
         {n > 1 && (
           <>
-            <button type="button" aria-label="Trước" onClick={() => go(-1)} className="absolute left-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
+            <button type="button" aria-label={tx("Trước")} onClick={() => go(-1)} className="absolute left-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
               <ChevronLeft className="h-6 w-6" />
             </button>
-            <button type="button" aria-label="Tiếp" onClick={() => go(1)} className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
+            <button type="button" aria-label={tx("Tiếp")} onClick={() => go(1)} className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 hover:bg-white/25">
               <ChevronRight className="h-6 w-6" />
             </button>
           </>
         )}
       </div>
-      {m.kind === 'image' && <p className="pb-4 text-center text-[12px] text-white/50">{zoom ? 'Bấm vào ảnh để thu nhỏ' : 'Bấm vào ảnh để phóng to chi tiết'}</p>}
+      {m.kind === 'image' && <p className="pb-4 text-center text-[12px] text-white/50">{tx(zoom ? 'Bấm vào ảnh để thu nhỏ' : 'Bấm vào ảnh để phóng to chi tiết')}</p>}
     </div>,
     document.body
   );
 }
 
 function MediaTile({ m, onOpen, big = false }: { m: Media; onOpen: () => void; big?: boolean }) {
+  const tx = useTx();
   const thumb = thumbOf(m);
   return (
-    <button type="button" onClick={onOpen} className={`group relative block h-full w-full overflow-hidden rounded-[16px] bg-[#1d1d1f] ${big ? '' : ''}`} aria-label={`Xem ${m.label}`}>
+    <button type="button" onClick={onOpen} className={`group relative block h-full w-full overflow-hidden rounded-[16px] bg-[#1d1d1f] ${big ? '' : ''}`} aria-label={tx(`Xem ${m.label}`)}>
       {thumb ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={thumb} alt={m.label} loading="lazy" className={`h-full w-full ${m.kind === 'image' ? 'object-cover object-[50%_20%]' : 'object-cover'} transition-transform duration-500 group-hover:scale-[1.03]`} />
+        <img src={thumb} alt={tx(m.label)} loading="lazy" className={`h-full w-full ${m.kind === 'image' ? 'object-cover object-[50%_20%]' : 'object-cover'} transition-transform duration-500 group-hover:scale-[1.03]`} />
       ) : (
         <span className="flex h-full w-full items-center justify-center text-white/40">
           <Video className="h-8 w-8" />
@@ -119,20 +123,21 @@ function MediaTile({ m, onOpen, big = false }: { m: Media; onOpen: () => void; b
           <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#1d1d1f] shadow-lg">
             <Play className="ml-0.5 h-5 w-5" fill="currentColor" />
           </span>
-          <span className="absolute inset-x-3 bottom-3 truncate text-left text-[13px] font-semibold text-white">{m.label}</span>
+          <span className="absolute inset-x-3 bottom-3 truncate text-left text-[13px] font-semibold text-white">{tx(m.label)}</span>
         </>
       ) : (
         <span className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
           <ZoomIn className="h-4 w-4" />
         </span>
       )}
-      {big && m.kind === 'image' && <span className="absolute bottom-3 left-3 rounded-full bg-black/45 px-3 py-1 text-[12px] font-semibold text-white backdrop-blur">{m.label}</span>}
+      {big && m.kind === 'image' && <span className="absolute bottom-3 left-3 rounded-full bg-black/45 px-3 py-1 text-[12px] font-semibold text-white backdrop-blur">{tx(m.label)}</span>}
     </button>
   );
 }
 
 /** Khối ảnh & video đầu hồ sơ (kiểu Backstage): ảnh chính lớn + lưới 2×2, "Xem thêm" mở phần còn lại. */
 function MediaGallery({ talent }: { talent: PublicTalent }) {
+  const tx = useTx();
   const items = mediaOf(talent);
   const [open, setOpen] = useState<number | null>(null);
   const [more, setMore] = useState(false);
@@ -175,7 +180,7 @@ function MediaGallery({ talent }: { talent: PublicTalent }) {
           )}
           <div className="mt-3 flex justify-end">
             <button type="button" onClick={() => setMore(v => !v)} className="dv-btn dv-btn-secondary !h-9 !px-4 !py-0 text-[14px]">
-              <ChevronDown className={`h-4 w-4 transition-transform ${more ? 'rotate-180' : ''}`} /> {more ? 'Thu gọn' : `Xem thêm ảnh & video (${rest.length})`}
+              <ChevronDown className={`h-4 w-4 transition-transform ${more ? 'rotate-180' : ''}`} /> {tx(more ? 'Thu gọn' : `Xem thêm ảnh & video (${rest.length})`)}
             </button>
           </div>
         </>
@@ -188,23 +193,25 @@ function MediaGallery({ talent }: { talent: PublicTalent }) {
 /* ---------------- Các khối thông tin ---------------- */
 /** Tiêu đề mục: chữ đậm + đường kẻ mảnh có đoạn nhấn đậm (kiểu Backstage). */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const tx = useTx();
   return (
     <section>
       <div className="relative h-px bg-[#e5e5ea]">
         <span className="absolute left-0 top-0 h-[2px] w-24 bg-[#1d1d1f]" />
       </div>
-      <h3 className="mt-3 text-[19px] font-semibold tracking-[-0.01em]">{title}</h3>
-      <div className="mt-3">{children}</div>
+      <h3 className="mt-3 text-[19px] font-semibold tracking-[-0.01em]">{tx(title)}</h3>
+      <div className="mt-3">{tx(children)}</div>
     </section>
   );
 }
 
 function Attr({ label, values }: { label: string; values: string[] }) {
+  const tx = useTx();
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-tertiary)]">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-tertiary)]">{tx(label)}</p>
       <div className="mt-1 space-y-0.5 text-[15px]">
-        {values.length ? values.map(v => <p key={v}>{v}</p>) : <p className="text-[var(--dv-text-tertiary)]">—</p>}
+        {values.length ? values.map(v => <p key={v}>{tx(v)}</p>) : <p className="text-[var(--dv-text-tertiary)]">—</p>}
       </div>
     </div>
   );
@@ -219,32 +226,33 @@ function splitCredit(item: string) {
 
 /** Khung bên phải: nút Liên hệ (công khai) hoặc liên hệ của diễn viên (đối tác đã duyệt). */
 function ContactCard({ talent, partner, contactHref }: { talent: PublicTalent; partner?: PartnerTalent | null; contactHref?: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   return (
     <div className="rounded-[18px] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       {partner ? (
         <>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">Liên hệ diễn viên</p>
+          <p className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx("Liên hệ diễn viên")}</p>
           <div className="mt-3 space-y-2">
             {partner.phone && (
               <a href={`tel:${partner.phone.replace(/[^\d+]/g, '')}`} className="dv-btn dv-btn-primary w-full !h-11 !py-0 text-[15px]">
-                <Phone className="h-4 w-4" /> {partner.phone}
+                <Phone className="h-4 w-4" /> {tx(partner.phone)}
               </a>
             )}
             {partner.email && (
               <a href={`mailto:${partner.email}`} className="dv-btn dv-btn-secondary w-full !h-11 !py-0 text-[14px]">
-                <Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{partner.email}</span>
+                <Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{tx(partner.email)}</span>
               </a>
             )}
-            {!partner.phone && !partner.email && <p className="text-[14px] text-[var(--dv-text-secondary)]">Diễn viên chưa cập nhật liên hệ.</p>}
+            {!partner.phone && !partner.email && <p className="text-[14px] text-[var(--dv-text-secondary)]">{tx("Diễn viên chưa cập nhật liên hệ.")}</p>}
           </div>
         </>
       ) : (
         <>
-          <p className="text-[17px] font-semibold">Muốn mời diễn viên này casting?</p>
-          <p className="mt-1 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">Thông tin liên hệ chỉ hiển thị cho đối tác của DienVienVN.</p>
+          <p className="text-[17px] font-semibold">{tx("Muốn mời diễn viên này casting?")}</p>
+          <p className="mt-1 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">{tx("Thông tin liên hệ chỉ hiển thị cho đối tác của DienVienVN.")}</p>
           <Link href={contactHref || href(`/doi-tac/dang-ky?next=${encodeURIComponent(href(`/doi-tac/${talent.username}`))}`)} className="dv-btn dv-btn-primary mt-4 w-full !h-11 !py-0 text-[15px]">
-            Liên hệ
+            {tx("Liên hệ")}
           </Link>
         </>
       )}
@@ -267,6 +275,7 @@ export function TalentProfileBody({
   /** Nút "Liên hệ" khi chưa đăng nhập (mặc định: đăng ký đối tác rồi quay lại hồ sơ này) */
   contactHref?: string;
 }) {
+  const tx = useTx();
   const willingness = talent.willingness.map(id => WILLINGNESS.find(w => w.id === id)?.label).filter(Boolean) as string[];
   const isAct = talent.trainings.some(t => /ACT Academy/i.test(t));
   const age = partner?.age ?? talent.age;
@@ -295,14 +304,14 @@ export function TalentProfileBody({
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-8">
           <div>
-            <h2 className="dv-display text-[32px] font-semibold leading-[1.1] md:text-[38px]">{talent.name}</h2>
+            <h2 className="dv-display text-[32px] font-semibold leading-[1.1] md:text-[38px]">{tx(talent.name)}</h2>
             {subtitle.length > 0 && (
               <p className="mt-2 flex flex-wrap items-center gap-x-2 text-[15px] text-[var(--dv-text-secondary)]">
                 {subtitle.map((s, k) => (
                   <span key={s} className="inline-flex items-center gap-1">
                     {k > 0 && <span className="text-[#c7c7cc]">•</span>}
                     {k === subtitle.length - 1 && talent.work_cities[0] === s && <MapPin className="h-3.5 w-3.5" />}
-                    {s}
+                    {tx(s)}
                   </span>
                 ))}
               </p>
@@ -312,9 +321,9 @@ export function TalentProfileBody({
                 {badges.map(b => (
                   <div key={b.title} className="rounded-[14px] border border-[#e5e5ea] bg-white p-3.5">
                     <p className="flex items-center gap-2 text-[14px] font-semibold">
-                      <b.icon className="h-4 w-4 text-[#b8892f]" /> {b.title}
+                      <b.icon className="h-4 w-4 text-[#b8892f]" /> {tx(b.title)}
                     </p>
-                    <p className="mt-0.5 text-[12.5px] text-[var(--dv-text-secondary)]">{b.desc}</p>
+                    <p className="mt-0.5 text-[12.5px] text-[var(--dv-text-secondary)]">{tx(b.desc)}</p>
                   </div>
                 ))}
               </div>
@@ -326,7 +335,7 @@ export function TalentProfileBody({
             <ContactCard talent={talent} partner={partner} contactHref={contactHref} />
           </div>
 
-          <Section title="Ngoại hình">
+          <Section title={tx("Ngoại hình")}>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
               <Attr label="Số đo" values={measures} />
               <Attr label="Độ tuổi" values={age != null ? [`${age} tuổi`] : []} />
@@ -335,22 +344,22 @@ export function TalentProfileBody({
           </Section>
 
           {talent.experience.length > 0 && (
-            <Section title="Kinh nghiệm diễn xuất">
+            <Section title={tx("Kinh nghiệm diễn xuất")}>
               <div className="space-y-6">
                 {talent.experience.map(g => (
                   <div key={g.group}>
                     <p className="flex items-center gap-2 text-[16px] font-semibold">
-                      <Clapperboard className="h-4 w-4 text-[var(--dv-text-secondary)]" /> {g.group}
+                      <Clapperboard className="h-4 w-4 text-[var(--dv-text-secondary)]" /> {tx(g.group)}
                     </p>
                     <ul className="mt-2 divide-y divide-[#ececf0] border-t border-[#ececf0]">
                       {g.items.map(item => {
                         const c = splitCredit(item);
                         return (
                           <li key={item} className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 py-3 text-[14px] sm:grid-cols-[64px_minmax(0,1fr)]">
-                            <span className="pt-0.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--dv-text-tertiary)]">{c.year || '—'}</span>
+                            <span className="pt-0.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--dv-text-tertiary)]">{tx(c.year || '—')}</span>
                             <span className="min-w-0">
-                              <span className="block font-semibold">{c.title}</span>
-                              {c.detail && <span className="block text-[var(--dv-text-secondary)]">{c.detail}</span>}
+                              <span className="block font-semibold">{tx(c.title)}</span>
+                              {c.detail && <span className="block text-[var(--dv-text-secondary)]">{tx(c.detail)}</span>}
                             </span>
                           </li>
                         );
@@ -363,15 +372,15 @@ export function TalentProfileBody({
           )}
 
           {talent.skills.length > 0 && (
-            <Section title="Kỹ năng & ngoại ngữ">
+            <Section title={tx("Kỹ năng & ngoại ngữ")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {talent.skills.map(g => (
                   <div key={g.group}>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-tertiary)]">{g.group}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-tertiary)]">{tx(g.group)}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {g.items.map(item => (
                         <span key={item} className="rounded-full border border-[#e5e5ea] bg-white px-3 py-1 text-[14px]">
-                          {item}
+                          {tx(item)}
                         </span>
                       ))}
                     </div>
@@ -382,20 +391,20 @@ export function TalentProfileBody({
           )}
 
           {(willingness.length > 0 || talent.work_cities.length > 0) && (
-            <Section title="Định hướng & mức độ sẵn sàng vai diễn">
+            <Section title={tx("Định hướng & mức độ sẵn sàng vai diễn")}>
               {willingness.length > 0 && (
                 <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {willingness.map(w => (
                     <li key={w} className="text-[15px]">
-                      ✓ {w}
+                      ✓ {tx(w)}
                     </li>
                   ))}
                 </ul>
               )}
               {talent.work_cities.length > 0 && (
                 <p className="mt-3 text-[15px]">
-                  <span className="text-[var(--dv-text-secondary)]">Sẵn sàng quay tại: </span>
-                  {talent.work_cities.join(', ')}
+                  <span className="text-[var(--dv-text-secondary)]">{tx("Sẵn sàng quay tại:")} </span>
+                  {tx(talent.work_cities.join(', '))}
                 </p>
               )}
             </Section>
@@ -412,10 +421,10 @@ export function TalentProfileBody({
               <div className="relative h-px bg-[#e5e5ea]">
                 <span className="absolute left-0 top-0 h-[2px] w-16 bg-[#1d1d1f]" />
               </div>
-              <p className="mt-3 text-[17px] font-semibold">Đào tạo diễn xuất</p>
+              <p className="mt-3 text-[17px] font-semibold">{tx("Đào tạo diễn xuất")}</p>
               <ul className="mt-2 space-y-1.5 text-[14px] leading-[1.45]">
                 {talent.trainings.map(t => (
-                  <li key={t}>{t}</li>
+                  <li key={t}>{tx(t)}</li>
                 ))}
               </ul>
             </div>

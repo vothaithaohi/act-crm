@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import { useState } from 'react';
 import { ExternalLink, FileText, Mail, Phone } from 'lucide-react';
 import {
@@ -25,6 +27,7 @@ const vnDate = (s?: string | null) => {
 
 /** Hồ sơ ekip (Form B) dạng đọc: cho NSX trong cổng đối tác và cho ACT trong CRM. */
 export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compact?: boolean }) {
+  const tx = useTx();
   const secondary = (p.secondary_roles || []).map(crewRoleText).filter(Boolean);
   const availability =
     p.availability_status === 'busy_until' && p.busy_until
@@ -46,36 +49,36 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
     <div className="space-y-3">
       <div>
         <p className="text-[18px] font-semibold leading-[1.3]">
-          {p.full_name}
-          {p.display_name ? <span className="font-normal"> · {p.display_name}</span> : null}
+          {tx(p.full_name)}
+          {p.display_name ? <span className="font-normal"> · {tx(p.display_name)}</span> : null}
         </p>
         <p className={row}>
-          {crewPrimaryRoleText(p)}
-          {secondary.length ? <span className={muted}> · Vai trò phụ: {secondary.join(', ')}</span> : null}
+          {tx(crewPrimaryRoleText(p))}
+          {secondary.length ? <span className={muted}> {tx("· Vai trò phụ:")} {tx(secondary.join(', '))}</span> : null}
         </p>
         <p className={`${row} ${muted}`}>
-          {[
+          {tx([
             labelOf(SENIORITY_LEVELS, p.years_of_experience).split(' (')[0],
             labelOf(BASE_CITIES, p.base_city),
             p.willing_to_travel ? 'Đi quay xa được' : '',
             p.applied_at ? `Ứng tuyển ${vnDate(p.applied_at)}` : ''
           ]
             .filter(Boolean)
-            .join(' · ')}
+            .join(' · '))}
         </p>
       </div>
 
       <p className={row}>
-        <span className="font-semibold">Nhận việc: </span>
-        {availability}
-        {rates ? <span className={muted}> · {rates}</span> : null}
+        <span className="font-semibold">{tx("Nhận việc:")} </span>
+        {tx(availability)}
+        {rates ? <span className={muted}> · {tx(rates)}</span> : null}
       </p>
 
       {links.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {links.map(l => (
             <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[13px] font-medium hover:bg-black/5">
-              {l.label} <ExternalLink className="h-3.5 w-3.5" />
+              {tx(l.label)} <ExternalLink className="h-3.5 w-3.5" />
             </a>
           ))}
         </div>
@@ -83,17 +86,17 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
 
       {!compact && (p.filmography_credits || []).length > 0 && (
         <div>
-          <p className="text-[13px] font-semibold uppercase tracking-wider opacity-60">Dự án tiêu biểu</p>
+          <p className="text-[13px] font-semibold uppercase tracking-wider opacity-60">{tx("Dự án tiêu biểu")}</p>
           <ul className="mt-1 space-y-1">
             {p.filmography_credits.map((c, i) => (
               <li key={i} className={row}>
-                <span className="font-medium">{c.project_name}</span>
+                <span className="font-medium">{tx(c.project_name)}</span>
                 <span className={muted}>
                   {[c.year ? String(c.year) : '', labelOf(CREDIT_TYPES, c.type), c.role_in_project].filter(Boolean).map(x => ` · ${x}`)}
                 </span>
                 {c.project_link && (
                   <a href={c.project_link} target="_blank" rel="noopener noreferrer" className="ml-1.5 inline-flex items-center underline underline-offset-2">
-                    Xem <ExternalLink className="ml-0.5 h-3 w-3" />
+                    {tx("Xem")} <ExternalLink className="ml-0.5 h-3 w-3" />
                   </a>
                 )}
               </li>
@@ -104,24 +107,24 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
 
       {!compact && (p.software_skills || []).length > 0 && (
         <p className={row}>
-          <span className="font-semibold">Phần mềm: </span>
-          {p.software_skills.join(', ')}
+          <span className="font-semibold">{tx("Phần mềm:")} </span>
+          {tx(p.software_skills.join(', '))}
         </p>
       )}
       {!compact && p.owned_gear && (
         <p className={`${row} whitespace-pre-line`}>
-          <span className="font-semibold">Thiết bị sở hữu: </span>
-          {p.owned_gear}
+          <span className="font-semibold">{tx("Thiết bị sở hữu:")} </span>
+          {tx(p.owned_gear)}
         </p>
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
         <a href={`mailto:${p.public_email}`} className="inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3.5 py-1.5 text-[13px] font-semibold text-white">
-          <Mail className="h-4 w-4" /> {p.public_email}
+          <Mail className="h-4 w-4" /> {tx(p.public_email)}
         </a>
         {phone && (
           <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold">
-            <Phone className="h-4 w-4" /> {p.public_phone}
+            <Phone className="h-4 w-4" /> {tx(p.public_phone)}
           </a>
         )}
       </div>
@@ -131,9 +134,10 @@ export function CrewProfileDetails({ p, compact = false }: { p: Viewable; compac
 
 /** CV + cover letter gửi kèm 1 lượt ứng tuyển (link file PDF là link xem tạm có hạn: tải lại trang để lấy link mới). */
 export function CrewAttachmentsBlock({ a }: { a: CrewAttachments | null | undefined }) {
+  const tx = useTx();
   const [open, setOpen] = useState(false);
   if (!a || (!a.cv && !a.portfolio && !a.cover_letter && !a.cover_letter_url)) {
-    return <p className="text-[13px] opacity-70">Không gửi kèm CV / Portfolio / cover letter.</p>;
+    return <p className="text-[13px] opacity-70">{tx("Không gửi kèm CV / Portfolio / cover letter.")}</p>;
   }
   const btn = 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium hover:bg-black/5';
   const long = (a.cover_letter || '').length > 220;
@@ -142,27 +146,27 @@ export function CrewAttachmentsBlock({ a }: { a: CrewAttachments | null | undefi
       <div className="flex flex-wrap gap-2">
         {a.cv && (
           <a href={a.cv.url} target="_blank" rel="noopener noreferrer" className={`${btn} border-[#1d1d1f] bg-[#1d1d1f] text-white hover:bg-black`}>
-            <FileText className="h-3.5 w-3.5" /> CV: {a.cv.title}
+            <FileText className="h-3.5 w-3.5" /> {tx("CV:")} {tx(a.cv.title)}
           </a>
         )}
         {a.portfolio && (
           <a href={a.portfolio.url} target="_blank" rel="noopener noreferrer" className={`${btn} border-[#1d1d1f] bg-[#1d1d1f] text-white hover:bg-black`}>
-            <FileText className="h-3.5 w-3.5" /> Portfolio: {a.portfolio.title}
+            <FileText className="h-3.5 w-3.5" /> {tx("Portfolio:")} {tx(a.portfolio.title)}
           </a>
         )}
         {a.cover_letter_url && (
           <a href={a.cover_letter_url} target="_blank" rel="noopener noreferrer" className={btn}>
-            <FileText className="h-3.5 w-3.5" /> Cover letter (PDF)
+            <FileText className="h-3.5 w-3.5" /> {tx("Cover letter (PDF)")}
           </a>
         )}
       </div>
       {a.cover_letter && (
         <div className="rounded-[12px] bg-black/[0.03] p-3">
-          <p className="text-[12px] font-semibold uppercase tracking-wider opacity-70">Cover letter</p>
-          <p className={`mt-1 whitespace-pre-line text-[14px] leading-[1.5] ${long && !open ? 'line-clamp-4' : ''}`}>{a.cover_letter}</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wider opacity-70">{tx("Cover letter")}</p>
+          <p className={`mt-1 whitespace-pre-line text-[14px] leading-[1.5] ${long && !open ? 'line-clamp-4' : ''}`}>{tx(a.cover_letter)}</p>
           {long && (
             <button type="button" onClick={() => setOpen(v => !v)} className="mt-1 text-[13px] font-semibold underline underline-offset-2">
-              {open ? 'Thu gọn' : 'Xem đầy đủ'}
+              {tx(open ? 'Thu gọn' : 'Xem đầy đủ')}
             </button>
           )}
         </div>

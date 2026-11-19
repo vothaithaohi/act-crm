@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { checkDraft } from '@/lib/dienvienvn/draft-schema';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -94,6 +96,7 @@ function writeJSON(key: string, value: unknown) {
 
 /** mode="edit": diễn viên đã đăng nhập chỉnh sửa / bổ sung hồ sơ của mình. */
 export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edit' }) {
+  const tx = useTx();
   const editing = mode === 'edit';
   const href = useDvvnHref();
   const session = useActorSession();
@@ -468,9 +471,9 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
         <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[var(--dv-bg-alt)] px-4 text-center">
           {loadError ? (
             <>
-              <p className="text-[17px]">{loadError}</p>
+              <p className="text-[17px]">{tx(loadError)}</p>
               <Link href={href('/tai-khoan')} className="dv-btn dv-btn-secondary mt-6">
-                Về tài khoản
+                {tx("Về tài khoản")}
               </Link>
             </>
           ) : (
@@ -495,7 +498,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       className={`dv-btn ${readyToSubmit ? 'dv-btn-primary' : 'dv-btn-muted'} ${extra}`}
     >
       {submitting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-4 w-4" />}
-      {editing ? (submitting ? 'Đang lưu…' : 'Lưu thay đổi') : submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ diễn viên'}
+      {tx(editing ? (submitting ? 'Đang lưu…' : 'Lưu thay đổi') : submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ diễn viên')}
     </button>
   );
 
@@ -508,9 +511,9 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
         <div className="mx-auto max-w-[720px] px-4 pt-2.5">
           <div className="flex items-center justify-between text-[12px] tracking-[-0.01em]">
             <span className="font-semibold text-[var(--dv-text)]">
-              Bước {step}/{CASTING_STEPS.length} · {current.title}
+              {tx("Bước")} {tx(step)}/{tx(CASTING_STEPS.length)} · {tx(current.title)}
             </span>
-            <span className="text-[var(--dv-text-secondary)]">{progress}%</span>
+            <span className="text-[var(--dv-text-secondary)]">{tx(progress)}%</span>
           </div>
           <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-[#e8e8ed]">
             <div className="h-full rounded-full bg-[var(--dv-accent)] transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
@@ -535,8 +538,8 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                           : 'bg-transparent text-[var(--dv-text-secondary)]'
                   }`}
                 >
-                  {st === 'done' ? <Check className="h-3.5 w-3.5 text-[var(--dv-accent)]" strokeWidth={3} /> : st === 'error' ? <AlertCircle className="h-3.5 w-3.5" /> : <span className="font-semibold">{s.id}</span>}
-                  {s.title}
+                  {st === 'done' ? <Check className="h-3.5 w-3.5 text-[var(--dv-accent)]" strokeWidth={3} /> : st === 'error' ? <AlertCircle className="h-3.5 w-3.5" /> : <span className="font-semibold">{tx(s.id)}</span>}
+                  {tx(s.title)}
                 </button>
               );
             })}
@@ -549,34 +552,34 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
           {/* Tiêu đề trang */}
           <header className="mb-6 lg:mb-8">
             <Link href={href(editing ? '/tai-khoan' : '/')} className="dv-link text-[14px]">
-              <ChevronLeft className="h-4 w-4" /> {editing ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN'}
+              <ChevronLeft className="h-4 w-4" /> {tx(editing ? 'Tài khoản của tôi' : 'Trang chủ DienVienVN')}
             </Link>
             <h1 className="dv-display mt-2 text-[28px] font-semibold leading-[1.14] tracking-[0.007em] md:text-[40px] md:leading-[1.1] md:tracking-normal">
-              {editing ? 'Chỉnh sửa hồ sơ.' : target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ diễn viên.'}
+              {tx(editing ? 'Chỉnh sửa hồ sơ.' : target ? 'Ứng tuyển casting.' : 'Nộp hồ sơ diễn viên.')}
             </h1>
             {target && (
               <div className="mt-4 flex items-center gap-3 rounded-[14px] bg-white px-4 py-3 md:max-w-[640px]">
                 <Clapperboard className="h-5 w-5 shrink-0 text-[var(--dv-accent)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold">{target.project.display_name}</p>
+                  <p className="truncate text-[15px] font-semibold">{tx(target.project.display_name)}</p>
                   <p className="truncate text-[13px] text-[var(--dv-text-secondary)]">
-                    Vai {target.role.name}
-                    {target.project.selftape_required ? ' · Bắt buộc self-tape (bước 6)' : ''}
+                    {tx("Vai")} {tx(target.role.name)}
+                    {tx(target.project.selftape_required ? ' · Bắt buộc self-tape (bước 6)' : '')}
                   </p>
                 </div>
-                <button type="button" onClick={clearTarget} aria-label="Bỏ ứng tuyển dự án này" className="rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+                <button type="button" onClick={clearTarget} aria-label={tx("Bỏ ứng tuyển dự án này")} className="rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             )}
-            {targetNotice && <p className="mt-3 text-[14px] text-[var(--dv-text-secondary)]">{targetNotice}</p>}
+            {targetNotice && <p className="mt-3 text-[14px] text-[var(--dv-text-secondary)]">{tx(targetNotice)}</p>}
           </header>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[228px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[248px_minmax(0,1fr)_300px]">
             {/* CỘT TRÁI: các bước */}
-            <aside className="hidden lg:row-span-2 lg:block xl:row-span-1" aria-label="Các bước nộp hồ sơ">
+            <aside className="hidden lg:row-span-2 lg:block xl:row-span-1" aria-label={tx("Các bước nộp hồ sơ")}>
               <nav className="sticky top-[68px]">
-                <p className="mb-3 px-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-secondary)]">Các bước</p>
+                <p className="mb-3 px-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--dv-text-secondary)]">{tx("Các bước")}</p>
                 <ol className="relative">
                   {CASTING_STEPS.map((s, i) => {
                     const st = stepState(s.id);
@@ -619,9 +622,9 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                                 st === 'current' ? 'font-semibold text-[var(--dv-text)]' : st === 'upcoming' ? 'text-[var(--dv-text-secondary)]' : 'text-[var(--dv-text)]'
                               }`}
                             >
-                              {s.title}
+                              {tx(s.title)}
                             </span>
-                            <span className="mt-0.5 block text-[12px] leading-[1.33] text-[var(--dv-text-tertiary)]">{s.desc}</span>
+                            <span className="mt-0.5 block text-[12px] leading-[1.33] text-[var(--dv-text-tertiary)]">{tx(s.desc)}</span>
                           </span>
                         </button>
                       </li>
@@ -636,27 +639,27 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
               <div className="dv-card overflow-hidden">
                 <div className="border-b border-[#f0f0f2] px-5 pb-5 pt-6 sm:px-8 sm:pt-8">
                   <p className="text-[14px] font-semibold text-[var(--dv-accent)]">
-                    Bước {step} / {CASTING_STEPS.length}
+                    {tx("Bước")} {tx(step)} / {tx(CASTING_STEPS.length)}
                   </p>
                   <h2 className="dv-display mt-1 text-[24px] font-semibold leading-[1.17] tracking-[0.009em] sm:text-[28px] sm:leading-[1.14]">
-                    {current.title}
+                    {tx(current.title)}
                   </h2>
-                  <p className="mt-1.5 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{STEP_INTROS[step]}</p>
+                  <p className="mt-1.5 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{tx(STEP_INTROS[step])}</p>
                 </div>
 
                 {banner && (
                   <div role="alert" className="mx-5 mt-5 flex items-start gap-2.5 rounded-[12px] bg-[#fff0f0] p-3.5 text-[14px] leading-[1.43] text-[#b00020] sm:mx-8">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                      {banner}
+                      {tx(banner)}
                       {bannerLogin && (
                         <>
-                          {' '}
+                          {tx(' ')}
                           <Link
                             href={href(`/dang-nhap?next=${encodeURIComponent(href(editing ? '/tai-khoan/ho-so' : '/tai-khoan'))}`)}
                             className="font-semibold underline underline-offset-2"
                           >
-                            Đăng nhập
+                            {tx("Đăng nhập")}
                           </Link>
                         </>
                       )}
@@ -687,13 +690,13 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                 {/* Điều hướng trong thẻ (desktop / tablet) */}
                 <div className="hidden items-center justify-between border-t border-[#f0f0f2] px-5 py-5 sm:px-8 md:flex">
                   <button type="button" onClick={handleBack} disabled={step === 1} className="dv-btn dv-btn-ghost disabled:invisible">
-                    <ChevronLeft className="h-4 w-4" /> Quay lại
+                    <ChevronLeft className="h-4 w-4" /> {tx("Quay lại")}
                   </button>
                   {isLast ? (
                     submitButton()
                   ) : (
                     <button type="button" onClick={handleNext} className="dv-btn dv-btn-primary">
-                      Tiếp theo <ChevronRight className="h-4 w-4" />
+                      {tx("Tiếp theo")} <ChevronRight className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -702,14 +705,14 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
               {/* Honeypot chống spam (ẩn với người dùng) */}
               <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
                 <label>
-                  Website
+                  {tx("Website")}
                   <input tabIndex={-1} autoComplete="off" value={honeypot} onChange={e => setHoneypot(e.target.value)} />
                 </label>
               </div>
             </section>
 
             {/* CỘT PHẢI: tóm tắt & nộp hồ sơ */}
-            <aside aria-label="Nộp hồ sơ" className="lg:col-start-2 xl:col-start-auto">
+            <aside aria-label={tx("Nộp hồ sơ")} className="lg:col-start-2 xl:col-start-auto">
               <div className="space-y-4 xl:sticky xl:top-[68px]">
                 <div className="dv-card p-5">
                   <div className="flex items-center gap-3.5">
@@ -725,25 +728,25 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[17px] font-semibold leading-[1.24] tracking-[-0.022em]">
-                        {draft.full_name.trim() || 'Hồ sơ của bạn'}
+                        {tx(draft.full_name.trim() || 'Hồ sơ của bạn')}
                       </p>
                       <p className="mt-0.5 text-[13px] leading-[1.38] text-[var(--dv-text-secondary)]">
-                        {[
+                        {tx([
                           draft.gender === 'female' ? 'Nữ' : draft.gender === 'male' ? 'Nam' : 'Khác',
                           age !== null && age >= 0 ? `${age} tuổi` : null,
                           draft.height_cm ? `${draft.height_cm} cm` : null,
                           draft.city.trim() || null
                         ]
                           .filter(Boolean)
-                          .join(' · ')}
+                          .join(' · '))}
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-6">
                     <div className="flex items-end justify-between">
-                      <span className="text-[14px] text-[var(--dv-text-secondary)]">Hồ sơ đã hoàn thành</span>
-                      <span className="dv-display text-[28px] font-semibold leading-none tracking-[0.007em] tabular-nums">{progress}%</span>
+                      <span className="text-[14px] text-[var(--dv-text-secondary)]">{tx("Hồ sơ đã hoàn thành")}</span>
+                      <span className="dv-display text-[28px] font-semibold leading-none tracking-[0.007em] tabular-nums">{tx(progress)}%</span>
                     </div>
                     <div
                       className="mt-3 h-2 overflow-hidden rounded-full bg-[#e8e8ed]"
@@ -751,7 +754,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={progress}
-                      aria-label="Mức độ hoàn thành hồ sơ"
+                      aria-label={tx("Mức độ hoàn thành hồ sơ")}
                     >
                       <div
                         className={`h-full rounded-full transition-[width,background-color] duration-700 ease-out ${progress === 100 ? 'bg-[var(--dv-accent)]' : 'bg-[var(--dv-accent)]'}`}
@@ -783,22 +786,20 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                         {draft.consent && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                       </span>
                       <span className="text-[13px] leading-[1.42] text-[var(--dv-text-secondary)]">
-                        Tôi xác nhận thông tin là chính xác và đồng ý để DienVienVN lưu trữ, gửi hồ sơ này tới đạo diễn và nhà sản xuất
-                        cho mục đích casting, và hiển thị công khai trên dienvienvn.com sau khi được duyệt (ảnh, tên, kỹ năng, kinh nghiệm,
-                        đào tạo; SĐT, email, địa chỉ, tuổi và số đo luôn được ẩn). Tôi có thể ẩn hồ sơ công khai bất kỳ lúc nào trong tài khoản.
+                        {tx("Tôi xác nhận thông tin là chính xác và đồng ý để DienVienVN lưu trữ, gửi hồ sơ này tới đạo diễn và nhà sản xuất cho mục đích casting, và hiển thị công khai trên dienvienvn.com sau khi được duyệt (ảnh, tên, kỹ năng, kinh nghiệm, đào tạo; SĐT, email, địa chỉ, tuổi và số đo luôn được ẩn). Tôi có thể ẩn hồ sơ công khai bất kỳ lúc nào trong tài khoản.")}
                       </span>
                     </button>
-                    {consentError && <p className="dv-field-error">Vui lòng đánh dấu đồng ý để nộp hồ sơ.</p>}
+                    {consentError && <p className="dv-field-error">{tx("Vui lòng đánh dấu đồng ý để nộp hồ sơ.")}</p>}
                   </div>
 
-                  <div className="mt-5">{submitButton('w-full')}</div>
+                  <div className="mt-5">{tx(submitButton('w-full'))}</div>
                   {!readyToSubmit && (
                     <p className="mt-2.5 text-center text-[12px] leading-[1.33] text-[var(--dv-text-secondary)]">
-                      {editing
+                      {tx(editing
                         ? 'Kiểm tra lại các bước được đánh dấu đỏ để lưu.'
                         : allStepsDone
                           ? 'Đánh dấu đồng ý ở trên để nộp hồ sơ.'
-                          : 'Hoàn thành đủ 7 bước để nộp hồ sơ.'}
+                          : 'Hoàn thành đủ 7 bước để nộp hồ sơ.')}
                     </p>
                   )}
                 </div>
@@ -808,12 +809,12 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                     'Thay đổi chỉ được lưu khi bạn bấm “Lưu thay đổi”. Email đăng nhập không thể thay đổi.'
                   ) : (
                     <>
-                  {draftSaved === 'saved'
+                  {tx(draftSaved === 'saved'
                     ? 'Bản nháp được tự động lưu trên thiết bị này.'
                     : draftSaved === 'failed'
                       ? 'Không lưu được bản nháp trên thiết bị này (bộ nhớ trình duyệt đầy hoặc bị chặn).'
-                      : 'Bản nháp sẽ được tự động lưu trên thiết bị này.'}{' '}
-                  Hồ sơ chỉ được gửi đi khi bạn bấm “Nộp hồ sơ diễn viên”.
+                      : 'Bản nháp sẽ được tự động lưu trên thiết bị này.')}{tx(' ')}
+                  {tx("Hồ sơ chỉ được gửi đi khi bạn bấm “Nộp hồ sơ diễn viên”.")}
                     </>
                   )}
                 </p>
@@ -826,14 +827,14 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       {/* Thanh điều hướng cố định cho điện thoại */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] bg-[rgba(255,255,255,0.92)] px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl md:hidden">
         <div className="mx-auto flex max-w-[720px] items-center gap-3">
-          <button type="button" onClick={handleBack} disabled={step === 1} className="dv-btn dv-btn-ghost shrink-0 px-4 disabled:opacity-40" aria-label="Quay lại bước trước">
-            <ChevronLeft className="h-4 w-4" /> Quay lại
+          <button type="button" onClick={handleBack} disabled={step === 1} className="dv-btn dv-btn-ghost shrink-0 px-4 disabled:opacity-40" aria-label={tx("Quay lại bước trước")}>
+            <ChevronLeft className="h-4 w-4" /> {tx("Quay lại")}
           </button>
           {isLast ? (
             submitButton('flex-1')
           ) : (
             <button type="button" onClick={handleNext} className="dv-btn dv-btn-primary flex-1">
-              Tiếp theo <ChevronRight className="h-4 w-4" />
+              {tx("Tiếp theo")} <ChevronRight className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -843,6 +844,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
 }
 
 function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; homeHref: string; onAnother: () => void }) {
+  const tx = useTx();
   const code = `DV-${result.id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
   return (
     <main className="flex min-h-[calc(100vh-44px)] items-center justify-center bg-[var(--dv-bg-alt)] px-4 py-12">
@@ -853,30 +855,29 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
         </svg>
 
         <h1 className="dv-display dv-headline mt-7" role="status">
-          Nộp hồ sơ thành công.
+          {tx("Nộp hồ sơ thành công.")}
         </h1>
         <p className="dv-subhead mx-auto mt-3 max-w-[460px] text-[var(--dv-text-secondary)]">
-          Cảm ơn {result.name}. Hồ sơ của bạn đã đến tay đội ngũ casting DienVienVN.
+          {tx("Cảm ơn")} {tx(result.name)}{tx(". Hồ sơ của bạn đã đến tay đội ngũ casting DienVienVN.")}
         </p>
 
         <div className="mx-auto mt-8 max-w-[420px] rounded-[16px] bg-[var(--dv-bg-alt)] p-5 text-left">
           <div className="flex items-center justify-between gap-4 text-[15px]">
-            <span className="text-[var(--dv-text-secondary)]">Mã hồ sơ</span>
-            <span className="font-semibold tracking-[0.04em]">{code}</span>
+            <span className="text-[var(--dv-text-secondary)]">{tx("Mã hồ sơ")}</span>
+            <span className="font-semibold tracking-[0.04em]">{tx(code)}</span>
           </div>
           {result.appliedTo && (
             <>
               <div className="mt-3 h-px bg-[#e8e8ed]" />
               <div className="mt-3 flex items-start justify-between gap-4 text-[15px]">
-                <span className="shrink-0 text-[var(--dv-text-secondary)]">Ứng tuyển</span>
-                <span className="text-right font-semibold">{result.appliedTo}</span>
+                <span className="shrink-0 text-[var(--dv-text-secondary)]">{tx("Ứng tuyển")}</span>
+                <span className="text-right font-semibold">{tx(result.appliedTo)}</span>
               </div>
             </>
           )}
           <div className="mt-3 h-px bg-[#e8e8ed]" />
           <p className="mt-3 text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
-            Chúng tôi sẽ liên hệ qua email <span className="break-all font-semibold text-[var(--dv-text)]">{result.email}</span> khi có vai
-            diễn phù hợp với bạn.
+            {tx("Chúng tôi sẽ liên hệ qua email")} <span className="break-all font-semibold text-[var(--dv-text)]">{tx(result.email)}</span> {tx("khi có vai diễn phù hợp với bạn.")}
           </p>
         </div>
 
@@ -885,13 +886,11 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
           <p className="text-[14px] leading-[1.43] text-[var(--dv-text-secondary)]">
             {result.emailSent ? (
               <>
-                <span className="font-semibold text-[var(--dv-text)]">Kiểm tra hộp thư của bạn.</span> Mở email xác nhận để tạo mật khẩu — sau
-                đó bạn có thể đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển các dự án đang casting. Nếu không thấy, hãy xem mục Spam.
+                <span className="font-semibold text-[var(--dv-text)]">{tx("Kiểm tra hộp thư của bạn.")}</span> {tx("Mở email xác nhận để tạo mật khẩu — sau đó bạn có thể đăng nhập, chỉnh sửa hồ sơ và tự ứng tuyển các dự án đang casting. Nếu không thấy, hãy xem mục Spam.")}
               </>
             ) : (
               <>
-                <span className="font-semibold text-[var(--dv-text)]">Kích hoạt tài khoản</span> để chỉnh sửa hồ sơ và tự ứng tuyển các dự án
-                đang casting: vào trang Đăng nhập → “Quên mật khẩu / chưa nhận được email kích hoạt?”.
+                <span className="font-semibold text-[var(--dv-text)]">{tx("Kích hoạt tài khoản")}</span> {tx("để chỉnh sửa hồ sơ và tự ứng tuyển các dự án đang casting: vào trang Đăng nhập → “Quên mật khẩu / chưa nhận được email kích hoạt?”.")}
               </>
             )}
           </p>
@@ -899,13 +898,13 @@ function SuccessScreen({ result, homeHref, onAnother }: { result: SubmitResult; 
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link href={homeHref} className="dv-btn dv-btn-primary w-full sm:w-auto">
-            Về trang chủ
+            {tx("Về trang chủ")}
           </Link>
           <button type="button" onClick={onAnother} className="dv-btn dv-btn-secondary w-full sm:w-auto">
-            Nộp hồ sơ khác
+            {tx("Nộp hồ sơ khác")}
           </button>
         </div>
-        <p className="mt-8 text-[12px] text-[var(--dv-text-tertiary)]">Hẹn gặp bạn ngày ra mắt chính thức — 11.11.2026.</p>
+        <p className="mt-8 text-[12px] text-[var(--dv-text-tertiary)]">{tx("Hẹn gặp bạn ngày ra mắt chính thức — 11.11.2026.")}</p>
       </div>
     </main>
   );

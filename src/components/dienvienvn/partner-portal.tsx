@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -87,6 +89,7 @@ function usePartnerApi<T>(url: string) {
 }
 
 function PortalShell({ children, partner }: { children: React.ReactNode; partner?: PartnerInfo }) {
+  const tx = useTx();
   const href = useDvvnHref();
   return (
     <>
@@ -98,15 +101,15 @@ function PortalShell({ children, partner }: { children: React.ReactNode; partner
           {partner && (
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
               <p className="text-[14px] text-[var(--dv-text-secondary)]">
-                Cổng đối tác · <span className="font-semibold text-[var(--dv-text)]">{partner.full_name}</span>
-                {partner.company ? ` · ${partner.company}` : ` · ${PARTNER_TYPE_LABELS[partner.partner_type] || 'Đối tác'}`}
+                {tx("Cổng đối tác ·")} <span className="font-semibold text-[var(--dv-text)]">{tx(partner.full_name)}</span>
+                {tx(partner.company ? ` · ${partner.company}` : ` · ${PARTNER_TYPE_LABELS[partner.partner_type] || 'Đối tác'}`)}
               </p>
               <LogoutButton to={href('/doi-tac')} className="inline-flex items-center gap-1.5 text-[14px] text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]" />
             </div>
           )}
-          {children}
+          {tx(children)}
           <p className="mt-12 text-center text-[12px] text-[var(--dv-text-tertiary)]">
-            Tài liệu bảo mật DienVienVN cung cấp riêng cho đối tác. Vui lòng không chia sẻ thông tin cá nhân của diễn viên ra bên ngoài.
+            {tx("Tài liệu bảo mật DienVienVN cung cấp riêng cho đối tác. Vui lòng không chia sẻ thông tin cá nhân của diễn viên ra bên ngoài.")}
           </p>
         </div>
       </main>
@@ -115,13 +118,14 @@ function PortalShell({ children, partner }: { children: React.ReactNode; partner
 }
 
 function Gate({ session, error, notPartner, demo, next }: { session: ReturnType<typeof useActorSession>; error?: string; notPartner?: boolean; demo?: boolean; next: string }) {
+  const tx = useTx();
   const router = useRouter();
   const href = useDvvnHref();
   if (session.status === 'signed-out') {
     return (
       <LoginGate
         partner
-        title="Cổng đối tác."
+        title={tx("Cổng đối tác.")}
         description="Dành cho đạo diễn, nhà sản xuất và đối tác casting của DienVienVN. Đăng nhập để xem đầy đủ hồ sơ diễn viên đã duyệt."
         next={next}
       />
@@ -131,8 +135,8 @@ function Gate({ session, error, notPartner, demo, next }: { session: ReturnType<
     return (
       <PortalShell>
         <div className="dv-card mx-auto max-w-[460px] p-8 text-center">
-          <h1 className="dv-display text-[28px] font-semibold">Chưa mở cổng đối tác.</h1>
-          <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">Hệ thống tài khoản chưa được kết nối. Vui lòng quay lại sau.</p>
+          <h1 className="dv-display text-[28px] font-semibold">{tx("Chưa mở cổng đối tác.")}</h1>
+          <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">{tx("Hệ thống tài khoản chưa được kết nối. Vui lòng quay lại sau.")}</p>
         </div>
       </PortalShell>
     );
@@ -141,8 +145,8 @@ function Gate({ session, error, notPartner, demo, next }: { session: ReturnType<
     return (
       <PortalShell>
         <div className="dv-card mx-auto max-w-[460px] p-8 text-center">
-          <h1 className="dv-display text-[24px] font-semibold">{notPartner ? 'Chưa có quyền đối tác.' : 'Có lỗi xảy ra.'}</h1>
-          <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{error}</p>
+          <h1 className="dv-display text-[24px] font-semibold">{tx(notPartner ? 'Chưa có quyền đối tác.' : 'Có lỗi xảy ra.')}</h1>
+          <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">{tx(error)}</p>
           {notPartner && (
             <button
               type="button"
@@ -152,7 +156,7 @@ function Gate({ session, error, notPartner, demo, next }: { session: ReturnType<
                 router.replace(href(`/dang-nhap?next=${encodeURIComponent(next)}`));
               }}
             >
-              Đăng nhập bằng tài khoản khác
+              {tx("Đăng nhập bằng tài khoản khác")}
             </button>
           )}
         </div>
@@ -170,6 +174,7 @@ function Gate({ session, error, notPartner, demo, next }: { session: ReturnType<
 
 /* ---------------- Danh sách diễn viên cho đối tác ---------------- */
 export function PartnerDirectory() {
+  const tx = useTx();
   const href = useDvvnHref();
   const api = usePartnerApi<{ partner: PartnerInfo; talents: PartnerTalent[]; projects?: PartnerProjectSummary[] }>('/api/dienvienvn/partner/talents');
   const [q, setQ] = useState('');
@@ -237,15 +242,15 @@ export function PartnerDirectory() {
       <section className="mb-12">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">Dự án của bạn.</h2>
+              <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">{tx("Dự án của bạn.")}</h2>
               <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">
-                {(api.data.projects || []).length
+                {tx((api.data.projects || []).length
                   ? 'Ứng viên đã được đội casting duyệt cho từng vai, tự cập nhật.'
-                  : 'Đăng casting call để diễn viên trên DienVienVN ứng tuyển vào dự án của bạn.'}
+                  : 'Đăng casting call để diễn viên trên DienVienVN ứng tuyển vào dự án của bạn.')}
               </p>
             </div>
             <Link href={href('/doi-tac/du-an/moi')} className="dv-btn dv-btn-primary !h-11 !py-0 text-[15px]">
-              <Plus className="h-4 w-4" /> Đăng casting mới
+              <Plus className="h-4 w-4" /> {tx("Đăng casting mới")}
             </Link>
           </div>
           {(api.data.projects || []).length > 0 && (
@@ -257,21 +262,21 @@ export function PartnerDirectory() {
                   className="group flex h-full flex-col rounded-[18px] bg-white p-5 transition-shadow hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.25)]"
                 >
                   <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">
-                    <span>{p.code}</span>
+                    <span>{tx(p.code)}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 normal-case tracking-normal ${
                         p.status === 'draft' ? 'bg-[#fff6e0] text-[#8c5f2a]' : p.status === 'open' ? 'bg-[#e8f5ec] text-[#1e6b3a]' : 'bg-[var(--dv-bg-alt)]'
                       }`}
                     >
-                      {p.status === 'draft' ? 'Chờ DienVienVN duyệt' : p.status === 'open' ? 'Đang casting' : 'Đã đóng'}
+                      {tx(p.status === 'draft' ? 'Chờ DienVienVN duyệt' : p.status === 'open' ? 'Đang casting' : 'Đã đóng')}
                     </span>
                   </p>
-                  <p className="mt-1 text-[19px] font-semibold leading-[1.25]">{p.title}</p>
+                  <p className="mt-1 text-[19px] font-semibold leading-[1.25]">{tx(p.title)}</p>
                   <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">
-                    {[p.production_company, projectTypeLabel(p.project_type), p.deadline ? `Hạn nộp ${formatVnDate(p.deadline)}` : null].filter(Boolean).join(' · ')}
+                    {tx([p.production_company, projectTypeLabel(p.project_type), p.deadline ? `Hạn nộp ${formatVnDate(p.deadline)}` : null].filter(Boolean).join(' · '))}
                   </p>
                   <p className="mt-auto pt-4 text-[15px] font-semibold">
-                    {p.applicants} ứng viên · {p.roles} vai <ChevronRight className="inline h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    {tx(p.applicants)} {tx("ứng viên ·")} {tx(p.roles)} {tx("vai")} <ChevronRight className="inline h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </p>
                 </Link>
               </li>
@@ -282,25 +287,25 @@ export function PartnerDirectory() {
 
       <PartnerCrewJobsSection />
 
-      <h1 className="dv-display dv-headline">Kho diễn viên DienVienVN.</h1>
-      <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{talents.length} hồ sơ đã duyệt · thông tin đầy đủ dành riêng cho đối tác.</p>
+      <h1 className="dv-display dv-headline">{tx("Kho diễn viên DienVienVN.")}</h1>
+      <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{tx(talents.length)} {tx("hồ sơ đã duyệt · thông tin đầy đủ dành riêng cho đối tác.")}</p>
 
       <div className="mt-8 grid grid-cols-2 gap-2.5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div className="relative col-span-2 md:col-span-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--dv-text-tertiary)]" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Tên, kỹ năng, phim đã đóng…" className="dv-input !pl-11" aria-label="Tìm diễn viên" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={tx("Tên, kỹ năng, phim đã đóng…")} className="dv-input !pl-11" aria-label={tx("Tìm diễn viên")} />
         </div>
-        <select value={gender} onChange={e => setGender(e.target.value)} className="dv-input" aria-label="Giới tính">
-          <option value="all">Mọi giới tính</option>
-          <option value="female">Nữ</option>
-          <option value="male">Nam</option>
-          <option value="other">Khác</option>
+        <select value={gender} onChange={e => setGender(e.target.value)} className="dv-input" aria-label={tx("Giới tính")}>
+          <option value="all">{tx("Mọi giới tính")}</option>
+          <option value="female">{tx("Nữ")}</option>
+          <option value="male">{tx("Nam")}</option>
+          <option value="other">{tx("Khác")}</option>
         </select>
-        <select value={city} onChange={e => setCity(e.target.value)} className="dv-input" aria-label="Tỉnh/thành">
-          <option value="all">Mọi tỉnh/thành</option>
+        <select value={city} onChange={e => setCity(e.target.value)} className="dv-input" aria-label={tx("Tỉnh/thành")}>
+          <option value="all">{tx("Mọi tỉnh/thành")}</option>
           {cities.map(c => (
             <option key={c} value={c}>
-              {provinceLabel(c)}
+              {tx(provinceLabel(c))}
             </option>
           ))}
         </select>
@@ -311,10 +316,10 @@ export function PartnerDirectory() {
       </div>
 
       <div className="mt-4 flex items-center gap-3 text-[14px] text-[var(--dv-text-secondary)]">
-        <span>{list.length} diễn viên</span>
+        <span>{tx(list.length)} {tx("diễn viên")}</span>
         {filtered && (
           <button type="button" onClick={reset} className="underline underline-offset-2 hover:text-[var(--dv-text)]">
-            Xoá bộ lọc
+            {tx("Xoá bộ lọc")}
           </button>
         )}
       </div>
@@ -327,7 +332,7 @@ export function PartnerDirectory() {
               <div className="aspect-[3/4] overflow-hidden bg-[#e8e8ed]">
                 {photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photo.url} alt={t.full_name} loading="lazy" className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
+                  <img src={photo.url} alt={tx(t.full_name)} loading="lazy" className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-[#aeaeb2]">
                     <UserRound className="h-10 w-10" strokeWidth={1.3} />
@@ -335,8 +340,8 @@ export function PartnerDirectory() {
                 )}
               </div>
               <div className="px-4 py-3.5">
-                <p className="truncate text-[16px] font-semibold leading-[1.25]">{t.full_name}</p>
-                <p className="mt-0.5 truncate text-[13px] text-[var(--dv-text-secondary)]">{summaryLine(t) || '—'}</p>
+                <p className="truncate text-[16px] font-semibold leading-[1.25]">{tx(t.full_name)}</p>
+                <p className="mt-0.5 truncate text-[13px] text-[var(--dv-text-secondary)]">{tx(summaryLine(t) || '—')}</p>
               </div>
             </>
           );
@@ -344,32 +349,34 @@ export function PartnerDirectory() {
           return (
             <li key={t.id}>
               <Link href={href(`/doi-tac/${t.id}`)} className={cls}>
-                {inner}
+                {tx(inner)}
               </Link>
             </li>
           );
         })}
       </ul>
-      {list.length === 0 && <p className="mt-6 text-[15px] text-[var(--dv-text-secondary)]">Không có diễn viên phù hợp bộ lọc.</p>}
+      {list.length === 0 && <p className="mt-6 text-[15px] text-[var(--dv-text-secondary)]">{tx("Không có diễn viên phù hợp bộ lọc.")}</p>}
     </PortalShell>
   );
 }
 
 function RangeInput({ label, min, max, onMin, onMax }: { label: string; min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void }) {
+  const tx = useTx();
   const cls = 'dv-input !h-11 min-w-0 flex-1 text-center';
   const clean = (v: string) => v.replace(/\D/g, '').slice(0, 3);
   return (
     <div className="flex items-center gap-2">
-      <span className="w-[112px] shrink-0 text-[14px] text-[var(--dv-text-secondary)]">{label}</span>
-      <input inputMode="numeric" value={min} onChange={e => onMin(clean(e.target.value))} placeholder="từ" aria-label={`${label} từ`} className={cls} />
+      <span className="w-[112px] shrink-0 text-[14px] text-[var(--dv-text-secondary)]">{tx(label)}</span>
+      <input inputMode="numeric" value={min} onChange={e => onMin(clean(e.target.value))} placeholder={tx("từ")} aria-label={tx(`${label} từ`)} className={cls} />
       <span className="text-[var(--dv-text-tertiary)]">–</span>
-      <input inputMode="numeric" value={max} onChange={e => onMax(clean(e.target.value))} placeholder="đến" aria-label={`${label} đến`} className={cls} />
+      <input inputMode="numeric" value={max} onChange={e => onMax(clean(e.target.value))} placeholder={tx("đến")} aria-label={tx(`${label} đến`)} className={cls} />
     </div>
   );
 }
 
 /* ---------------- Hồ sơ đầy đủ cho đối tác ---------------- */
 export function PartnerTalentProfile({ username }: { username: string }) {
+  const tx = useTx();
   // "username" ở đây là mã hồ sơ (UUID); link cũ theo username vẫn mở được
   const href = useDvvnHref();
   const api = usePartnerApi<{ talent: PartnerTalent }>(`/api/dienvienvn/partner/talents/${encodeURIComponent(username)}`);
@@ -410,10 +417,10 @@ export function PartnerTalentProfile({ username }: { username: string }) {
     <PortalShell>
       <div className="flex items-center justify-between print:hidden">
         <Link href={href('/doi-tac')} className="dv-link text-[14px]">
-          <ChevronLeft className="h-4 w-4" /> Kho diễn viên
+          <ChevronLeft className="h-4 w-4" /> {tx("Kho diễn viên")}
         </Link>
         <button type="button" onClick={() => window.print()} className="dv-btn dv-btn-ghost !py-2 text-[14px]">
-          <Printer className="h-4 w-4" /> In / Lưu PDF
+          <Printer className="h-4 w-4" /> {tx("In / Lưu PDF")}
         </button>
       </div>
 
@@ -422,7 +429,7 @@ export function PartnerTalentProfile({ username }: { username: string }) {
           <div className="relative aspect-[3/4] overflow-hidden rounded-[22px] bg-[#e8e8ed]">
             {current ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={current.url} alt={`${t.full_name} — ${current.label}`} className="h-full w-full object-cover object-top" />
+              <img src={current.url} alt={tx(`${t.full_name} — ${current.label}`)} className="h-full w-full object-cover object-top" />
             ) : (
               <div className="flex h-full items-center justify-center text-[#aeaeb2]">
                 <UserRound className="h-14 w-14" strokeWidth={1.2} />
@@ -430,10 +437,10 @@ export function PartnerTalentProfile({ username }: { username: string }) {
             )}
             {n > 1 && (
               <>
-                <button type="button" aria-label="Ảnh trước" onClick={() => setI((i - 1 + n) % n)} className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 backdrop-blur hover:bg-white print:hidden">
+                <button type="button" aria-label={tx("Ảnh trước")} onClick={() => setI((i - 1 + n) % n)} className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 backdrop-blur hover:bg-white print:hidden">
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <button type="button" aria-label="Ảnh tiếp theo" onClick={() => setI((i + 1) % n)} className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 backdrop-blur hover:bg-white print:hidden">
+                <button type="button" aria-label={tx("Ảnh tiếp theo")} onClick={() => setI((i + 1) % n)} className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 backdrop-blur hover:bg-white print:hidden">
                   <ChevronRight className="h-5 w-5" />
                 </button>
               </>
@@ -446,7 +453,7 @@ export function PartnerTalentProfile({ username }: { username: string }) {
                   key={p.url}
                   type="button"
                   onClick={() => setI(k)}
-                  aria-label={p.label}
+                  aria-label={tx(p.label)}
                   className={`h-20 w-[60px] overflow-hidden rounded-[10px] border-2 ${k === i ? 'border-[var(--dv-accent)]' : 'border-transparent'}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -458,38 +465,38 @@ export function PartnerTalentProfile({ username }: { username: string }) {
         </div>
 
         <div>
-          <h1 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">{t.full_name}</h1>
-          <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">{summaryLine(t)}</p>
+          <h1 className="dv-display text-[36px] font-semibold leading-[1.1] md:text-[48px]">{tx(t.full_name)}</h1>
+          <p className="mt-2 text-[15px] text-[var(--dv-text-secondary)]">{tx(summaryLine(t))}</p>
 
           {!t.phone && !t.email && (
           <section className="dv-card mt-6 p-6 print:hidden">
-            <h2 className="text-[19px] font-semibold">Muốn liên hệ diễn viên này?</h2>
+            <h2 className="text-[19px] font-semibold">{tx("Muốn liên hệ diễn viên này?")}</h2>
             <p className="mt-2 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-              Hồ sơ chưa có thông tin liên hệ. Vui lòng gửi mã hồ sơ{' '}
-              <span className="font-semibold text-[var(--dv-text)]">{profileCode(t.id)}</span> cho đội ngũ DienVienVN để được kết nối.
+              {tx("Hồ sơ chưa có thông tin liên hệ. Vui lòng gửi mã hồ sơ")}{tx(' ')}
+              <span className="font-semibold text-[var(--dv-text)]">{tx(profileCode(t.id))}</span> {tx("cho đội ngũ DienVienVN để được kết nối.")}
             </p>
           </section>
           )}
 
           {(t.phone || t.email || socials.length > 0) && (
             <section className="dv-card mt-6 p-6">
-              <h2 className="text-[19px] font-semibold">Liên hệ</h2>
+              <h2 className="text-[19px] font-semibold">{tx("Liên hệ")}</h2>
               <div className="mt-3 space-y-2 text-[15px]">
                 {t.phone && (
                   <a href={`tel:${t.phone}`} className="flex items-center gap-2 font-semibold">
-                    <Phone className="h-4 w-4 shrink-0" /> {formatPhone(t.phone)}
+                    <Phone className="h-4 w-4 shrink-0" /> {tx(formatPhone(t.phone))}
                   </a>
                 )}
                 {t.email && (
                   <a href={`mailto:${t.email}`} className="flex items-center gap-2 break-all text-[var(--dv-text-secondary)] hover:text-[var(--dv-text)]">
-                    <Mail className="h-4 w-4 shrink-0" /> {t.email}
+                    <Mail className="h-4 w-4 shrink-0" /> {tx(t.email)}
                   </a>
                 )}
                 {socials.length > 0 && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
                     {socials.map(s => (
                       <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" className="dv-link">
-                        <ExternalLink className="h-3.5 w-3.5" /> {s.label}
+                        <ExternalLink className="h-3.5 w-3.5" /> {tx(s.label)}
                       </a>
                     ))}
                   </div>
@@ -499,14 +506,14 @@ export function PartnerTalentProfile({ username }: { username: string }) {
           )}
 
           <section className="dv-card mt-4 p-6">
-            <h2 className="text-[19px] font-semibold">Thông tin & số đo</h2>
+            <h2 className="text-[19px] font-semibold">{tx("Thông tin & số đo")}</h2>
             <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               {facts
                 .filter(([, v]) => v)
                 .map(([k, v]) => (
                   <div key={k}>
-                    <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{k}</dt>
-                    <dd className="mt-0.5 text-[15px]">{v}</dd>
+                    <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx(k)}</dt>
+                    <dd className="mt-0.5 text-[15px]">{tx(v)}</dd>
                   </div>
                 ))}
             </dl>
@@ -514,14 +521,14 @@ export function PartnerTalentProfile({ username }: { username: string }) {
 
           {experience.length > 0 && (
             <section className="dv-card mt-4 p-6">
-              <h2 className="text-[19px] font-semibold">Kinh nghiệm diễn xuất</h2>
+              <h2 className="text-[19px] font-semibold">{tx("Kinh nghiệm diễn xuất")}</h2>
               <div className="mt-4 space-y-4">
                 {experience.map(g => (
                   <div key={g.group}>
-                    <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{g.group}</p>
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx(g.group)}</p>
                     <ul className="mt-1.5 space-y-1 text-[15px] leading-[1.47]">
                       {g.items.map(item => (
-                        <li key={item}>{item}</li>
+                        <li key={item}>{tx(item)}</li>
                       ))}
                     </ul>
                   </div>
@@ -532,15 +539,15 @@ export function PartnerTalentProfile({ username }: { username: string }) {
 
           {(skills.length > 0 || willingness.length > 0) && (
             <section className="dv-card mt-4 p-6">
-              <h2 className="text-[19px] font-semibold">Kỹ năng & sẵn sàng</h2>
+              <h2 className="text-[19px] font-semibold">{tx("Kỹ năng & sẵn sàng")}</h2>
               <div className="mt-4 space-y-3">
                 {[...skills, ...(willingness.length ? [{ group: 'Sẵn sàng cho vai diễn', items: willingness }] : [])].map(g => (
                   <div key={g.group}>
-                    <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{g.group}</p>
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--dv-text-tertiary)]">{tx(g.group)}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {g.items.map(item => (
                         <span key={item} className="rounded-full bg-[var(--dv-bg-alt)] px-3 py-1 text-[14px]">
-                          {item}
+                          {tx(item)}
                         </span>
                       ))}
                     </div>
@@ -552,10 +559,10 @@ export function PartnerTalentProfile({ username }: { username: string }) {
 
           {trainings.length > 0 && (
             <section className="dv-card mt-4 p-6">
-              <h2 className="text-[19px] font-semibold">Đào tạo diễn xuất</h2>
+              <h2 className="text-[19px] font-semibold">{tx("Đào tạo diễn xuất")}</h2>
               <ul className="mt-3 space-y-1 text-[15px] leading-[1.47]">
                 {trainings.map(x => (
-                  <li key={x}>{x}</li>
+                  <li key={x}>{tx(x)}</li>
                 ))}
               </ul>
             </section>
@@ -576,6 +583,7 @@ type BoardData = ProducerView & {
 };
 
 export function PartnerProjectBoard({ projectId }: { projectId: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const api = usePartnerApi<BoardData>(`/api/dienvienvn/partner/projects/${encodeURIComponent(projectId)}`);
   if (!api.data) return <Gate {...api} next={href(`/doi-tac/du-an/${projectId}`)} />;
@@ -584,27 +592,27 @@ export function PartnerProjectBoard({ projectId }: { projectId: string }) {
     <PortalShell>
       <div className="mb-6 flex items-center justify-between gap-3 print:hidden">
         <Link href={href('/doi-tac')} className="dv-link text-[14px]">
-          <ChevronLeft className="h-4 w-4" /> Cổng đối tác
+          <ChevronLeft className="h-4 w-4" /> {tx("Cổng đối tác")}
         </Link>
         {d.editable && (
           <Link href={href(`/doi-tac/du-an/${d.id}/sua`)} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
-            Sửa casting
+            {tx("Sửa casting")}
           </Link>
         )}
       </div>
       {d.own && d.status === 'draft' && (
         <div className="mb-6 rounded-[16px] border border-[#f1e2bf] bg-[#fff8e8] px-5 py-4 text-[15px] leading-[1.47] print:hidden">
-          <p className="font-semibold">Đang chờ DienVienVN duyệt.</p>
+          <p className="font-semibold">{tx("Đang chờ DienVienVN duyệt.")}</p>
           <p className="mt-0.5 text-[var(--dv-text-secondary)]">
-            Casting call chưa hiện với diễn viên. Đội ngũ DienVienVN sẽ kiểm tra và mở nhận hồ sơ. Trong lúc chờ, bạn vẫn sửa được thông tin.
+            {tx("Casting call chưa hiện với diễn viên. Đội ngũ DienVienVN sẽ kiểm tra và mở nhận hồ sơ. Trong lúc chờ, bạn vẫn sửa được thông tin.")}
           </p>
         </div>
       )}
       {d.own && d.status === 'open' && (
         <div className="mb-6 rounded-[16px] border border-[#cfe9d6] bg-[#f0faf3] px-5 py-4 text-[15px] leading-[1.47] print:hidden">
-          <p className="font-semibold">Đang nhận hồ sơ trên DienVienVN.</p>
+          <p className="font-semibold">{tx("Đang nhận hồ sơ trên DienVienVN.")}</p>
           <p className="mt-0.5 text-[var(--dv-text-secondary)]">
-            Diễn viên ứng tuyển và được đội casting duyệt sẽ tự hiện bên dưới. Cần chỉnh sửa dự án, vui lòng liên hệ DienVienVN.
+            {tx("Diễn viên ứng tuyển và được đội casting duyệt sẽ tự hiện bên dưới. Cần chỉnh sửa dự án, vui lòng liên hệ DienVienVN.")}
           </p>
         </div>
       )}
@@ -649,6 +657,7 @@ const blankForm = (): ProjectForm => ({
 });
 
 export function PartnerProjectForm({ projectId }: { projectId?: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const router = useRouter();
   const editing = !!projectId;
@@ -674,12 +683,12 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
     return (
       <PortalShell>
         <div className="dv-card mx-auto max-w-[520px] p-8 text-center">
-          <h1 className="dv-display text-[24px] font-semibold">Không sửa được dự án này.</h1>
+          <h1 className="dv-display text-[24px] font-semibold">{tx("Không sửa được dự án này.")}</h1>
           <p className="mt-3 text-[15px] leading-[1.47] text-[var(--dv-text-secondary)]">
-            Chỉ sửa được casting call do bạn đăng khi còn chờ duyệt. Dự án đã mở nhận hồ sơ, vui lòng liên hệ DienVienVN để chỉnh sửa.
+            {tx("Chỉ sửa được casting call do bạn đăng khi còn chờ duyệt. Dự án đã mở nhận hồ sơ, vui lòng liên hệ DienVienVN để chỉnh sửa.")}
           </p>
           <Link href={href(`/doi-tac/du-an/${projectId}`)} className="dv-btn dv-btn-secondary mt-6">
-            Về dự án
+            {tx("Về dự án")}
           </Link>
         </div>
       </PortalShell>
@@ -724,20 +733,20 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
     <PortalShell>
       <div className="mx-auto max-w-[780px]">
         <Link href={href(editing ? `/doi-tac/du-an/${projectId}` : '/doi-tac')} className="dv-link text-[14px]">
-          <ChevronLeft className="h-4 w-4" /> {editing ? 'Về dự án' : 'Cổng đối tác'}
+          <ChevronLeft className="h-4 w-4" /> {tx(editing ? 'Về dự án' : 'Cổng đối tác')}
         </Link>
-        <h1 className="dv-display dv-headline mt-4">{editing ? 'Sửa casting call.' : 'Đăng casting call.'}</h1>
+        <h1 className="dv-display dv-headline mt-4">{tx(editing ? 'Sửa casting call.' : 'Đăng casting call.')}</h1>
         <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">
-          Casting call sẽ hiện cho diễn viên trên DienVienVN sau khi đội ngũ DienVienVN duyệt.
+          {tx("Casting call sẽ hiện cho diễn viên trên DienVienVN sau khi đội ngũ DienVienVN duyệt.")}
         </p>
 
         <section className="dv-card mt-8 space-y-5 p-6 md:p-8">
-          <h2 className="text-[21px] font-semibold">Thông tin dự án</h2>
+          <h2 className="text-[21px] font-semibold">{tx("Thông tin dự án")}</h2>
           <Field label="Tên dự án / tên phim" required htmlFor="pp-title">
-            <TextInput id="pp-title" value={form.title} onChange={e => set({ title: e.target.value })} placeholder="VD: Một Phim Linh Đình" />
+            <TextInput id="pp-title" value={form.title} onChange={e => set({ title: e.target.value })} placeholder={tx("VD: Một Phim Linh Đình")} />
           </Field>
           <CheckOption checked={form.hide_title} onChange={() => set({ hide_title: !form.hide_title })}>
-            Ẩn tên dự án với diễn viên (diễn viên chỉ thấy &ldquo;Dự án DV-xx&rdquo;)
+            {tx("Ẩn tên dự án với diễn viên (diễn viên chỉ thấy “Dự án DV-xx”)")}
           </CheckOption>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Công ty sản xuất" htmlFor="pp-company">
@@ -747,37 +756,37 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
               <SelectInput id="pp-type" value={form.project_type} onChange={e => set({ project_type: e.target.value })}>
                 {PROJECT_TYPES.map(t => (
                   <option key={t.id} value={t.id}>
-                    {t.label}
+                    {tx(t.label)}
                   </option>
                 ))}
               </SelectInput>
             </Field>
             <Field label="Hình thức casting" htmlFor="pp-mode">
               <SelectInput id="pp-mode" value={form.casting_mode} onChange={e => set({ casting_mode: e.target.value })}>
-                <option value="">Chưa xác định</option>
+                <option value="">{tx("Chưa xác định")}</option>
                 {CASTING_MODES.map(m => (
                   <option key={m.id} value={m.id}>
-                    {m.label}
+                    {tx(m.label)}
                   </option>
                 ))}
               </SelectInput>
             </Field>
             <Field label="Địa điểm quay" htmlFor="pp-location">
               <SelectInput id="pp-location" value={form.location} onChange={e => set({ location: e.target.value })}>
-                <option value="">Chưa xác định</option>
+                <option value="">{tx("Chưa xác định")}</option>
                 {ALL_PROVINCES.map(p => (
                   <option key={p.value} value={p.value}>
-                    {p.label}
+                    {tx(p.label)}
                   </option>
                 ))}
-                <option value={ABROAD}>Nước ngoài</option>
+                <option value={ABROAD}>{tx("Nước ngoài")}</option>
               </SelectInput>
             </Field>
             <Field label="Thời gian quay" htmlFor="pp-time">
-              <TextInput id="pp-time" value={form.shooting_time} onChange={e => set({ shooting_time: e.target.value })} placeholder="VD: Tháng 12/2026" />
+              <TextInput id="pp-time" value={form.shooting_time} onChange={e => set({ shooting_time: e.target.value })} placeholder={tx("VD: Tháng 12/2026")} />
             </Field>
             <Field label="Thù lao" htmlFor="pp-pay">
-              <TextInput id="pp-pay" value={form.compensation} onChange={e => set({ compensation: e.target.value })} placeholder="VD: Thoả thuận" />
+              <TextInput id="pp-pay" value={form.compensation} onChange={e => set({ compensation: e.target.value })} placeholder={tx("VD: Thoả thuận")} />
             </Field>
             <Field label="Hạn nộp hồ sơ" htmlFor="pp-deadline">
               <TextInput id="pp-deadline" type="date" value={form.deadline} onChange={e => set({ deadline: e.target.value })} />
@@ -790,22 +799,22 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
 
         <section className="dv-card mt-4 space-y-4 p-6 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-[21px] font-semibold">Vai cần tuyển ({form.roles.length})</h2>
+            <h2 className="text-[21px] font-semibold">{tx("Vai cần tuyển (")}{tx(form.roles.length)})</h2>
             <button type="button" onClick={() => setBulk(bulk === null ? '' : null)} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
-              Thêm nhanh nhiều vai
+              {tx("Thêm nhanh nhiều vai")}
             </button>
           </div>
           {bulk !== null && (
             <div className="space-y-2 rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
               <Field label="Mỗi dòng một tên vai" htmlFor="pp-bulk">
-                <textarea id="pp-bulk" rows={5} autoFocus className="dv-input" value={bulk} onChange={e => setBulk(e.target.value)} placeholder={'Chàng trai 1\nCô gái số 1\nNgười mẹ…'} />
+                <textarea id="pp-bulk" rows={5} autoFocus className="dv-input" value={bulk} onChange={e => setBulk(e.target.value)} placeholder={tx('Chàng trai 1\nCô gái số 1\nNgười mẹ…')} />
               </Field>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setBulk(null)} className="dv-btn dv-btn-ghost !h-10 !py-0 text-[14px]">
-                  Huỷ
+                  {tx("Huỷ")}
                 </button>
                 <button type="button" onClick={addBulk} disabled={!bulk.trim()} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
-                  Thêm vai
+                  {tx("Thêm vai")}
                 </button>
               </div>
             </div>
@@ -814,12 +823,12 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
             {form.roles.map((r, i) => (
               <li key={r.id} className="rounded-[16px] border border-[#e8e8ed] p-4 md:p-5">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-[var(--dv-text-tertiary)]">VAI {i + 1}</span>
+                  <span className="text-[13px] font-semibold text-[var(--dv-text-tertiary)]">{tx("VAI")} {tx(i + 1)}</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      title="Nhân bản vai"
-                      aria-label="Nhân bản vai"
+                      title={tx("Nhân bản vai")}
+                      aria-label={tx("Nhân bản vai")}
                       onClick={() => {
                         const copy = { ...r, id: newRoleId(), name: r.name ? `${r.name} (bản sao)` : '' };
                         const roles = [...form.roles];
@@ -832,10 +841,10 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
                     </button>
                     <button
                       type="button"
-                      title="Xoá vai"
-                      aria-label="Xoá vai"
+                      title={tx("Xoá vai")}
+                      aria-label={tx("Xoá vai")}
                       disabled={form.roles.length === 1}
-                      onClick={() => (!r.name.trim() || window.confirm(`Xoá vai "${r.name}"?`)) && set({ roles: form.roles.filter(x => x.id !== r.id) })}
+                      onClick={() => (!r.name.trim() || window.confirm(tx(`Xoá vai "${r.name}"?`))) && set({ roles: form.roles.filter(x => x.id !== r.id) })}
                       className="rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[#fff0f0] hover:text-[#b00020] disabled:opacity-30"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -844,13 +853,13 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_80px_80px_90px]">
                   <Field label="Tên vai" required htmlFor={`pp-r-${r.id}`} className="col-span-2 sm:col-span-1">
-                    <TextInput id={`pp-r-${r.id}`} value={r.name} onChange={e => setRole(r.id, { name: e.target.value })} placeholder="VD: Nữ chính – Linh" />
+                    <TextInput id={`pp-r-${r.id}`} value={r.name} onChange={e => setRole(r.id, { name: e.target.value })} placeholder={tx("VD: Nữ chính – Linh")} />
                   </Field>
                   <Field label="Giới tính" htmlFor={`pp-g-${r.id}`}>
                     <SelectInput id={`pp-g-${r.id}`} value={r.gender} onChange={e => setRole(r.id, { gender: e.target.value as RoleGender })}>
-                      <option value="any">Nam / Nữ</option>
-                      <option value="female">Nữ</option>
-                      <option value="male">Nam</option>
+                      <option value="any">{tx("Nam / Nữ")}</option>
+                      <option value="female">{tx("Nữ")}</option>
+                      <option value="male">{tx("Nam")}</option>
                     </SelectInput>
                   </Field>
                   <Field label="Tuổi từ" htmlFor={`pp-a1-${r.id}`}>
@@ -870,7 +879,7 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
                     className="dv-input"
                     value={r.description || ''}
                     onChange={e => setRole(r.id, { description: e.target.value })}
-                    placeholder="Tính cách, ngoại hình, kỹ năng cần có…"
+                    placeholder={tx("Tính cách, ngoại hình, kỹ năng cần có…")}
                   />
                 </Field>
               </li>
@@ -881,14 +890,14 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
             onClick={() => set({ roles: [...form.roles, blankRole()] })}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border-2 border-dashed border-[#d2d2d7] text-[15px] font-semibold text-[var(--dv-text-secondary)] hover:border-[var(--dv-accent)] hover:text-[var(--dv-text)]"
           >
-            <Plus className="h-4 w-4" /> Thêm vai
+            <Plus className="h-4 w-4" /> {tx("Thêm vai")}
           </button>
         </section>
 
         <section className="dv-card mt-4 space-y-4 p-6 md:p-8">
-          <h2 className="text-[21px] font-semibold">Self-tape</h2>
+          <h2 className="text-[21px] font-semibold">{tx("Self-tape")}</h2>
           <CheckOption checked={form.selftape_required} onChange={() => set({ selftape_required: !form.selftape_required })}>
-            Bắt buộc diễn viên gửi video self-tape khi ứng tuyển
+            {tx("Bắt buộc diễn viên gửi video self-tape khi ứng tuyển")}
           </CheckOption>
           <Field label="Hướng dẫn quay self-tape" htmlFor="pp-tape" hint="Không bắt buộc">
             <textarea
@@ -897,23 +906,23 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
               className="dv-input"
               value={form.selftape_brief}
               onChange={e => set({ selftape_brief: e.target.value })}
-              placeholder="VD: Quay ngang, giới thiệu bản thân 30 giây, đọc đoạn thoại đính kèm…"
+              placeholder={tx("VD: Quay ngang, giới thiệu bản thân 30 giây, đọc đoạn thoại đính kèm…")}
             />
           </Field>
         </section>
 
         {error && (
           <p role="alert" className="mt-4 rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">
-            {error}
+            {tx(error)}
           </p>
         )}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Link href={href(editing ? `/doi-tac/du-an/${projectId}` : '/doi-tac')} className="dv-btn dv-btn-secondary">
-            Huỷ
+            {tx("Huỷ")}
           </Link>
           <button type="button" onClick={submit} disabled={busy} className="dv-btn dv-btn-primary">
             {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
-            {editing ? 'Lưu thay đổi' : 'Gửi DienVienVN duyệt'}
+            {tx(editing ? 'Lưu thay đổi' : 'Gửi DienVienVN duyệt')}
           </button>
         </div>
       </div>
@@ -923,6 +932,7 @@ export function PartnerProjectForm({ projectId }: { projectId?: string }) {
 
 /* ---------------- Tin tuyển ekip của đối tác ---------------- */
 function PartnerCrewJobsSection() {
+  const tx = useTx();
   const href = useDvvnHref();
   const api = usePartnerApi<{ jobs: (CrewJob & { applicant_count?: number })[] }>('/api/dienvienvn/partner/crew-jobs');
   const jobs = api.data?.jobs || [];
@@ -930,7 +940,7 @@ function PartnerCrewJobsSection() {
   const [removed, setRemoved] = useState<string[]>([]);
   const drafts = (draftApi.data?.drafts || []).filter(d => !removed.includes(d.id));
   const removeDraft = async (id: string, title: string) => {
-    if (!window.confirm(`Xoá bản nháp "${title}"?`)) return;
+    if (!window.confirm(tx(`Xoá bản nháp "${title}"?`))) return;
     setRemoved(list => [...list, id]);
     await actorFetch(`/api/dienvienvn/partner/crew-job-drafts?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => undefined);
   };
@@ -938,30 +948,30 @@ function PartnerCrewJobsSection() {
     <section className="mb-12">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">Tin tuyển ekip.</h2>
+          <h2 className="dv-display text-[28px] font-semibold leading-[1.14]">{tx("Tin tuyển ekip.")}</h2>
           <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">
-            Tuyển ekip audition, trường quay, hậu kỳ — hiện tại dienvienvn.com/tuyen-dung sau khi DienVienVN duyệt.
+            {tx("Tuyển ekip audition, trường quay, hậu kỳ — hiện tại dienvienvn.com/tuyen-dung sau khi DienVienVN duyệt.")}
           </p>
         </div>
         <Link href={href('/doi-tac/tuyen-dung/moi')} className="dv-btn dv-btn-secondary !h-11 !py-0 text-[15px]">
-          <Plus className="h-4 w-4" /> Đăng tin tuyển ekip
+          <Plus className="h-4 w-4" /> {tx("Đăng tin tuyển ekip")}
         </Link>
       </div>
       {(jobs.length > 0 || drafts.length > 0) && (
         <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {drafts.map(d => (
             <li key={d.id} className="flex h-full flex-col rounded-[18px] border border-dashed border-[#d2d2d7] bg-white p-5">
-              <span className="w-fit rounded-full bg-[var(--dv-bg-alt)] px-2 py-0.5 text-[12px] font-semibold">Bản nháp</span>
-              <p className="mt-2 text-[17px] font-semibold leading-[1.3]">{d.title}</p>
+              <span className="w-fit rounded-full bg-[var(--dv-bg-alt)] px-2 py-0.5 text-[12px] font-semibold">{tx("Bản nháp")}</span>
+              <p className="mt-2 text-[17px] font-semibold leading-[1.3]">{tx(d.title)}</p>
               <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">
-                Lưu lúc {new Date(d.updated_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                {tx("Lưu lúc")} {tx(new Date(d.updated_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }))}
               </p>
               <div className="mt-auto flex items-center justify-between gap-3 pt-4">
                 {/* Tải hẳn trang để form đọc đúng mã bản nháp trên đường dẫn */}
                 <a href={href(`/doi-tac/tuyen-dung/moi?nhap=${d.id}`)} className="dv-link text-[14px]">
-                  Tiếp tục điền <ChevronRight className="h-4 w-4" />
+                  {tx("Tiếp tục điền")} <ChevronRight className="h-4 w-4" />
                 </a>
-                <button type="button" onClick={() => removeDraft(d.id, d.title)} aria-label="Xoá bản nháp" className="rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+                <button type="button" onClick={() => removeDraft(d.id, d.title)} aria-label={tx("Xoá bản nháp")} className="rounded-full p-1.5 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -974,17 +984,17 @@ function PartnerCrewJobsSection() {
                   j.status === 'draft' ? 'bg-[#fff6e0] text-[#8c5f2a]' : j.status === 'open' ? 'bg-[#e8f5ec] text-[#1e6b3a]' : 'bg-[var(--dv-bg-alt)]'
                 }`}
               >
-                {j.status === 'draft' ? 'Chờ DienVienVN duyệt' : CREW_JOB_STATUS[j.status].label}
+                {tx(j.status === 'draft' ? 'Chờ DienVienVN duyệt' : CREW_JOB_STATUS[j.status].label)}
               </span>
-              <p className="mt-2 text-[17px] font-semibold leading-[1.3]">{j.title}</p>
-              <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">{j.positions.join(' · ')}</p>
+              <p className="mt-2 text-[17px] font-semibold leading-[1.3]">{tx(j.title)}</p>
+              <p className="mt-1 text-[14px] text-[var(--dv-text-secondary)]">{tx(j.positions.join(' · '))}</p>
               {j.status === 'draft' ? (
                 <Link href={href(`/doi-tac/tuyen-dung/${j.id}/sua`)} className="dv-link mt-auto pt-4 text-[14px]">
-                  Sửa tin <ChevronRight className="h-4 w-4" />
+                  {tx("Sửa tin")} <ChevronRight className="h-4 w-4" />
                 </Link>
               ) : (
                 <Link href={href(`/doi-tac/tuyen-dung/${j.id}/ung-vien`)} className="dv-link mt-auto pt-4 text-[14px]">
-                  Xem ứng viên ({j.applicant_count || 0}) <ChevronRight className="h-4 w-4" />
+                  {tx("Xem ứng viên (")}{tx(j.applicant_count || 0)}) <ChevronRight className="h-4 w-4" />
                 </Link>
               )}
             </li>
@@ -997,6 +1007,7 @@ function PartnerCrewJobsSection() {
 
 /** Ứng viên ekip của một tin tuyển, kèm CV / cover letter đã nộp. */
 export function PartnerCrewApplicants({ jobId }: { jobId: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const api = usePartnerApi<{ job: { id: string; title: string; company: string | null } | null; applicants: (CrewApplicantView & { attachments?: CrewAttachments | null })[] }>(
     `/api/dienvienvn/partner/crew-jobs/${encodeURIComponent(jobId)}/applicants`
@@ -1007,14 +1018,14 @@ export function PartnerCrewApplicants({ jobId }: { jobId: string }) {
     <PortalShell>
       <div className="mx-auto max-w-[880px]">
         <Link href={href('/doi-tac')} className="dv-link text-[14px]">
-          <ChevronLeft className="h-4 w-4" /> Cổng đối tác
+          <ChevronLeft className="h-4 w-4" /> {tx("Cổng đối tác")}
         </Link>
-        <h1 className="dv-display dv-headline mt-4">Ứng viên.</h1>
-        {job && <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{job.title}</p>}
+        <h1 className="dv-display dv-headline mt-4">{tx("Ứng viên.")}</h1>
+        {job && <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{tx(job.title)}</p>}
         {applicants.length === 0 ? (
           <div className="dv-card mt-8 p-10 text-center">
-            <p className="text-[19px] font-semibold">Chưa có ứng viên.</p>
-            <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">Bạn sẽ nhận email khi có ứng viên mới.</p>
+            <p className="text-[19px] font-semibold">{tx("Chưa có ứng viên.")}</p>
+            <p className="mt-1 text-[15px] text-[var(--dv-text-secondary)]">{tx("Bạn sẽ nhận email khi có ứng viên mới.")}</p>
           </div>
         ) : (
           <ul className="mt-8 space-y-3">
@@ -1035,6 +1046,7 @@ export function PartnerCrewApplicants({ jobId }: { jobId: string }) {
 
 /** Đối tác đăng / sửa tin tuyển ekip (sửa được khi còn chờ duyệt). */
 export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const router = useRouter();
   const editing = !!jobId;
@@ -1064,10 +1076,10 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
     return (
       <PortalShell>
         <div className="dv-card mx-auto max-w-[520px] p-8 text-center">
-          <h1 className="dv-display text-[24px] font-semibold">Không sửa được tin này.</h1>
-          <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">Tin đã được duyệt. Vui lòng liên hệ DienVienVN để chỉnh sửa.</p>
+          <h1 className="dv-display text-[24px] font-semibold">{tx("Không sửa được tin này.")}</h1>
+          <p className="mt-3 text-[15px] text-[var(--dv-text-secondary)]">{tx("Tin đã được duyệt. Vui lòng liên hệ DienVienVN để chỉnh sửa.")}</p>
           <Link href={href('/doi-tac')} className="dv-btn dv-btn-secondary mt-6">
-            Về cổng đối tác
+            {tx("Về cổng đối tác")}
           </Link>
         </div>
       </PortalShell>
@@ -1100,10 +1112,10 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
     <PortalShell>
       <div className="mx-auto max-w-[780px]">
         <Link href={href('/doi-tac')} className="dv-link text-[14px]">
-          <ChevronLeft className="h-4 w-4" /> Cổng đối tác
+          <ChevronLeft className="h-4 w-4" /> {tx("Cổng đối tác")}
         </Link>
-        <h1 className="dv-display dv-headline mt-4">{editing ? 'Sửa tin tuyển ekip.' : 'Đăng tin tuyển ekip.'}</h1>
-        <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">Tin hiện tại dienvienvn.com/tuyen-dung sau khi đội ngũ DienVienVN duyệt.</p>
+        <h1 className="dv-display dv-headline mt-4">{tx(editing ? 'Sửa tin tuyển ekip.' : 'Đăng tin tuyển ekip.')}</h1>
+        <p className="dv-subhead mt-2 text-[var(--dv-text-secondary)]">{tx("Tin hiện tại dienvienvn.com/tuyen-dung sau khi đội ngũ DienVienVN duyệt.")}</p>
 
         <div className="mt-8">
           <CrewJobFields value={form} onChange={setForm} multi={!editing} />
@@ -1111,7 +1123,7 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
 
         {error && (
           <p role="alert" className="mt-4 rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">
-            {error}
+            {tx(error)}
           </p>
         )}
         {/* Thanh nút luôn hiện ở đáy màn hình (máy tính); điện thoại: các nút xếp cuối form */}
@@ -1125,16 +1137,16 @@ export function PartnerCrewJobForm({ jobId }: { jobId?: string }) {
             }}
             className="dv-btn dv-btn-secondary"
           >
-            {editing ? 'Huỷ' : 'Đóng'}
+            {tx(editing ? 'Huỷ' : 'Đóng')}
           </button>
           {!editing && (
             <button type="button" onClick={() => void nap.save()} disabled={busy || nap.state.status === 'saving'} className="dv-btn dv-btn-secondary">
-              Lưu nháp
+              {tx("Lưu nháp")}
             </button>
           )}
           <button type="button" onClick={submit} disabled={busy} className="dv-btn dv-btn-primary">
             {busy && <Loader2 className="h-[18px] w-[18px] animate-spin" />}
-            {editing ? 'Lưu thay đổi' : 'Gửi DienVienVN duyệt'}
+            {tx(editing ? 'Lưu thay đổi' : 'Gửi DienVienVN duyệt')}
           </button>
         </div>
       </div>

@@ -3,12 +3,13 @@ import { notFound } from 'next/navigation';
 import { PublicTalentProfile } from '@/components/dienvienvn/public-talents';
 import { getPublicTalent } from '@/lib/dienvienvn/public-talents';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
+import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ username: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+async function baseMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const t = await getPublicTalent(username);
   if (!t) return { title: 'Không tìm thấy diễn viên — DienVienVN', robots: { index: false } };
@@ -44,3 +45,6 @@ export default async function PublicTalentPage({ params }: Props) {
     </>
   );
 }
+
+/** Tiêu đề / mô tả theo ngôn ngữ trang (bản /en dịch sang tiếng Anh). */
+export const generateMetadata = async (...a: Parameters<typeof baseMetadata>) => localizeMetadata(await baseMetadata(...a));

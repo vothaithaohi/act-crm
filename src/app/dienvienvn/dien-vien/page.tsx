@@ -3,10 +3,11 @@ import { unstable_cache } from 'next/cache';
 import { TalentDirectory } from '@/components/dienvienvn/public-talents';
 import { listPublicTalents } from '@/lib/dienvienvn/public-talents';
 import { SITE_URL } from '@/lib/dienvienvn/hosts';
+import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: 'Diễn viên — DienVienVN',
   description: 'Danh sách hồ sơ diễn viên đã được duyệt trên DienVienVN: ảnh, kinh nghiệm, kỹ năng và đào tạo diễn xuất.',
   alternates: { canonical: `${SITE_URL}/dien-vien` },
@@ -20,3 +21,6 @@ export default async function TalentDirectoryPage() {
   const talents = await cachedTalents();
   return <TalentDirectory talents={talents} />;
 }
+
+/** Tiêu đề / mô tả theo ngôn ngữ trang (bản /en dịch sang tiếng Anh). */
+export const generateMetadata = () => localizeMetadata(META);

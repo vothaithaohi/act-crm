@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useTx } from './i18n';
 import Link from 'next/link';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { ExternalLink, Loader2, X } from 'lucide-react';
@@ -47,6 +49,7 @@ function useTalentData(username: string | null) {
 
 /** Cửa sổ hồ sơ diễn viên trượt từ bên phải sang. */
 function TalentDrawer({ username, onClose }: { username: string; onClose: () => void }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const data = useTalentData(username);
 
@@ -66,16 +69,16 @@ function TalentDrawer({ username, onClose }: { username: string; onClose: () => 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={data?.talent ? `Hồ sơ ${data.talent.name}` : 'Hồ sơ diễn viên'}
+        aria-label={tx(data?.talent ? `Hồ sơ ${data.talent.name}` : 'Hồ sơ diễn viên')}
         onClick={e => e.stopPropagation()}
         className="dv-slide-in-right flex h-full w-full max-w-[1080px] flex-col bg-[var(--dv-bg-alt)] shadow-2xl"
       >
         <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-white/90 px-3 py-2.5 backdrop-blur md:px-5">
-          <button type="button" onClick={onClose} aria-label="Đóng" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1d1d1f] text-white hover:bg-black">
+          <button type="button" onClick={onClose} aria-label={tx("Đóng")} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1d1d1f] text-white hover:bg-black">
             <X className="h-5 w-5" />
           </button>
           <Link href={href(`/${username}`)} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[14px] text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)] hover:text-[var(--dv-text)]">
-            Xem hồ sơ ở tab mới <ExternalLink className="h-4 w-4" />
+            {tx("Xem hồ sơ ở tab mới")} <ExternalLink className="h-4 w-4" />
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
@@ -84,7 +87,7 @@ function TalentDrawer({ username, onClose }: { username: string; onClose: () => 
               <Loader2 className="h-6 w-6 animate-spin text-[var(--dv-text-secondary)]" />
             </div>
           ) : data.error || !data.talent ? (
-            <div className="rounded-[18px] bg-white p-8 text-center text-[15px] text-[var(--dv-text-secondary)]">{data.error}</div>
+            <div className="rounded-[18px] bg-white p-8 text-center text-[15px] text-[var(--dv-text-secondary)]">{tx(data.error)}</div>
           ) : (
             <TalentProfileBody talent={data.talent} partner={data.partner} />
           )}
@@ -96,6 +99,7 @@ function TalentDrawer({ username, onClose }: { username: string; onClose: () => 
 
 /** Bọc toàn bộ trang DienVienVN: mọi link hồ sơ diễn viên mở cửa sổ trượt thay vì chuyển trang. */
 export function TalentDrawerProvider({ children }: { children: React.ReactNode }) {
+  const tx = useTx();
   const [username, setUsername] = useState<string | null>(null);
   const open = useCallback((u: string) => setUsername(u), []);
   const close = useCallback(() => {
@@ -116,7 +120,7 @@ export function TalentDrawerProvider({ children }: { children: React.ReactNode }
 
   return (
     <DrawerContext.Provider value={{ open }}>
-      {children}
+      {tx(children)}
       {username && <TalentDrawer username={username} onClose={close} />}
     </DrawerContext.Provider>
   );
@@ -140,6 +144,7 @@ export function TalentLink({
   'aria-hidden'?: boolean;
   draggable?: boolean;
 }) {
+  const tx = useTx();
   const href = useDvvnHref();
   const ctx = useContext(DrawerContext);
   return (
@@ -155,7 +160,7 @@ export function TalentLink({
         ctx.open(username);
       }}
     >
-      {children}
+      {tx(children)}
     </Link>
   );
 }
