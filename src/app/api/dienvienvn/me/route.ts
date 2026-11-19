@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
+import { castingDraftSchema, describeDraftIssue } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, talentToDraft, validateStep } from '@/lib/dienvienvn/casting-form';
 import { getActor, isSuperAdminUser, writeTalent } from '@/lib/dienvienvn/actor-server';
 import { findPartnerForUser } from '@/lib/dienvienvn/partner-server';
@@ -86,8 +86,8 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = castingDraftSchema.safeParse(body?.draft);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return NextResponse.json({ error: `Thông tin chưa hợp lệ (${first?.path.join('.') || 'hồ sơ'}): ${first?.message}` }, { status: 400 });
+    const issue = describeDraftIssue(parsed.error.issues[0], body?.draft);
+    return NextResponse.json({ error: issue.message, step: issue.step, focusId: issue.focusId }, { status: 400 });
   }
   const draft = { ...(parsed.data as CastingDraft), email: talent.email };
   for (const step of CASTING_STEPS) {

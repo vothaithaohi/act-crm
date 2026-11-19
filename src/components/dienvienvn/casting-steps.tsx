@@ -94,7 +94,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             placeholder={`VD: ${namePlaceholder}`}
             value={draft.full_name}
             invalid={!!errors.full_name}
-            onChange={e => update({ full_name: e.target.value })}
+            maxLength={120} onChange={e => update({ full_name: e.target.value })}
           />
         </Field>
         <Field label="Giới tính" required htmlFor="gender">
@@ -160,7 +160,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             placeholder="0912 345 678"
             value={draft.phone}
             invalid={!!errors.phone || phoneTooLong(draft.phone)}
-            onChange={e => update({ phone: e.target.value })}
+            maxLength={20} onChange={e => update({ phone: e.target.value })}
           />
         </Field>
         <Field
@@ -180,7 +180,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
             value={draft.email}
             invalid={!!errors.email || (emailTouched && !!draft.email.trim() && !isValidEmail(draft.email))}
             onBlur={() => setEmailTouched(true)}
-            onChange={e => update({ email: e.target.value })}
+            maxLength={160} onChange={e => update({ email: e.target.value })}
           />
         </Field>
       </div>
@@ -191,7 +191,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
           autoComplete="street-address"
           placeholder="Số nhà, đường…"
           value={draft.address}
-          onChange={e => update({ address: e.target.value })}
+          maxLength={300} onChange={e => update({ address: e.target.value })}
         />
       </Field>
 
@@ -208,7 +208,7 @@ export function StepPersonal({ draft, update, errors, emailLocked, namePlacehold
               placeholder="Họ tên phụ huynh – Số điện thoại"
               value={draft.parent_guardian_name}
               invalid={!!errors.parent_guardian_name}
-              onChange={e => update({ parent_guardian_name: e.target.value })}
+              maxLength={200} onChange={e => update({ parent_guardian_name: e.target.value })}
             />
           </Field>
         </div>
@@ -293,11 +293,24 @@ export function StepBody({ draft, update, errors }: StepProps) {
 }
 
 /* ---------------- Bước 3 ---------------- */
+/** Giới hạn ký tự ô tên phim / thương hiệu / nhân vật (khớp máy chủ). */
+const EXPERIENCE_TEXT_MAX = 200;
+
+/** Bộ đếm ký tự nhỏ, chỉ hiện khi gần chạm giới hạn. */
+function CharCount({ value, max }: { value: string; max: number }) {
+  if (value.length < max * 0.75) return null;
+  return (
+    <p className={`mt-1 text-right text-[12px] ${value.length >= max ? 'text-[var(--dv-red)]' : 'text-[var(--dv-text-tertiary)]'}`}>
+      {value.length}/{max}
+      {value.length > max ? ` · vượt ${value.length - max} ký tự, vui lòng rút gọn` : value.length === max ? ' · đã đủ giới hạn' : ''}
+    </p>
+  );
+}
 const EXPERIENCE_SECTIONS: { kind: ExperienceKind; title: string; titleLabel: string; titlePh: string; extraLabel: string; extraPh: string }[] = [
   { kind: 'feature_films', title: 'Phim điện ảnh', titleLabel: 'Tên phim', titlePh: 'VD: Mai, Lật Mặt 7…', extraLabel: 'Tên nhân vật', extraPh: 'VD: Sâu' },
   { kind: 'web_dramas', title: 'Web drama & phim ngắn', titleLabel: 'Tên dự án', titlePh: 'Tên web drama / phim ngắn', extraLabel: 'Tên nhân vật', extraPh: 'Nhân vật' },
   { kind: 'tv_shows', title: 'Phim truyền hình', titleLabel: 'Tên phim', titlePh: 'Tên phim truyền hình', extraLabel: 'Tên nhân vật', extraPh: 'Nhân vật' },
-  { kind: 'commercials', title: 'Quảng cáo (TVC)', titleLabel: 'Thương hiệu', titlePh: 'VD: Vinamilk, Shopee…', extraLabel: 'Ghi chú', extraPh: 'Chiến dịch / vai trò' },
+  { kind: 'commercials', title: 'Quảng cáo (TVC)', titleLabel: 'Thương hiệu', titlePh: 'VD: Vinamilk (mỗi nhãn hàng 1 dòng)', extraLabel: 'Ghi chú', extraPh: 'Chiến dịch / vai trò' },
   { kind: 'music_videos', title: 'MV ca nhạc', titleLabel: 'Tên bài hát', titlePh: 'Tên MV', extraLabel: 'Ca sĩ', extraPh: 'Tên ca sĩ' }
 ];
 
@@ -329,16 +342,21 @@ export function StepExperience({ draft, update }: StepProps) {
                 </button>
               }
             />
+            {sec.kind === 'commercials' && list.length > 0 && (
+              <p className="-mt-2 text-[13px] text-[var(--dv-text-secondary)]">Mỗi nhãn hàng để 1 dòng riêng, bấm “+ Thêm” để thêm nhãn hàng khác.</p>
+            )}
             {list.map((item, idx) => {
               const patch = (p: Partial<ExperienceEntry>) => setList(sec.kind, list.map((x, i) => (i === idx ? { ...x, ...p } : x)));
               return (
                 <div key={item.id} className="rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
                     <Field label={sec.titleLabel} htmlFor={`${item.id}-t`}>
-                      <TextInput id={`${item.id}-t`} placeholder={sec.titlePh} value={item.title} onChange={e => patch({ title: e.target.value })} />
+                      <TextInput id={`${item.id}-t`} placeholder={sec.titlePh} value={item.title} maxLength={EXPERIENCE_TEXT_MAX} onChange={e => patch({ title: e.target.value })} />
+                      <CharCount value={item.title} max={EXPERIENCE_TEXT_MAX} />
                     </Field>
                     <Field label={sec.extraLabel} htmlFor={`${item.id}-c`}>
-                      <TextInput id={`${item.id}-c`} placeholder={sec.extraPh} value={item.character} onChange={e => patch({ character: e.target.value })} />
+                      <TextInput id={`${item.id}-c`} placeholder={sec.extraPh} value={item.character} maxLength={EXPERIENCE_TEXT_MAX} onChange={e => patch({ character: e.target.value })} />
+                      <CharCount value={item.character} max={EXPERIENCE_TEXT_MAX} />
                     </Field>
                   </div>
                   <div className="mt-3 grid grid-cols-[minmax(0,1fr)_96px_auto] items-end gap-3">
@@ -711,7 +729,7 @@ function TrainingCard({
               placeholder="Lớp tư nhân, workshop, trường khác…"
               value={item.custom_school}
               invalid={!!errors[`training_${index}_school`]}
-              onChange={e => onChange({ custom_school: e.target.value })}
+              maxLength={200} onChange={e => onChange({ custom_school: e.target.value })}
             />
           </Field>
         )}
@@ -744,7 +762,7 @@ function TrainingCard({
               placeholder={isAct ? 'VD: ACT1-37B, ACT2-38B…' : 'VD: Diễn viên kịch – điện ảnh'}
               value={isAct ? item.class_code : item.major}
               invalid={!!errors[`training_${index}_class`]}
-              onChange={e => onChange(isAct ? { class_code: e.target.value } : { major: e.target.value })}
+              maxLength={isAct ? 60 : 200} onChange={e => onChange(isAct ? { class_code: e.target.value } : { major: e.target.value })}
             />
           </Field>
           <Field label={isAct ? 'Tên Term / Khóa' : 'Niên khóa / Khóa'} htmlFor={`${pid}-term`}>
@@ -752,7 +770,7 @@ function TrainingCard({
               id={`${pid}-term`}
               placeholder={isAct ? 'VD: Khóa 37B (11/2025)' : 'VD: K42 (2020–2024)'}
               value={item.term_name}
-              onChange={e => onChange({ term_name: e.target.value })}
+              maxLength={120} onChange={e => onChange({ term_name: e.target.value })}
             />
           </Field>
         </div>
@@ -775,7 +793,7 @@ function TrainingCard({
           </Field>
           {isAct && (
             <Field label="Giảng viên phụ trách" htmlFor={`${pid}-instructor`}>
-              <TextInput id={`${pid}-instructor`} placeholder="VD: Đạo diễn Vũ Trần" value={item.instructor} onChange={e => onChange({ instructor: e.target.value })} />
+              <TextInput id={`${pid}-instructor`} placeholder="VD: Đạo diễn Vũ Trần" value={item.instructor} maxLength={120} onChange={e => onChange({ instructor: e.target.value })} />
             </Field>
           )}
         </div>
@@ -785,7 +803,7 @@ function TrainingCard({
             id={`${pid}-eval`}
             placeholder={isAct ? 'VD: Nắm vững kỹ thuật đài từ, biểu cảm tốt trước ống kính…' : 'VD: Tốt nghiệp loại Giỏi, vai chính vở diễn tốt nghiệp…'}
             value={item.evaluation}
-            onChange={e => onChange({ evaluation: e.target.value })}
+            maxLength={1000} onChange={e => onChange({ evaluation: e.target.value })}
           />
         </Field>
       </div>

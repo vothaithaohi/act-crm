@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { checkDraft } from '@/lib/dienvienvn/draft-schema';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Clapperboard, Loader2, Mail, Send, UserRound, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -263,6 +264,19 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
   const allStepsDone = maxVisited >= CASTING_STEPS.length && CASTING_STEPS.every(s => stepValid(s.id));
   const readyToSubmit = allStepsDone && draft.consent;
 
+  /** Cuộn tới ô bị lỗi, viền đỏ cho tới khi sửa (sau khi chuyển bước). */
+  const focusField = (id?: string | null) => {
+    if (!id) return;
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (el as HTMLInputElement).focus?.({ preventScroll: true });
+      el.classList.add('dv-invalid');
+      el.addEventListener('input', () => el.classList.remove('dv-invalid'), { once: true });
+    }, 400);
+  };
+
   const scrollToTop = () => {
     const y = (topRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY - 56;
     window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
@@ -315,6 +329,18 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
       consentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    // Kiểm tra như máy chủ (độ dài, định dạng) trước khi gửi: báo đúng bước / ô cần sửa
+    const issue = checkDraft(draft);
+    if (issue) {
+      setStep(issue.step);
+      setMaxVisited(m => Math.max(m, issue.step));
+      setShowErrorsFor(prev => Array.from(new Set([...prev, issue.step])));
+      setBanner(issue.message);
+      setBannerLogin(false);
+      if (issue.focusId) focusField(issue.focusId);
+      else scrollToTop();
+      return;
+    }
 
     setSubmitting(true);
     setBanner('');
@@ -332,6 +358,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
           if (typeof data.step === 'number') {
             setStep(data.step);
             setShowErrorsFor(prev => Array.from(new Set([...prev, data.step])));
+            focusField(data.focusId);
           }
           setBanner(
             res.status === 401
@@ -369,6 +396,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
         if (typeof data.step === 'number') {
           setStep(data.step);
           setShowErrorsFor(prev => Array.from(new Set([...prev, data.step])));
+          focusField(data.focusId);
         }
         setBanner(data.error || 'Không gửi được hồ sơ. Vui lòng kiểm tra kết nối mạng và thử lại.');
         setBannerLogin(!!data.emailExists);

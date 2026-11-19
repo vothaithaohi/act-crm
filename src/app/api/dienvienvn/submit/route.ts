@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncBrevoContact } from '@/lib/dienvienvn/brevo';
 import { z } from 'zod';
-import { castingDraftSchema } from '@/lib/dienvienvn/draft-schema';
+import { castingDraftSchema, describeDraftIssue } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
@@ -38,11 +38,9 @@ export async function POST(req: NextRequest) {
 
   const parsed = castingDraftSchema.safeParse((body as Record<string, unknown>)?.draft);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return NextResponse.json(
-      { error: `Thông tin chưa hợp lệ (${first?.path.join('.') || 'hồ sơ'}): ${first?.message}` },
-      { status: 400 }
-    );
+    // Câu báo lỗi tiếng Việt chỉ đúng bước / ô cần sửa; form tự chuyển về bước đó
+    const issue = describeDraftIssue(parsed.error.issues[0], (body as Record<string, unknown>)?.draft);
+    return NextResponse.json({ error: issue.message, step: issue.step, focusId: issue.focusId }, { status: 400 });
   }
 
   const draft = parsed.data as CastingDraft;
