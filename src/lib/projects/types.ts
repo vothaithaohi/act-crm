@@ -22,16 +22,17 @@ export interface ProjectRole {
   images?: string[];
   /** Ẩn vai trên dienvienvn.com (không hiện, không nhận ứng tuyển); vẫn dùng trong CRM và link NSX */
   hidden?: boolean;
-  /** Loại vai: chính, thứ chính, phụ, nhỏ, quần chúng (không bắt buộc) */
+  /** Loại vai: chính, thứ chính, phụ, nhỏ, khách mời, quần chúng (không bắt buộc) */
   tier?: RoleTier | null;
 }
 
-export type RoleTier = 'lead' | 'second_lead' | 'supporting' | 'minor' | 'extra';
+export type RoleTier = 'lead' | 'second_lead' | 'supporting' | 'minor' | 'cameo' | 'extra';
 export const ROLE_TIERS: { id: RoleTier; label: string }[] = [
   { id: 'lead', label: 'Vai chính' },
   { id: 'second_lead', label: 'Vai thứ chính' },
   { id: 'supporting', label: 'Vai phụ' },
   { id: 'minor', label: 'Vai nhỏ' },
+  { id: 'cameo', label: 'Khách mời (cameo)' },
   { id: 'extra', label: 'Quần chúng' }
 ];
 export const roleTierLabel = (t?: string | null) => ROLE_TIERS.find(x => x.id === t)?.label || '';

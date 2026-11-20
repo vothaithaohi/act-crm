@@ -13,7 +13,7 @@ export const partnerRoleSchema = z.object({
   age_max: age,
   quantity: z.number().int().min(1).max(999).nullable().optional().default(1),
   description: text(2000),
-  tier: z.enum(['lead', 'second_lead', 'supporting', 'minor', 'extra']).nullable().optional().or(z.literal('')).default(null),
+  tier: z.enum(['lead', 'second_lead', 'supporting', 'minor', 'cameo', 'extra']).nullable().optional().or(z.literal('')).default(null),
   // Ảnh tham khảo của vai (ACT thêm trong CRM): giữ nguyên khi đối tác sửa dự án
   images: z.array(z.string().trim().url().max(500).refine(u => u.startsWith('https://'))).max(3).optional().default([])
 });
