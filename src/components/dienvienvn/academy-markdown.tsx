@@ -28,10 +28,11 @@ const C: Components = {
   code: ({ children }) => <code className="rounded bg-[#f5f5f7] px-1.5 py-0.5 text-[15px]">{children}</code>
 };
 
-export function AcademyMarkdown({ content, className = '' }: { content: string; className?: string }) {
+/** overrides: thay cách hiện link / ảnh (VD mở trong popup ở phần yêu cầu self-tape). */
+export function AcademyMarkdown({ content, className = '', overrides }: { content: string; className?: string; overrides?: Partial<Components> }) {
   return (
     <div className={`text-[#1d1d1f] [&>*:first-child]:mt-0 ${className}`}>
-      <ReactMarkdown components={C} skipHtml>
+      <ReactMarkdown components={overrides ? { ...C, ...overrides } : C} skipHtml>
         {content}
       </ReactMarkdown>
     </div>

@@ -5,6 +5,7 @@ import { ChevronDown, Video } from 'lucide-react';
 import type { SelftapeItem, SelftapeRequest } from '@/lib/projects/types';
 import type { SelfTape } from '@/lib/dienvienvn/selftapes';
 import { AcademyMarkdown } from './academy-markdown';
+import { usePopupMarkdown } from './file-viewer';
 import { useTx } from './i18n';
 
 // Yêu cầu self-tape theo vai: xem mô tả chuẩn (chữ, ảnh, link) và nộp mỗi yêu cầu 1 link.
@@ -12,6 +13,8 @@ import { useTx } from './i18n';
 function Brief({ text, defaultOpen = false }: { text: string; defaultOpen?: boolean }) {
   const tx = useTx();
   const [open, setOpen] = useState(defaultOpen);
+  // Link kịch bản (Drive, Docs, PDF), video YouTube, ảnh: mở popup ngay trên trang
+  const { overrides, viewer } = usePopupMarkdown();
   if (!text.trim()) return null;
   return (
     <div className="mt-1">
@@ -21,9 +24,10 @@ function Brief({ text, defaultOpen = false }: { text: string; defaultOpen?: bool
       </button>
       {open && (
         <div className="mt-2 rounded-[12px] bg-[var(--dv-bg-alt)] p-4 [&_p]:!mt-3 [&_p]:!text-[15px] [&_li]:!text-[15px] [&_h2]:!mt-4 [&_h2]:!text-[19px] [&_h3]:!mt-4 [&_h3]:!text-[17px]">
-          <AcademyMarkdown content={text} />
+          <AcademyMarkdown content={text} overrides={overrides} />
         </div>
       )}
+      {viewer}
     </div>
   );
 }

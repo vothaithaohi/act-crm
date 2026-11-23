@@ -226,6 +226,18 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
           <div className="flex items-center gap-1.5">
             <button
               type="button"
+              title="Xuất deck hồ sơ (mẫu Actor Profile) cho các ứng viên đã chọn; chưa chọn ai thì xuất cả danh sách đang lọc"
+              onClick={() => {
+                const pick = selectedInView.length ? rows.filter(r => selected.has(r.a.id)) : rows;
+                const ids = Array.from(new Set(pick.map(r => r.a.talent_id)));
+                window.open(`/projects/${project.id}/deck?ids=${ids.join(',')}`, '_blank');
+              }}
+              className="px-2.5 py-1.5 rounded-lg border border-sky-300 bg-sky-50 text-sky-900 font-semibold hover:bg-sky-100"
+            >
+              Xuất deck ({selectedInView.length || rows.length})
+            </button>
+            <button
+              type="button"
               disabled={selectedInView.length === 0}
               onClick={async () => {
                 if (await setProposal(selectedInView, true)) toast.success(`Đã đánh dấu ${selectedInView.length} ứng viên vào proposal`);
