@@ -86,17 +86,17 @@ export function ensureActorAttributes(): Promise<void> {
   return attributesReady;
 }
 
-async function call(path: string, body: unknown): Promise<{ ok: boolean; status: number; text: string }> {
+async function call(path: string, body: unknown, method: 'POST' | 'GET' = 'POST'): Promise<{ ok: boolean; status: number; text: string }> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), path === '/contacts/import' ? 20000 : 6000);
   try {
     const res = await fetch(`${API}${path}`, {
-      method: 'POST',
+      method,
       headers: { 'api-key': process.env.BREVO_API_KEY as string, 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(body),
+      ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
       signal: ctrl.signal
     });
-    return { ok: res.ok, status: res.status, text: res.ok ? '' : await res.text().catch(() => '') };
+    return { ok: res.ok, status: res.status, text: await res.text().catch(() => '') };
   } catch (e) {
     return { ok: false, status: 0, text: e instanceof Error ? e.message : 'network' };
   } finally {
@@ -116,7 +116,10 @@ export async function syncBrevoContact(audience: BrevoAudience, c: BrevoContact)
 }
 
 /** Đưa cả danh sách lên Brevo một lần (dùng cho các email đã đăng ký trước đây). */
-export async function importBrevoContacts(audience: BrevoAudience, contacts: BrevoContact[]): Promise<{ ok: boolean; count: number; error?: string }> {
+export async function importBrevoContacts(
+  audience: BrevoAudience,
+  contacts: BrevoContact[]
+): Promise<{ ok: boolean; count: number; error?: string; processIds?: number[] }> {
   if (!brevoReady()) return { ok: false, count: 0, error: 'Chưa cấu hình BREVO_API_KEY trên Vercel.' };
   const id = listId(audience);
   if (!id) return { ok: false, count: 0, error: `Chưa cấu hình ${LIST_ENV[audience]} trên Vercel.` };
@@ -125,6 +128,7 @@ export async function importBrevoContacts(audience: BrevoAudience, contacts: Bre
     .map(c => ({ ...c, email: (c.email || '').trim().toLowerCase() }))
     .filter(c => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email) && !seen.has(c.email) && !!seen.add(c.email));
   if (!rows.length) return { ok: true, count: 0 };
+  const processIds: number[] = [];
   // Nhập theo từng đợt; không gửi SĐT khi nhập hàng loạt (tránh 1 số trùng làm hỏng cả đợt)
   for (let i = 0; i < rows.length; i += 1000) {
     const r = await call('/contacts/import', {
@@ -133,7 +137,31 @@ export async function importBrevoContacts(audience: BrevoAudience, contacts: Bre
       updateExistingContacts: true,
       emptyContactsAttributes: false
     });
-    if (!r.ok) return { ok: false, count: i, error: `Brevo báo lỗi (${r.status}): ${r.text.slice(0, 160)}` };
+    if (!r.ok) return { ok: false, count: i, error: `Brevo báo lỗi (${r.status}): ${r.text.slice(0, 160)}`, processIds };
+    // Brevo nhập ngầm: giữ mã tiến trình để kiểm tra đã nhập xong chưa
+    try {
+      const id = Number(JSON.parse(r.text)?.processId);
+      if (id) processIds.push(id);
+    } catch {
+      /* bỏ qua */
+    }
   }
-  return { ok: true, count: rows.length };
+  return { ok: true, count: rows.length, processIds };
+}
+
+/** Trạng thái các lượt nhập ngầm trên Brevo: queued / in_process / completed (hoặc lỗi). */
+export async function brevoProcessStatus(ids: number[]): Promise<{ id: number; status: string; error?: string }[]> {
+  if (!brevoReady()) return [];
+  return Promise.all(
+    ids.slice(0, 20).map(async id => {
+      const r = await call(`/processes/${id}`, null, 'GET');
+      if (!r.ok) return { id, status: 'unknown', error: `${r.status} ${r.text.slice(0, 120)}` };
+      try {
+        const j = JSON.parse(r.text);
+        return { id, status: String(j.status || 'unknown') };
+      } catch {
+        return { id, status: 'unknown' };
+      }
+    })
+  );
 }

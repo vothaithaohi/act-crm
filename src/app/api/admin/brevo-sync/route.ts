@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
-import { BrevoContact, ensureActorAttributes, importBrevoContacts } from '@/lib/dienvienvn/brevo';
+import { BrevoContact, brevoProcessStatus, ensureActorAttributes, importBrevoContacts } from '@/lib/dienvienvn/brevo';
 import { loadActorBrevoContacts } from '@/lib/dienvienvn/brevo-actor';
 import { isTestAccount } from '@/lib/dienvienvn/test-accounts';
 
 // Super Admin: đưa toàn bộ email đã đăng ký (diễn viên, NSX, ekip — kể cả tài khoản ekip chưa điền hồ sơ) sang 3 danh sách Brevo.
 // Không gồm nhân sự CRM, bỏ tài khoản test. Email trùng chỉ tính 1 lần (hồ sơ ekip đứng trước nên giữ được SĐT / tên trong hồ sơ).
 type Row = Record<string, string | null>;
+
+// Đọc toàn bộ dữ liệu + gửi Brevo có thể lâu (vài nghìn hồ sơ)
+export const maxDuration = 300;
 
 async function all(q: () => PromiseLike<{ data: unknown[] | null; error: unknown }>): Promise<Row[]> {
   const { data } = await q();
@@ -50,5 +53,19 @@ export async function POST(req: NextRequest) {
   }
   const [a, p, c] = [await importBrevoContacts('actor', actor), await importBrevoContacts('partner', partner), await importBrevoContacts('crew', crew)];
   const errors = [a.error, p.error, c.error].filter(Boolean);
-  return NextResponse.json({ ok: !errors.length, actor: a.count, partner: p.count, crew: c.count, errors }, { status: errors.length ? 207 : 200 });
+  // Số diễn viên có ít nhất 1 dự án đã ứng tuyển (để đối chiếu với bộ lọc DU_AN_UNG_TUYEN trên Brevo)
+  const withProjects = actor.filter(x => x.extra?.DU_AN_UNG_TUYEN).length;
+  const processIds = [...(a.processIds || []), ...(p.processIds || []), ...(c.processIds || [])];
+  return NextResponse.json(
+    { ok: !errors.length, actor: a.count, partner: p.count, crew: c.count, withProjects, processIds, errors },
+    { status: errors.length ? 207 : 200 }
+  );
+}
+
+/** ?ids=1,2 : Brevo đã nhập xong các lượt nhập chưa. */
+export async function GET(req: NextRequest) {
+  const g = await guardPartnerAdmin(req, ['super_admin']);
+  if ('res' in g) return g.res;
+  const ids = (req.nextUrl.searchParams.get('ids') || '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0);
+  return NextResponse.json({ processes: await brevoProcessStatus(ids) }, { headers: { 'Cache-Control': 'no-store' } });
 }

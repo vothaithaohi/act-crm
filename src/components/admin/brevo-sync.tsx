@@ -40,9 +40,22 @@ export function BrevoSyncMenu() {
       } catch {
         /* bỏ qua */
       }
-      const msg = `Diễn viên ${r.actor} · Nhà sản xuất ${r.partner} · Ekip ${r.crew}`;
-      if (b.errors?.length) toast.warning('Đồng bộ chưa hết', { description: `${msg}. ${b.errors.join(' ')}` });
-      else toast.success('Đã đồng bộ sang Brevo', { description: msg });
+      const msg = `Diễn viên ${r.actor} (${b.withProjects ?? 0} người đã ứng tuyển dự án) · Nhà sản xuất ${r.partner} · Ekip ${r.crew}`;
+      if (b.errors?.length) return void toast.warning('Đồng bộ chưa hết', { description: `${msg}. ${b.errors.join(' ')}`, duration: 20000 });
+      toast.info('Đã gửi sang Brevo, Brevo đang nhập…', { description: `${msg}. Vui lòng đợi, sẽ báo khi Brevo nhập xong.`, duration: 15000 });
+      // Brevo nhập ngầm: hỏi tiến độ mỗi 5 giây, tối đa 5 phút
+      const ids: number[] = b.processIds || [];
+      if (!ids.length) return;
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        const st = await authedFetch(`/api/admin/brevo-sync?ids=${ids.join(',')}`).then(x => x.json()).catch(() => null);
+        const list: { status: string; error?: string }[] = st?.processes || [];
+        if (list.some(x => x.error)) return void toast.error('Không kiểm tra được tiến độ trên Brevo', { description: list.find(x => x.error)?.error });
+        if (list.length && list.every(x => x.status === 'completed')) {
+          return void toast.success('Brevo đã nhập xong', { description: `${msg}. Tải lại trang Brevo để lọc.`, duration: 20000 });
+        }
+      }
+      toast.warning('Brevo vẫn đang nhập', { description: 'Đợi thêm vài phút rồi tải lại trang Brevo.' });
     } catch {
       toast.error('Mất kết nối mạng. Vui lòng thử lại.');
     } finally {

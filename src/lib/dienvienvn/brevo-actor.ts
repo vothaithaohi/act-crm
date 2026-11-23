@@ -99,7 +99,10 @@ export async function loadActorBrevoContacts(db: SupabaseClient): Promise<BrevoC
     return out;
   };
   const [talents, apps, projects] = await Promise.all([
-    page<TalentProfile>('talent_profiles', '*'),
+    page<TalentProfile>(
+      'talent_profiles',
+      'id, email, full_name, phone, gender, dob, province, city, height_cm, acting_experience, academic_profile, vietnamese_accents, languages, review_status, public_profile, public_locked, username, submission_source'
+    ),
     page<Application>('project_applications', 'talent_id, project_id, role_id'),
     page<Project>('casting_projects', 'id, code, title, roles')
   ]);
