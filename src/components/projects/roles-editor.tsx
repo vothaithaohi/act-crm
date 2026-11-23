@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, ImagePlus, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
-import { ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGender, RoleTier, genderLabel, roleTierLabel } from '@/lib/projects/types';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, ImagePlus, Link2, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { MAX_SELFTAPE_REQUESTS, ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGender, RoleTier, SelftapeRequest, genderLabel, roleTierLabel } from '@/lib/projects/types';
+import { AcademyMarkdown } from '@/components/dienvienvn/academy-markdown';
 import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-foreground transition-colors';
@@ -14,7 +15,8 @@ export function emptyRole(name = ''): ProjectRole {
 
 function roleSummaryLine(r: ProjectRole): string {
   const age = r.age_min && r.age_max ? `${r.age_min}–${r.age_max} tuổi` : r.age_min ? `từ ${r.age_min} tuổi` : r.age_max ? `đến ${r.age_max} tuổi` : null;
-  return [roleTierLabel(r.tier), genderLabel(r.gender), age, r.quantity ? `${r.quantity} người` : null].filter(Boolean).join(' · ');
+  const tapes = (r.selftape_requests || []).length;
+  return [roleTierLabel(r.tier), genderLabel(r.gender), age, r.quantity ? `${r.quantity} người` : null, tapes ? `${tapes} yêu cầu self-tape` : null].filter(Boolean).join(' · ');
 }
 
 const hasContent = (r: ProjectRole) => !!(r.name.trim() || (r.description || '').trim());
@@ -261,6 +263,7 @@ export function RolesEditor({ roles, onChange, canEdit }: { roles: ProjectRole[]
                     />
                   </div>
                   <RoleImagesField images={r.images || []} disabled={!canEdit} onChange={images => setRole(r.id, { images })} />
+                  <SelftapeRequestsField requests={r.selftape_requests || []} disabled={!canEdit} onChange={selftape_requests => setRole(r.id, { selftape_requests })} />
                 </div>
               )}
             </li>
@@ -371,6 +374,134 @@ function RoleImagesField({ images, onChange, disabled }: { images: string[]; onC
       </div>
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => add(e.target.files)} />
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/** Yêu cầu self-tape của vai: mỗi yêu cầu có tên, mô tả chuẩn (chữ + ảnh + link, Markdown), bắt buộc hay không. */
+function SelftapeRequestsField({ requests, onChange, disabled }: { requests: SelftapeRequest[]; onChange: (v: SelftapeRequest[]) => void; disabled: boolean }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const refs = useRef(new Map<string, HTMLTextAreaElement>());
+  const set = (id: string, patch: Partial<SelftapeRequest>) => onChange(requests.map(q => (q.id === id ? { ...q, ...patch } : q)));
+  const add = () => onChange([...requests, { id: crypto.randomUUID().slice(0, 8), title: '', brief: '', required: true }]);
+  const remove = (q: SelftapeRequest) => {
+    if ((q.title || q.brief) && !window.confirm(`Xoá yêu cầu self-tape "${q.title || 'chưa đặt tên'}"?`)) return;
+    onChange(requests.filter(x => x.id !== q.id));
+  };
+  const move = (i: number, d: number) => {
+    const next = [...requests];
+    const [x] = next.splice(i, 1);
+    next.splice(i + d, 0, x);
+    onChange(next);
+  };
+  /** Chèn đoạn chữ vào vị trí con trỏ trong ô mô tả */
+  const insert = (q: SelftapeRequest, text: string) => {
+    const el = refs.current.get(q.id);
+    const pos = el ? el.selectionStart : q.brief.length;
+    set(q.id, { brief: q.brief.slice(0, pos) + text + q.brief.slice(pos) });
+  };
+  const uploadImage = async (q: SelftapeRequest, file: File) => {
+    setUploading(q.id);
+    try {
+      const url = await uploadPublicImage(file, 'role');
+      insert(q, `\n\n![${file.name.replace(/\.[^.]+$/, '')}](${url})\n\n`);
+    } catch (e) {
+      window.alert((e as Error).message || 'Không tải được ảnh.');
+    } finally {
+      setUploading(null);
+    }
+  };
+  return (
+    <div className="rounded-xl border bg-background p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className={labelCls + ' !mb-0'}>Yêu cầu self-tape ({requests.length})</p>
+          <p className="text-[11px] text-muted-foreground">Mỗi yêu cầu diễn viên nộp 1 link. Mô tả hiện trên trang vai và lúc ứng tuyển / chỉnh sửa hồ sơ ứng tuyển.</p>
+        </div>
+        {!disabled && requests.length < MAX_SELFTAPE_REQUESTS && (
+          <button type="button" onClick={add} className="h-8 shrink-0 inline-flex items-center gap-1.5 px-3 rounded-lg border text-xs font-semibold hover:bg-muted">
+            <Plus className="w-3.5 h-3.5" /> Thêm yêu cầu
+          </button>
+        )}
+      </div>
+      {requests.map((q, i) => (
+        <div key={q.id} className="rounded-lg border p-3 space-y-2 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 shrink-0 rounded-full bg-muted text-[11px] font-bold flex items-center justify-center">{i + 1}</span>
+            <input
+              className={inputCls}
+              placeholder="VD: Self-tape 1 – Giới thiệu bản thân"
+              value={q.title}
+              disabled={disabled}
+              onChange={e => set(q.id, { title: e.target.value })}
+            />
+            <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold">
+              <input type="checkbox" checked={q.required} disabled={disabled} onChange={e => set(q.id, { required: e.target.checked })} className="h-4 w-4 accent-black" /> Bắt buộc
+            </label>
+            {!disabled && (
+              <div className="flex shrink-0">
+                <IconBtn title="Lên trên" disabled={i === 0} onClick={() => move(i, -1)}>
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </IconBtn>
+                <IconBtn title="Xuống dưới" disabled={i === requests.length - 1} onClick={() => move(i, 1)}>
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </IconBtn>
+                <IconBtn title="Xoá yêu cầu" danger onClick={() => remove(q)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </IconBtn>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-muted-foreground">Mô tả yêu cầu chuẩn: khung hình, ánh sáng, lời thoại… Chèn được ảnh và link.</span>
+            <div className="flex shrink-0 items-center gap-1">
+              {!disabled && (
+                <>
+                  <button
+                    type="button"
+                    title="Chèn link"
+                    onClick={() => {
+                      const url = window.prompt('Dán link (https://…)');
+                      if (url) insert(q, `[${window.prompt('Chữ hiển thị của link', 'Xem tại đây') || 'Xem tại đây'}](${url.trim()})`);
+                    }}
+                    className="h-7 px-2 inline-flex items-center gap-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+                  >
+                    <Link2 className="w-3.5 h-3.5" /> Link
+                  </button>
+                  <label className="h-7 px-2 inline-flex cursor-pointer items-center gap-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted">
+                    {uploading === q.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />} Ảnh
+                    <input type="file" accept="image/*" className="sr-only" onChange={e => e.target.files?.[0] && uploadImage(q, e.target.files[0])} />
+                  </label>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setPreview(p => (p === q.id ? null : q.id))}
+                className="h-7 px-2 inline-flex items-center rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+              >
+                {preview === q.id ? 'Soạn' : 'Xem trước'}
+              </button>
+            </div>
+          </div>
+          {preview === q.id ? (
+            <div className="rounded-lg border bg-white p-4 text-sm">{q.brief.trim() ? <AcademyMarkdown content={q.brief} /> : <p className="text-muted-foreground">Chưa có mô tả.</p>}</div>
+          ) : (
+            <textarea
+              ref={el => {
+                if (el) refs.current.set(q.id, el);
+                else refs.current.delete(q.id);
+              }}
+              rows={4}
+              className={`${inputCls} resize-y leading-relaxed`}
+              placeholder={'VD: Quay ngang, ngang tầm mắt, ánh sáng trước mặt.\nĐọc đoạn thoại cảnh 12 (đính kèm link kịch bản).\nThời lượng tối đa 2 phút.'}
+              value={q.brief}
+              disabled={disabled}
+              onChange={e => set(q.id, { brief: e.target.value })}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }

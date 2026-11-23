@@ -24,6 +24,32 @@ export interface ProjectRole {
   hidden?: boolean;
   /** Loại vai: chính, thứ chính, phụ, nhỏ, khách mời, quần chúng (không bắt buộc) */
   tier?: RoleTier | null;
+  /** Các self-tape vai này yêu cầu (mỗi yêu cầu diễn viên nộp 1 link) */
+  selftape_requests?: SelftapeRequest[];
+}
+
+/** Một yêu cầu self-tape của vai: tên + mô tả chuẩn (Markdown: chữ, ảnh, link) + bắt buộc hay không. */
+export interface SelftapeRequest {
+  id: string;
+  title: string;
+  brief: string;
+  required: boolean;
+}
+/** Self-tape diễn viên nộp cho 1 yêu cầu. */
+export interface SelftapeItem {
+  request_id: string;
+  url: string;
+}
+export const MAX_SELFTAPE_REQUESTS = 8;
+
+export const roleSelftapeRequests = (r?: Pick<ProjectRole, 'selftape_requests'> | null): SelftapeRequest[] =>
+  Array.isArray(r?.selftape_requests) ? r!.selftape_requests.filter(q => q && q.id && (q.title || '').trim()) : [];
+
+/** Yêu cầu bắt buộc chưa nộp → câu báo lỗi; đủ → null. */
+export function missingRequiredSelftape(role: Pick<ProjectRole, 'selftape_requests'>, items: SelftapeItem[]): string | null {
+  const done = new Set(items.filter(i => (i.url || '').trim()).map(i => i.request_id));
+  const miss = roleSelftapeRequests(role).filter(q => q.required && !done.has(q.id));
+  return miss.length ? `Vui lòng gửi self-tape: ${miss.map(q => q.title.trim()).join(', ')}.` : null;
 }
 
 export type RoleTier = 'lead' | 'second_lead' | 'supporting' | 'minor' | 'cameo' | 'extra';
@@ -102,6 +128,8 @@ export interface ProjectApplication {
   selftape_urls?: string[] | null;
   /** Lần gần nhất diễn viên tự sửa self-tape sau khi đã nộp */
   selftape_updated_at?: string | null;
+  /** Self-tape theo từng yêu cầu của vai */
+  selftape_items?: SelftapeItem[] | null;
   note?: string | null;
   status: ApplicationStatus;
   /** Lựa chọn của NSX trên link shortlist / cổng đối tác */

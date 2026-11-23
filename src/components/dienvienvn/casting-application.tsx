@@ -7,7 +7,7 @@ import { checkDraft } from '@/lib/dienvienvn/draft-schema';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Clapperboard, Loader2, Mail, Send, UserRound, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ProjectRole, PublicProject, isAcceptingApplications } from '@/lib/projects/types';
+import { ProjectRole, PublicProject, isAcceptingApplications, roleSelftapeRequests } from '@/lib/projects/types';
 import { checkLocalApplication, fetchPublicProject, saveLocalApplication } from '@/lib/projects/public-client';
 import { actorFetch, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import confetti from 'canvas-confetti';
@@ -680,7 +680,8 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                             projectName: target.project.display_name,
                             roleName: target.role.name,
                             selftapeRequired: target.project.selftape_required,
-                            selftapeBrief: target.project.selftape_brief
+                            selftapeBrief: target.project.selftape_brief,
+                            selftapeRequests: roleSelftapeRequests(target.role)
                           }
                         : null
                     }

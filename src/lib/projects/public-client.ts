@@ -63,6 +63,8 @@ export interface ApplyInput {
   role_id: string;
   selftape_url: string;
   selftape_urls?: string[];
+  /** Self-tape theo từng yêu cầu của vai */
+  selftape_items?: { request_id: string; url: string }[];
   note: string;
 }
 

@@ -325,11 +325,28 @@ export function ProjectApplicants({ project, applications, onStatus, onBulkStatu
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                   {(() => {
                     const tapes = Array.from(new Set([...(a.selftape_urls || []), a.selftape_url || ''].filter(Boolean)));
-                    return tapes.map((u, i) => (
-                      <a key={u} href={u} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold hover:bg-muted">
-                        <Video className="w-3.5 h-3.5 text-brand-600" /> {tapes.length > 1 ? `Self-tape ${i + 1}` : 'Self-tape'}
-                      </a>
-                    ));
+                    // Self-tape theo yêu cầu của vai: hiện tên yêu cầu
+                    const reqs = project.roles.find(r => r.id === a.role_id)?.selftape_requests || [];
+                    const labelOf = (u: string, i: number) => {
+                      const it = (a.selftape_items || []).find(x => x.url === u);
+                      const q = it && reqs.find(r => r.id === it.request_id);
+                      return q ? q.title : tapes.length > 1 ? `Self-tape ${i + 1}` : 'Self-tape';
+                    };
+                    const missing = reqs.filter(q => q.required && !(a.selftape_items || []).some(x => x.request_id === q.id && x.url));
+                    return (
+                      <>
+                        {tapes.map((u, i) => (
+                          <a key={u} href={u} target="_blank" rel="noreferrer" title={u} className="flex max-w-[220px] items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold hover:bg-muted">
+                            <Video className="w-3.5 h-3.5 shrink-0 text-brand-600" /> <span className="truncate">{labelOf(u, i)}</span>
+                          </a>
+                        ))}
+                        {missing.length > 0 && (
+                          <span title={missing.map(q => q.title).join(', ')} className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-semibold">
+                            Thiếu {missing.length} self-tape
+                          </span>
+                        )}
+                      </>
+                    );
                   })()}
                   {a.selftape_updated_at && (
                     <span

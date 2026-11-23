@@ -1,6 +1,8 @@
 'use client';
 
 
+import { SelftapeRequestsInfo } from './selftape-requests';
+import type { SelftapeRequest } from '@/lib/projects/types';
 import { useTx } from './i18n';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
@@ -66,6 +68,8 @@ export interface ApplicationTarget {
   roleName: string;
   selftapeRequired: boolean;
   selftapeBrief?: string | null;
+  /** Yêu cầu self-tape riêng của vai */
+  selftapeRequests?: SelftapeRequest[];
 }
 
 export interface StepProps {
@@ -624,6 +628,14 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
               `Video thử vai cho ${application.projectName}. Tải lên YouTube (không công khai) hoặc Google Drive rồi dán link. Tên kênh / tài khoản không nên chứa SĐT, email.`
             }
           />
+          {application.selftapeRequests && application.selftapeRequests.length > 0 && (
+            <>
+              <SelftapeRequestsInfo requests={application.selftapeRequests} />
+              <p className="text-[13px] leading-[1.4] text-[var(--dv-text-secondary)]">
+                {tx('Dán link self-tape đầu tiên ở đây. Sau khi kích hoạt tài khoản, vào Tài khoản → Vai đã ứng tuyển → "Chỉnh sửa hồ sơ ứng tuyển" để gửi đủ từng self-tape theo yêu cầu.')}
+              </p>
+            </>
+          )}
           <Field
             label="Link self-tape"
             required={application.selftapeRequired}

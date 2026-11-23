@@ -8,7 +8,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Check, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LogOut, Pencil, UserRound } from 'lucide-react';
 import { actorClient, actorFetch, getImpersonation, isNetworkError, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
-import { PublicProject, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
+import { PublicProject, SelftapeItem, SelftapeRequest, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
+import { SelftapeRequestsInput } from './selftape-requests';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
@@ -493,27 +494,39 @@ type AppliedRole = {
   role_name: string;
   created_at?: string;
   selftape_urls?: string[];
+  selftape_items?: SelftapeItem[];
   selftape_updated_at?: string | null;
   selftape_required?: boolean;
+  selftape_requests?: SelftapeRequest[];
+  note?: string;
   can_edit?: boolean;
 };
 
-/** Một vai đã ứng tuyển: xem self-tape đã gửi, sửa được khi dự án còn nhận hồ sơ. */
+/** Một vai đã ứng tuyển: xem self-tape đã gửi; "Chỉnh sửa hồ sơ ứng tuyển" để bổ sung / nộp lại self-tape theo từng yêu cầu và sửa lời nhắn. */
 function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library: SelfTape[]; onSaved: (a: AppliedRole) => void }) {
   const tx = useTx();
+  const requests = app.selftape_requests || [];
+  const items = app.selftape_items || [];
   const current = app.selftape_urls || [];
+  // Self-tape không thuộc yêu cầu nào (gửi thêm)
+  const extras = current.filter(u => !items.some(i => i.url === u));
   const [editing, setEditing] = useState(false);
+  const [draftItems, setDraftItems] = useState<SelftapeItem[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
   const [link, setLink] = useState('');
+  const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const titleOf = (url: string, i: number) => library.find(t => t.url === url)?.title || `Self-tape ${i + 1}`;
+  const missingRequired = requests.filter(q => q.required && !items.some(i => i.request_id === q.id && i.url));
 
   const open = () => {
-    // Link đang gửi có trong kho → tick sẵn; link ngoài kho → để ở ô dán link
-    setPicked(current.filter(u => library.some(t => t.url === u)));
-    setLink(current.find(u => !library.some(t => t.url === u)) || '');
+    setDraftItems(items);
+    // Self-tape gửi thêm có trong kho → tick sẵn; link ngoài kho → để ở ô dán link
+    setPicked(extras.filter(u => library.some(t => t.url === u)));
+    setLink(extras.find(u => !library.some(t => t.url === u)) || '');
+    setNote(app.note || '');
     setError('');
     setDone(false);
     setEditing(true);
@@ -521,18 +534,23 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
   const save = async () => {
     const extra = link.trim();
     if (extra && !/^https?:\/\//i.test(extra)) return setError('Link self-tape cần bắt đầu bằng https://');
-    if (app.selftape_required && !picked.length && !extra) return setError('Dự án này bắt buộc gửi link self-tape (YouTube, Google Drive…).');
+    const filled = draftItems.map(i => ({ ...i, url: i.url.trim() })).filter(i => i.url);
+    const bad = filled.find(i => !/^https?:\/\//i.test(i.url));
+    if (bad) return setError('Link self-tape cần bắt đầu bằng https://');
+    const miss = requests.filter(q => q.required && !filled.some(i => i.request_id === q.id));
+    if (miss.length) return setError(`Vui lòng gửi self-tape: ${miss.map(q => q.title).join(', ')}.`);
+    if (app.selftape_required && !filled.length && !picked.length && !extra) return setError('Dự án này bắt buộc gửi link self-tape (YouTube, Google Drive…).');
     setSaving(true);
     setError('');
     try {
       const res = await actorFetch('/api/dienvienvn/apply', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ application_id: app.id, selftape_urls: picked, selftape_url: extra })
+        body: JSON.stringify({ application_id: app.id, selftape_items: filled, selftape_urls: picked, selftape_url: extra, note: note.trim() })
       });
       const b = await res.json().catch(() => ({}));
       if (!res.ok || !b.ok) return setError(b.error || 'Không lưu được. Vui lòng thử lại.');
-      onSaved({ ...app, selftape_urls: b.selftape_urls, selftape_updated_at: b.selftape_updated_at || new Date().toISOString() });
+      onSaved({ ...app, selftape_urls: b.selftape_urls, selftape_items: b.selftape_items || filled, note: b.note ?? note.trim(), selftape_updated_at: b.selftape_updated_at || new Date().toISOString() });
       setEditing(false);
       setDone(true);
     } catch {
@@ -555,35 +573,58 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
       </div>
 
       {!editing && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
-          {current.length ? (
-            current.map((u, i) => (
+        <>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
+            {requests.map(q => {
+              const it = items.find(i => i.request_id === q.id && i.url);
+              return it ? (
+                <a key={q.id} href={it.url} target="_blank" rel="noopener noreferrer" className="max-w-full truncate text-[var(--dv-text)] underline underline-offset-2">
+                  {q.title}
+                </a>
+              ) : (
+                <span key={q.id} className={q.required ? 'text-[#b00020]' : 'text-[var(--dv-text-tertiary)]'}>
+                  {q.title}: {tx('chưa gửi')}
+                </span>
+              );
+            })}
+            {extras.map((u, i) => (
               <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="max-w-full truncate text-[var(--dv-text)] underline underline-offset-2">
                 {tx(titleOf(u, i))}
               </a>
-            ))
-          ) : (
-            <span className="text-[var(--dv-text-secondary)]">{tx('Chưa gửi self-tape')}</span>
+            ))}
+            {!requests.length && !extras.length && <span className="text-[var(--dv-text-secondary)]">{tx('Chưa gửi self-tape')}</span>}
+          </div>
+          {app.can_edit && missingRequired.length > 0 && (
+            <p className="mt-2 rounded-[10px] bg-[#fff6e5] px-3 py-2 text-[13px] text-[#7a4b0c]">{tx('Vai này có yêu cầu self-tape mới. Bấm "Chỉnh sửa hồ sơ ứng tuyển" để gửi bổ sung.')}</p>
           )}
-          {app.can_edit && (
-            <button type="button" onClick={open} className="inline-flex items-center gap-1 font-semibold text-[var(--dv-text)] hover:underline">
-              <Pencil className="h-3.5 w-3.5" /> {tx(current.length ? 'Sửa self-tape' : 'Gửi self-tape')}
-            </button>
-          )}
-          {done && <span className="text-[#1d5c33]">{tx('Đã cập nhật self-tape.')}</span>}
-          {!done && app.selftape_updated_at && (
-            <span className="text-[13px] text-[var(--dv-text-tertiary)]">{tx(`Đã sửa ngày ${formatVnDate(app.selftape_updated_at)}`)}</span>
-          )}
-        </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
+            {app.can_edit && (
+              <button type="button" onClick={open} className="inline-flex items-center gap-1 font-semibold text-[var(--dv-text)] hover:underline">
+                <Pencil className="h-3.5 w-3.5" /> {tx('Chỉnh sửa hồ sơ ứng tuyển')}
+              </button>
+            )}
+            {done && <span className="text-[#1d5c33]">{tx('Đã cập nhật hồ sơ ứng tuyển.')}</span>}
+            {!done && app.selftape_updated_at && (
+              <span className="text-[13px] text-[var(--dv-text-tertiary)]">{tx(`Đã sửa ngày ${formatVnDate(app.selftape_updated_at)}`)}</span>
+            )}
+          </div>
+        </>
       )}
 
       {editing && (
-        <div className="mt-3 space-y-3 rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
+        <div className="mt-3 space-y-4 rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
+          {requests.length > 0 && (
+            <div>
+              <p className="mb-2 text-[14px] font-semibold">{tx('Self-tape theo yêu cầu của vai')}</p>
+              <SelftapeRequestsInput requests={requests} library={library} value={draftItems} onChange={setDraftItems} idPrefix={`req-${app.id}`} />
+            </div>
+          )}
+          {requests.length > 0 && <p className="text-[14px] font-semibold">{tx('Self-tape khác (không bắt buộc)')}</p>}
           {library.length > 0 && (
             <fieldset>
               <legend className="mb-2 text-[14px] font-semibold">
                 {tx('Chọn self-tape phù hợp với dự án')}
-                {app.selftape_required && <span className="text-[#b00020]"> *</span>}
+                {app.selftape_required && !requests.length && <span className="text-[#b00020]"> *</span>}
               </legend>
               <ul className="divide-y divide-[#f0f0f2] rounded-[12px] border border-[#e8e8ed] bg-white">
                 {library.map((t, k) => (
@@ -612,6 +653,9 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
           >
             <TextInput id={`tape-${app.id}`} type="url" inputMode="url" placeholder="https://" value={link} onChange={e => setLink(e.target.value)} />
           </Field>
+          <Field label="Lời nhắn cho đội casting" htmlFor={`note-${app.id}`}>
+            <TextInput id={`note-${app.id}`} placeholder={tx('Không bắt buộc')} value={note} onChange={e => setNote(e.target.value)} />
+          </Field>
           {error && (
             <p role="alert" className="rounded-[12px] bg-[#fff0f0] p-3 text-[14px] text-[#b00020]">
               {tx(error)}
@@ -620,7 +664,7 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
           <div className="flex gap-2">
             <button type="button" onClick={save} disabled={saving} className="dv-btn dv-btn-primary !h-10 !py-0 text-[14px]">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {tx(saving ? 'Đang lưu…' : 'Lưu self-tape')}
+              {tx(saving ? 'Đang lưu…' : 'Lưu hồ sơ ứng tuyển')}
             </button>
             <button type="button" onClick={() => setEditing(false)} disabled={saving} className="dv-btn dv-btn-secondary !h-10 !py-0 text-[14px]">
               {tx('Huỷ')}

@@ -16,7 +16,10 @@ import {
   projectTypeLabel,
   roleImages,
   roleSlug,
-  roleSummaryNoTier
+  roleSummaryNoTier,
+  roleSelftapeRequests,
+  missingRequiredSelftape,
+  SelftapeItem
 } from '@/lib/projects/types';
 import { applyToRole, fetchPublicProject } from '@/lib/projects/public-client';
 import { actorFetch, useActorSession } from '@/lib/dienvienvn/actor-auth';
@@ -27,6 +30,7 @@ import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
 import { RoleTierBadge } from './role-tier';
+import { SelftapeRequestsInfo, SelftapeRequestsInput } from './selftape-requests';
 
 /** Chia sẻ link: điện thoại mở bảng chia sẻ của máy (Zalo, Messenger…); máy tính sao chép link. Trả true khi đã sao chép. */
 async function shareLink(url: string, title: string, copyPrompt = 'Sao chép link:'): Promise<boolean> {
@@ -253,6 +257,7 @@ export function ProjectDetail({ projectId, roleParam }: { projectId: string; rol
                     {tx([roleSummaryNoTier(r), r.quantity ? `Cần ${r.quantity} người` : null].filter(Boolean).join(' · '))}
                   </p>
                   {r.description && <p className="mt-3 whitespace-pre-line text-[15px] leading-[1.47]">{tx(r.description)}</p>}
+                  <SelftapeRequestsInfo requests={roleSelftapeRequests(r)} />
                   <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
                     <button
                       type="button"
@@ -322,6 +327,9 @@ function ApplySheet({
     };
   }, [signedIn]);
   const togglePick = (url: string) => setPicked(p => (p.includes(url) ? p.filter(x => x !== url) : [...p, url]));
+  // Vai có yêu cầu self-tape riêng: mỗi yêu cầu 1 link
+  const requests = roleSelftapeRequests(role);
+  const [items, setItems] = useState<SelftapeItem[]>([]);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -344,10 +352,13 @@ function ApplySheet({
   const submit = async () => {
     setError('');
     setAuthRequired(false);
-    if (project.selftape_required && !selftape.trim() && picked.length === 0) return setError('Dự án này bắt buộc gửi self-tape: tick self-tape có sẵn hoặc dán link mới.');
+    const missing = missingRequiredSelftape(role, items);
+    if (missing) return setError(missing);
+    const filled = items.filter(i => i.url.trim());
+    if (project.selftape_required && !selftape.trim() && picked.length === 0 && !filled.length) return setError('Dự án này bắt buộc gửi self-tape: tick self-tape có sẵn hoặc dán link mới.');
     setSubmitting(true);
     try {
-      const r = await applyToRole({ project_id: project.id, role_id: role.id, selftape_url: selftape.trim(), selftape_urls: picked, note: note.trim() });
+      const r = await applyToRole({ project_id: project.id, role_id: role.id, selftape_url: selftape.trim(), selftape_urls: picked, selftape_items: filled, note: note.trim() });
       if (r.ok) setDoneName(r.full_name);
       else {
         setError(r.error);
@@ -431,10 +442,17 @@ function ApplySheet({
               </Link>{tx(' ')}
               {tx("trước khi ứng tuyển nếu cần.")}
             </p>
+            {requests.length > 0 && (
+              <fieldset>
+                <legend className="mb-2 text-[14px] font-semibold">{tx('Self-tape theo yêu cầu của vai')}</legend>
+                <SelftapeRequestsInput requests={requests} library={library} value={items} onChange={setItems} idPrefix="qa-req" />
+              </fieldset>
+            )}
+            {requests.length > 0 && <p className="pt-2 text-[14px] font-semibold">{tx('Self-tape khác (không bắt buộc)')}</p>}
             {library.length > 0 && (
               <fieldset>
                 <legend className="mb-2 text-[14px] font-semibold">
-                  {tx("Chọn self-tape phù hợp với dự án")}{project.selftape_required && <span className="text-[#b00020]"> *</span>}
+                  {tx("Chọn self-tape phù hợp với dự án")}{project.selftape_required && !requests.length && <span className="text-[#b00020]"> *</span>}
                 </legend>
                 <ul className="divide-y divide-[#f0f0f2] rounded-[14px] border border-[#e8e8ed]">
                   {library.map((t, k) => (
@@ -453,7 +471,7 @@ function ApplySheet({
             )}
             <Field
               label={library.length > 0 ? 'Hoặc dán link self-tape mới' : 'Link self-tape'}
-              required={project.selftape_required && library.length === 0}
+              required={project.selftape_required && library.length === 0 && !requests.length}
               htmlFor="qa-tape"
               hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
             >

@@ -193,7 +193,11 @@ export function ProjectEditor({ initial, onSaved }: { initial?: CastingProject; 
         description: r.description?.trim() || '',
         age_min: r.age_min ? Number(r.age_min) : null,
         age_max: r.age_max ? Number(r.age_max) : null,
-        quantity: r.quantity ? Number(r.quantity) : null
+        quantity: r.quantity ? Number(r.quantity) : null,
+        // Bỏ yêu cầu self-tape chưa đặt tên
+        ...(r.selftape_requests?.length
+          ? { selftape_requests: r.selftape_requests.filter(q => q.title.trim()).map(q => ({ ...q, title: q.title.trim(), brief: q.brief.trim() })) }
+          : {})
       }))
     });
     setSaving(false);
