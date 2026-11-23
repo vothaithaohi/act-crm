@@ -132,7 +132,15 @@ export async function importBrevoContacts(
   // Nhập theo từng đợt; không gửi SĐT khi nhập hàng loạt (tránh 1 số trùng làm hỏng cả đợt)
   for (let i = 0; i < rows.length; i += 1000) {
     const r = await call('/contacts/import', {
-      jsonBody: rows.slice(i, i + 1000).map(c => ({ email: c.email, attributes: attributes(c, false) })),
+      // Nhập hàng loạt: mọi giá trị gửi dạng chữ (Brevo tự đổi sang số cho trường số), bỏ ô trống
+      jsonBody: rows.slice(i, i + 1000).map(c => ({
+        email: c.email,
+        attributes: Object.fromEntries(
+          Object.entries(attributes(c, false))
+            .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+            .map(([k, v]) => [k, String(v)])
+        )
+      })),
       listIds: [id],
       updateExistingContacts: true,
       emptyContactsAttributes: false
