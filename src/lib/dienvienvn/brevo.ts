@@ -86,14 +86,14 @@ export function ensureActorAttributes(): Promise<void> {
   return attributesReady;
 }
 
-async function call(path: string, body: unknown, method: 'POST' | 'GET' = 'POST'): Promise<{ ok: boolean; status: number; text: string }> {
+async function call(path: string, body: unknown, method: 'POST' | 'GET' | 'PUT' = 'POST'): Promise<{ ok: boolean; status: number; text: string }> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), path === '/contacts/import' ? 20000 : 6000);
   try {
     const res = await fetch(`${API}${path}`, {
       method,
       headers: { 'api-key': process.env.BREVO_API_KEY as string, 'content-type': 'application/json', accept: 'application/json' },
-      ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
+      ...(method !== 'GET' ? { body: JSON.stringify(body) } : {}),
       signal: ctrl.signal
     });
     return { ok: res.ok, status: res.status, text: await res.text().catch(() => '') };
@@ -105,10 +105,11 @@ async function call(path: string, body: unknown, method: 'POST' | 'GET' = 'POST'
 }
 
 /** Thêm / cập nhật 1 liên hệ vào danh sách của nhóm. Không bao giờ ném lỗi (đăng ký vẫn thành công). */
-export async function syncBrevoContact(audience: BrevoAudience, c: BrevoContact): Promise<void> {
+export async function syncBrevoContact(audience: BrevoAudience, c: BrevoContact, extraListIds: number[] = []): Promise<void> {
   if (!brevoReady() || !c.email) return;
   const id = listId(audience);
-  const body = (withPhone: boolean) => ({ email: c.email.trim().toLowerCase(), attributes: attributes(c, withPhone), updateEnabled: true, ...(id ? { listIds: [id] } : {}) });
+  const lists = Array.from(new Set([...(id ? [id] : []), ...extraListIds]));
+  const body = (withPhone: boolean) => ({ email: c.email.trim().toLowerCase(), attributes: attributes(c, withPhone), updateEnabled: true, ...(lists.length ? { listIds: lists } : {}) });
   let r = await call('/contacts', body(true));
   // Số điện thoại trùng với liên hệ khác / sai định dạng → lưu không kèm SĐT
   if (!r.ok && /SMS|phone/i.test(r.text)) r = await call('/contacts', body(false));
@@ -172,4 +173,75 @@ export async function brevoProcessStatus(ids: number[]): Promise<{ id: number; s
       }
     })
   );
+}
+
+/* ---------------- Danh sách riêng theo dự án: "Ứng tuyển DV-10 – Dragon Back (HCM)" ---------------- */
+
+const PROJECT_FOLDER = 'DienVienVN · Ứng tuyển theo dự án';
+let folderPromise: Promise<number | null> | null = null;
+const projectLists = new Map<string, number>();
+
+const parse = <T,>(text: string): T | null => {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+};
+
+/** Thư mục chứa các danh sách dự án (tạo nếu chưa có). */
+function projectFolder(): Promise<number | null> {
+  folderPromise ||= (async () => {
+    for (let offset = 0; offset < 500; offset += 50) {
+      const r = await call(`/contacts/folders?limit=50&offset=${offset}`, null, 'GET');
+      const j = parse<{ folders?: { id: number; name: string }[] }>(r.text);
+      const hit = j?.folders?.find(f => f.name === PROJECT_FOLDER);
+      if (hit) return hit.id;
+      if (!j?.folders || j.folders.length < 50) break;
+    }
+    const c = await call('/contacts/folders', { name: PROJECT_FOLDER });
+    return parse<{ id?: number }>(c.text)?.id || null;
+  })().then(id => {
+    if (!id) folderPromise = null;
+    return id;
+  });
+  return folderPromise;
+}
+
+export const projectListName = (code: string, title: string) => `Ứng tuyển ${code} – ${title}`.slice(0, 150);
+
+/** Mã danh sách Brevo của 1 dự án (tìm theo mã dự án; chưa có thì tạo; đổi tên dự án thì đổi tên danh sách). */
+export async function ensureProjectList(code: string, title: string): Promise<number | null> {
+  if (!brevoReady() || !code) return null;
+  const cached = projectLists.get(code);
+  if (cached) return cached;
+  const name = projectListName(code, title);
+  const prefix = `Ứng tuyển ${code} –`;
+  for (let offset = 0; offset < 2000; offset += 50) {
+    const r = await call(`/contacts/lists?limit=50&offset=${offset}`, null, 'GET');
+    const j = parse<{ lists?: { id: number; name: string }[] }>(r.text);
+    const hit = j?.lists?.find(l => l.name === name || l.name.startsWith(prefix));
+    if (hit) {
+      if (hit.name !== name) await call(`/contacts/lists/${hit.id}`, { name }, 'PUT');
+      projectLists.set(code, hit.id);
+      return hit.id;
+    }
+    if (!j?.lists || j.lists.length < 50) break;
+  }
+  const folderId = await projectFolder();
+  if (!folderId) return null;
+  const c = await call('/contacts/lists', { name, folderId });
+  const id = parse<{ id?: number }>(c.text)?.id || null;
+  if (id) projectLists.set(code, id);
+  else console.error('[dienvienvn] Brevo: chưa tạo được danh sách dự án', code, c.status, c.text.slice(0, 160));
+  return id;
+}
+
+/** Đưa email những người đã ứng tuyển vào danh sách của dự án (nhập ngầm trên Brevo). */
+export async function importProjectList(listIdValue: number, emails: string[]): Promise<{ ok: boolean; processId?: number; error?: string }> {
+  const rows = Array.from(new Set(emails.map(e => (e || '').trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))));
+  if (!rows.length) return { ok: true };
+  const r = await call('/contacts/import', { jsonBody: rows.map(email => ({ email })), listIds: [listIdValue], updateExistingContacts: true, emptyContactsAttributes: false });
+  if (!r.ok) return { ok: false, error: `Brevo báo lỗi (${r.status}): ${r.text.slice(0, 160)}` };
+  return { ok: true, processId: Number(parse<{ processId?: number }>(r.text)?.processId) || undefined };
 }

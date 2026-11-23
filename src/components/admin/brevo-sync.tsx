@@ -40,7 +40,7 @@ export function BrevoSyncMenu() {
       } catch {
         /* bỏ qua */
       }
-      const msg = `Diễn viên ${r.actor} (${b.withProjects ?? 0} người đã ứng tuyển dự án) · Nhà sản xuất ${r.partner} · Ekip ${r.crew}`;
+      const msg = `Diễn viên ${r.actor} (${b.withProjects ?? 0} người đã ứng tuyển dự án) · ${b.projectLists ?? 0} danh sách dự án · Nhà sản xuất ${r.partner} · Ekip ${r.crew}`;
       if (b.errors?.length) return void toast.warning('Đồng bộ chưa hết', { description: `${msg}. ${b.errors.join(' ')}`, duration: 20000 });
       toast.info('Đã gửi sang Brevo, Brevo đang nhập…', { description: `${msg}. Vui lòng đợi, sẽ báo khi Brevo nhập xong.`, duration: 15000 });
       // Brevo nhập ngầm: hỏi tiến độ mỗi 5 giây, tối đa 5 phút

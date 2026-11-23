@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
-import { BrevoContact, brevoProcessStatus, ensureActorAttributes, importBrevoContacts } from '@/lib/dienvienvn/brevo';
+import { BrevoContact, brevoProcessStatus, ensureActorAttributes, ensureProjectList, importBrevoContacts, importProjectList } from '@/lib/dienvienvn/brevo';
 import { loadActorBrevoContacts } from '@/lib/dienvienvn/brevo-actor';
 import { isTestAccount } from '@/lib/dienvienvn/test-accounts';
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     return out;
   };
   const notTest = (c: BrevoContact) => !!c.email && !/\+dvvn-test-/i.test(c.email) && !isTestAccount({ full_name: c.name, email: c.email });
-  const [actorContacts, partners, crews] = await Promise.all([
+  const [{ contacts: actorContacts, groups }, partners, crews] = await Promise.all([
     loadActorBrevoContacts(db),
     pageAll('partner_accounts', 'email, full_name, phone'),
     pageAll('crew_profiles', 'public_email, full_name, public_phone')
@@ -52,12 +52,29 @@ export async function POST(req: NextRequest) {
     if (data.users.length < 1000) break;
   }
   const [a, p, c] = [await importBrevoContacts('actor', actor), await importBrevoContacts('partner', partner), await importBrevoContacts('crew', crew)];
-  const errors = [a.error, p.error, c.error].filter(Boolean);
+  // Danh sách riêng từng dự án: "Ứng tuyển DV-10 – Dragon Back (HCM)"
+  const projectIds: number[] = [];
+  let projectLists = 0;
+  const listErrors: string[] = [];
+  for (const gr of groups) {
+    const lid = await ensureProjectList(gr.code, gr.title);
+    if (!lid) {
+      listErrors.push(`Chưa tạo được danh sách Brevo cho ${gr.code}.`);
+      continue;
+    }
+    const r = await importProjectList(lid, gr.emails);
+    if (!r.ok) listErrors.push(`${gr.code}: ${r.error}`);
+    else {
+      projectLists++;
+      if (r.processId) projectIds.push(r.processId);
+    }
+  }
+  const errors = [a.error, p.error, c.error, ...listErrors].filter(Boolean);
   // Số diễn viên có ít nhất 1 dự án đã ứng tuyển (để đối chiếu với bộ lọc DU_AN_UNG_TUYEN trên Brevo)
   const withProjects = actor.filter(x => x.extra?.DU_AN_UNG_TUYEN).length;
-  const processIds = [...(a.processIds || []), ...(p.processIds || []), ...(c.processIds || [])];
+  const processIds = [...(a.processIds || []), ...(p.processIds || []), ...(c.processIds || []), ...projectIds];
   return NextResponse.json(
-    { ok: !errors.length, actor: a.count, partner: p.count, crew: c.count, withProjects, processIds, errors },
+    { ok: !errors.length, actor: a.count, partner: p.count, crew: c.count, withProjects, projectLists, processIds, errors },
     { status: errors.length ? 207 : 200 }
   );
 }

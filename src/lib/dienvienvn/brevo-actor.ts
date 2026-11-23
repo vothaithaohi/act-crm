@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TalentProfile, getReviewStatus } from '@/lib/types/crm';
-import { BrevoContact, ensureActorAttributes, syncBrevoContact } from './brevo';
+import { BrevoContact, ensureActorAttributes, ensureProjectList, syncBrevoContact } from './brevo';
 import { provinceLabel } from './provinces';
 import { isTestAccount } from './test-accounts';
 
@@ -81,14 +81,19 @@ export async function syncActorToBrevo(db: SupabaseClient, talentId: string): Pr
     const map = new Map(((projects || []) as Project[]).map(p => [p.id, p]));
     await ensureActorAttributes();
     const contact: BrevoContact = { email: t.email, name: t.full_name, phone: t.phone, extra: actorBrevoExtra(t, (apps || []) as Application[], map) };
-    await syncBrevoContact('actor', contact);
+    // Thêm vào danh sách riêng của từng dự án đã ứng tuyển
+    const projectListIds = (await Promise.all(Array.from(map.values()).map(p => ensureProjectList(p.code, p.title)))).filter((x): x is number => !!x);
+    await syncBrevoContact('actor', contact, projectListIds);
   } catch (e) {
     console.error('[dienvienvn] Brevo: lỗi cập nhật diễn viên', e);
   }
 }
 
 /** Dữ liệu cho nút "Đồng bộ Brevo" (toàn bộ diễn viên kèm trường lọc). */
-export async function loadActorBrevoContacts(db: SupabaseClient): Promise<BrevoContact[]> {
+export type ProjectGroup = { code: string; title: string; emails: string[] };
+
+/** Dữ liệu cho nút "Đồng bộ Brevo": diễn viên kèm trường lọc + người ứng tuyển theo từng dự án. */
+export async function loadActorBrevoContacts(db: SupabaseClient): Promise<{ contacts: BrevoContact[]; groups: ProjectGroup[] }> {
   const page = async <T,>(table: string, cols: string): Promise<T[]> => {
     const out: T[] = [];
     for (let from = 0; from < 50_000; from += 1000) {
@@ -107,5 +112,15 @@ export async function loadActorBrevoContacts(db: SupabaseClient): Promise<BrevoC
     page<Project>('casting_projects', 'id, code, title, roles')
   ]);
   const map = new Map(projects.map(p => [p.id, p]));
-  return talents.map(t => ({ email: t.email || '', name: t.full_name, phone: t.phone, extra: actorBrevoExtra(t, apps, map) }));
+  const contacts = talents.map(t => ({ email: t.email || '', name: t.full_name, phone: t.phone, extra: actorBrevoExtra(t, apps, map) }));
+  const emailOf = new Map(talents.filter(t => t.email && !/\+dvvn-test-/i.test(t.email) && !isTestAccount({ full_name: t.full_name, email: t.email })).map(t => [t.id, t.email]));
+  const byProject = new Map<string, Set<string>>();
+  for (const a of apps) {
+    const e = emailOf.get(a.talent_id);
+    if (!e || !map.has(a.project_id)) continue;
+    if (!byProject.has(a.project_id)) byProject.set(a.project_id, new Set());
+    byProject.get(a.project_id)!.add(e);
+  }
+  const groups = Array.from(byProject.entries()).map(([pid, set]) => ({ code: map.get(pid)!.code, title: map.get(pid)!.title, emails: Array.from(set) }));
+  return { contacts, groups };
 }
