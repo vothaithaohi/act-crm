@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, ImagePlus, Link2, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, FileText, ImagePlus, Link2, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { MAX_SELFTAPE_REQUESTS, ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGender, RoleTier, SelftapeRequest, genderLabel, roleTierLabel } from '@/lib/projects/types';
 import { AcademyMarkdown } from '@/components/dienvienvn/academy-markdown';
 import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
+import { PDF_MAX_PAGES, pdfToImages } from '@/lib/pdf-to-images';
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-foreground transition-colors';
 const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
@@ -382,6 +383,7 @@ function RoleImagesField({ images, onChange, disabled }: { images: string[]; onC
 function SelftapeRequestsField({ requests, onChange, disabled }: { requests: SelftapeRequest[]; onChange: (v: SelftapeRequest[]) => void; disabled: boolean }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [pdfProgress, setPdfProgress] = useState<{ id: string; text: string } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
   const set = (id: string, patch: Partial<SelftapeRequest>) => onChange(requests.map(q => (q.id === id ? { ...q, ...patch } : q)));
   const add = () => onChange([...requests, { id: crypto.randomUUID().slice(0, 8), title: '', brief: '', required: true }]);
@@ -410,6 +412,26 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
       window.alert((e as Error).message || 'Không tải được ảnh.');
     } finally {
       setUploading(null);
+    }
+  };
+  /** PDF (kịch bản, hướng dẫn…) → ảnh từng trang, tải lên rồi chèn vào mô tả */
+  const uploadPdf = async (q: SelftapeRequest, file: File) => {
+    if (file.size > 30 * 1024 * 1024) return void window.alert('File PDF quá lớn (tối đa 30MB).');
+    setPdfProgress({ id: q.id, text: 'Đang đọc PDF…' });
+    try {
+      const pages = await pdfToImages(file, (done, total) => setPdfProgress({ id: q.id, text: `Đang chuyển trang ${done}/${total}…` }));
+      const urls: string[] = [];
+      for (let i = 0; i < pages.length; i++) {
+        setPdfProgress({ id: q.id, text: `Đang tải ảnh ${i + 1}/${pages.length}…` });
+        urls.push(await uploadPublicImage(pages[i], 'role'));
+      }
+      const name = file.name.replace(/\.pdf$/i, '');
+      insert(q, `\n\n${urls.map((u, i) => `![${name}${urls.length > 1 ? ` - trang ${i + 1}` : ''}](${u})`).join('\n\n')}\n\n`);
+    } catch (e) {
+      console.error(e);
+      window.alert('Không đọc được file PDF này. Hãy thử xuất lại PDF hoặc tải ảnh lên.');
+    } finally {
+      setPdfProgress(null);
     }
   };
   return (
@@ -473,6 +495,23 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
                     {uploading === q.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />} Ảnh
                     <input type="file" accept="image/*" className="sr-only" onChange={e => e.target.files?.[0] && uploadImage(q, e.target.files[0])} />
                   </label>
+                  <label
+                    title={`Tải file PDF: tự chuyển thành ảnh từng trang (tối đa ${PDF_MAX_PAGES} trang) rồi chèn vào mô tả`}
+                    className="h-7 px-2 inline-flex cursor-pointer items-center gap-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+                  >
+                    {pdfProgress?.id === q.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} PDF
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      className="sr-only"
+                      disabled={!!pdfProgress}
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (f) void uploadPdf(q, f);
+                      }}
+                    />
+                  </label>
                 </>
               )}
               <button
@@ -484,6 +523,7 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
               </button>
             </div>
           </div>
+          {pdfProgress?.id === q.id && <p className="text-[11px] font-semibold text-sky-700">{pdfProgress.text}</p>}
           {preview === q.id ? (
             <div className="rounded-lg border bg-white p-4 text-sm">{q.brief.trim() ? <AcademyMarkdown content={q.brief} /> : <p className="text-muted-foreground">Chưa có mô tả.</p>}</div>
           ) : (
