@@ -9,7 +9,13 @@ import 'server-only';
  * Chưa cấu hình thì bỏ qua (không ảnh hưởng đăng ký).
  */
 export type BrevoAudience = 'actor' | 'partner' | 'crew';
-export type BrevoContact = { email: string; name?: string | null; phone?: string | null };
+export type BrevoContact = {
+  email: string;
+  name?: string | null;
+  phone?: string | null;
+  /** Thông tin thêm để lọc trên Brevo (giới tính, đã học ACT, dự án đã ứng tuyển…) */
+  extra?: Record<string, string | number>;
+};
 
 const LIST_ENV: Record<BrevoAudience, string> = { actor: 'BREVO_LIST_ACTOR', partner: 'BREVO_LIST_PARTNER', crew: 'BREVO_LIST_CREW' };
 const API = 'https://api.brevo.com/v3';
@@ -37,12 +43,52 @@ function attributes(c: BrevoContact, withPhone: boolean): Record<string, string>
   if (c.name?.trim()) out.FIRSTNAME = c.name.trim();
   const p = withPhone ? intlPhone(c.phone) : null;
   if (p) out.SMS = p;
-  return out;
+  return { ...out, ...(c.extra as Record<string, string>) };
+}
+
+/**
+ * Các trường lọc của diễn viên trên Brevo (tự tạo nếu chưa có). Brevo: Contacts → lọc theo trường, hoặc tạo Segment.
+ * text: lọc "chứa / bằng"; float: lọc lớn hơn / nhỏ hơn.
+ */
+export const ACTOR_BREVO_ATTRIBUTES: Record<string, 'text' | 'float'> = {
+  GIOI_TINH: 'text',
+  NAM_SINH: 'float',
+  TUOI: 'float',
+  TINH_THANH: 'text',
+  CHIEU_CAO: 'float',
+  CO_KINH_NGHIEM: 'text',
+  SO_DU_AN_DA_DONG: 'float',
+  HOC_ACT: 'text',
+  CAP_DO_ACT: 'text',
+  GIONG_VUNG_MIEN: 'text',
+  NGOAI_NGU: 'text',
+  TRANG_THAI_HO_SO: 'text',
+  HIEN_CONG_KHAI: 'text',
+  NGUON_HO_SO: 'text',
+  SO_LAN_UNG_TUYEN: 'float',
+  DU_AN_UNG_TUYEN: 'text',
+  VAI_UNG_TUYEN: 'text'
+};
+
+let attributesReady: Promise<void> | null = null;
+/** Tạo các trường lọc trên Brevo (1 lần mỗi lần máy chủ khởi động; trường đã có thì Brevo báo trùng, bỏ qua). */
+export function ensureActorAttributes(): Promise<void> {
+  if (!brevoReady()) return Promise.resolve();
+  attributesReady ||= Promise.all(
+    Object.entries(ACTOR_BREVO_ATTRIBUTES).map(([name, type]) => call(`/contacts/attributes/normal/${name}`, { type }))
+  ).then(rs => {
+    const bad = rs.filter(r => !r.ok && !/already|exist|duplicate|unique/i.test(r.text));
+    if (bad.length) {
+      console.error('[dienvienvn] Brevo: chưa tạo được trường lọc:', bad.map(b => `${b.status} ${b.text.slice(0, 120)}`).join(' | '));
+      attributesReady = null; // lần sau thử lại
+    }
+  });
+  return attributesReady;
 }
 
 async function call(path: string, body: unknown): Promise<{ ok: boolean; status: number; text: string }> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 4000);
+  const timer = setTimeout(() => ctrl.abort(), path === '/contacts/import' ? 20000 : 6000);
   try {
     const res = await fetch(`${API}${path}`, {
       method: 'POST',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardPartnerAdmin } from '@/lib/dienvienvn/partner-admin';
-import { BrevoContact, importBrevoContacts } from '@/lib/dienvienvn/brevo';
+import { BrevoContact, ensureActorAttributes, importBrevoContacts } from '@/lib/dienvienvn/brevo';
+import { loadActorBrevoContacts } from '@/lib/dienvienvn/brevo-actor';
 import { isTestAccount } from '@/lib/dienvienvn/test-accounts';
 
 // Super Admin: đưa toàn bộ email đã đăng ký (diễn viên, NSX, ekip — kể cả tài khoản ekip chưa điền hồ sơ) sang 3 danh sách Brevo.
@@ -26,12 +27,14 @@ export async function POST(req: NextRequest) {
     return out;
   };
   const notTest = (c: BrevoContact) => !!c.email && !/\+dvvn-test-/i.test(c.email) && !isTestAccount({ full_name: c.name, email: c.email });
-  const [talents, partners, crews] = await Promise.all([
-    pageAll('talent_profiles', 'email, full_name, phone'),
+  const [actorContacts, partners, crews] = await Promise.all([
+    loadActorBrevoContacts(db),
     pageAll('partner_accounts', 'email, full_name, phone'),
     pageAll('crew_profiles', 'public_email, full_name, public_phone')
   ]);
-  const actor = talents.map(t => ({ email: t.email || '', name: t.full_name, phone: t.phone })).filter(notTest);
+  // Diễn viên kèm trường lọc (giới tính, đã học ACT, dự án / vai đã ứng tuyển…)
+  const actor = actorContacts.filter(notTest);
+  await ensureActorAttributes();
   const partner = partners.map(p => ({ email: p.email || '', name: p.full_name, phone: p.phone })).filter(notTest);
   const crew = crews.map(c => ({ email: c.public_email || '', name: c.full_name, phone: c.public_phone })).filter(notTest);
   // Tài khoản ekip đã đăng ký nhưng chưa điền hồ sơ ekip (chỉ có tài khoản đăng nhập)

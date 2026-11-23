@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
+import { syncActorToBrevo } from '@/lib/dienvienvn/brevo-actor';
 import { castingDraftSchema, describeDraftIssue } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, talentToDraft, validateStep } from '@/lib/dienvienvn/casting-form';
 import { getActor, isSuperAdminUser, writeTalent } from '@/lib/dienvienvn/actor-server';
@@ -110,6 +111,8 @@ export async function PUT(req: NextRequest) {
     console.error('[dienvienvn] Không cập nhật được hồ sơ:', error);
     return NextResponse.json({ error: 'Hệ thống đang bận, thay đổi chưa được lưu. Vui lòng thử lại.' }, { status: 500 });
   }
+  // Cập nhật trường lọc trên Brevo (giới tính, tỉnh thành, kinh nghiệm…)
+  after(() => syncActorToBrevo(db, talent.id));
   return NextResponse.json({ ok: true });
 }
 

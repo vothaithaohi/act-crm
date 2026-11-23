@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
+import { syncActorToBrevo } from '@/lib/dienvienvn/brevo-actor';
 import { z } from 'zod';
 import { getActor } from '@/lib/dienvienvn/actor-server';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
@@ -61,6 +62,9 @@ export async function POST(req: NextRequest) {
     console.error('[dienvienvn] Không lưu được đơn ứng tuyển:', error);
     return NextResponse.json({ error: 'Hệ thống đang bận, vui lòng thử lại.' }, { status: 500 });
   }
+  // Brevo: thêm dự án / vai vừa ứng tuyển vào trường lọc của diễn viên
+  const talentId = actor.talent.id;
+  after(() => syncActorToBrevo(db, talentId));
   return NextResponse.json({ ok: true, full_name: actor.talent.full_name });
 }
 
