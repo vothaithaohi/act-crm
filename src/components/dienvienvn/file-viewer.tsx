@@ -56,7 +56,7 @@ export function FileViewer({ file, onClose }: { file: Viewable; onClose: () => v
     };
   }, [onClose]);
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex flex-col bg-black/85 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label={file.title}>
+    <div data-file-viewer className="fixed inset-0 z-[90] flex flex-col bg-black/85 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label={file.title}>
       <div className="flex items-center gap-3 px-4 py-3 text-white" onClick={e => e.stopPropagation()}>
         <p className="min-w-0 flex-1 truncate text-[15px] font-semibold">{file.title}</p>
         <a href={file.href} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[13px] hover:bg-white/25">

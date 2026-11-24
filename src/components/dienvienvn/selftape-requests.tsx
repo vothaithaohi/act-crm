@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown, Video } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronRight, Video, X } from 'lucide-react';
 import type { SelftapeItem, SelftapeRequest } from '@/lib/projects/types';
 import type { SelfTape } from '@/lib/dienvienvn/selftapes';
 import { AcademyMarkdown } from './academy-markdown';
@@ -10,23 +11,58 @@ import { useTx } from './i18n';
 
 // Yêu cầu self-tape theo vai: xem mô tả chuẩn (chữ, ảnh, link) và nộp mỗi yêu cầu 1 link.
 
-function Brief({ text, defaultOpen = false }: { text: string; defaultOpen?: boolean }) {
+/** "Xem yêu cầu chi tiết": mở popup giữa màn hình (điện thoại: toàn màn hình) với mô tả đầy đủ. */
+function Brief({ q }: { q: SelftapeRequest }) {
   const tx = useTx();
-  const [open, setOpen] = useState(defaultOpen);
-  // Link kịch bản (Drive, Docs, PDF), video YouTube, ảnh: mở popup ngay trên trang
+  const [open, setOpen] = useState(false);
+  // Link kịch bản (Drive, Docs, PDF), video YouTube, ảnh trong mô tả: mở popup xem file, không chuyển trang
   const { overrides, viewer } = usePopupMarkdown();
-  if (!text.trim()) return null;
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('[data-file-viewer]') && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+  if (!q.brief.trim()) return null;
   return (
     <div className="mt-1">
-      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} className="inline-flex items-center gap-1 text-[14px] font-semibold text-[var(--dv-text)] hover:underline">
-        {tx(open ? 'Ẩn yêu cầu' : 'Xem yêu cầu chi tiết')}
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1 text-[14px] font-semibold text-[var(--dv-text)] hover:underline">
+        {tx('Xem yêu cầu chi tiết')}
+        <ChevronRight className="h-4 w-4" />
       </button>
-      {open && (
-        <div className="mt-2 rounded-[12px] bg-[var(--dv-bg-alt)] p-4 [&_p]:!mt-3 [&_p]:!text-[15px] [&_li]:!text-[15px] [&_h2]:!mt-4 [&_h2]:!text-[19px] [&_h3]:!mt-4 [&_h3]:!text-[17px]">
-          <AcademyMarkdown content={text} overrides={overrides} />
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50 backdrop-blur-[2px] sm:items-center sm:p-6" onClick={() => setOpen(false)}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={q.title}
+              onClick={e => e.stopPropagation()}
+              className="dv-pop flex h-[100dvh] w-full flex-col bg-white sm:h-auto sm:max-h-[88vh] sm:max-w-[720px] sm:rounded-[22px]"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-[#f0f0f2] px-5 py-4 sm:px-7">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[var(--dv-text-secondary)]">
+                    {tx('Yêu cầu self-tape')} · {tx(q.required ? 'Bắt buộc' : 'Không bắt buộc')}
+                  </p>
+                  <h2 className="dv-display mt-0.5 text-[22px] font-semibold leading-[1.2]">{q.title}</h2>
+                </div>
+                <button type="button" onClick={() => setOpen(false)} aria-label={tx('Đóng')} className="-mr-1 shrink-0 rounded-full p-2 text-[var(--dv-text-secondary)] hover:bg-[var(--dv-bg-alt)]">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4 sm:px-7 [&_p]:!text-[16px] [&_li]:!text-[16px]">
+                <AcademyMarkdown content={q.brief} overrides={overrides} />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       {viewer}
     </div>
   );
@@ -50,7 +86,7 @@ export function SelftapeRequestsInfo({ requests }: { requests: SelftapeRequest[]
               </span>{' '}
               <span className="text-[13px] text-[var(--dv-text-secondary)]">· {tx(q.required ? 'Bắt buộc' : 'Không bắt buộc')}</span>
             </p>
-            <Brief text={q.brief} />
+            <Brief q={q} />
           </li>
         ))}
       </ol>
@@ -83,7 +119,7 @@ export function SelftapeRequestsInput({
             {i + 1}. {q.title}
             {q.required ? <span className="text-[#b00020]"> *</span> : <span className="text-[13px] font-normal text-[var(--dv-text-secondary)]"> · {tx('Không bắt buộc')}</span>}
           </p>
-          <Brief text={q.brief} />
+          <Brief q={q} />
           <input
             id={`${idPrefix}-${q.id}`}
             type="url"
