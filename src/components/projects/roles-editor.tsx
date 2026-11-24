@@ -6,6 +6,8 @@ import { MAX_SELFTAPE_REQUESTS, ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGe
 import { AcademyMarkdown } from '@/components/dienvienvn/academy-markdown';
 import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
 import { PDF_MAX_PAGES, pdfToImages } from '@/lib/pdf-to-images';
+import { uploadBriefPdf } from '@/lib/upload-brief-pdf';
+import { usePopupMarkdown } from '@/components/dienvienvn/file-viewer';
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-foreground transition-colors';
 const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
@@ -382,6 +384,8 @@ function RoleImagesField({ images, onChange, disabled }: { images: string[]; onC
 /** Yêu cầu self-tape của vai: mỗi yêu cầu có tên, mô tả chuẩn (chữ + ảnh + link, Markdown), bắt buộc hay không. */
 function SelftapeRequestsField({ requests, onChange, disabled }: { requests: SelftapeRequest[]; onChange: (v: SelftapeRequest[]) => void; disabled: boolean }) {
   const [preview, setPreview] = useState<string | null>(null);
+  // Xem trước giống trang diễn viên (khung PDF, popup xem file)
+  const { overrides, viewer } = usePopupMarkdown();
   const [uploading, setUploading] = useState<string | null>(null);
   const [pdfProgress, setPdfProgress] = useState<{ id: string; text: string } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
@@ -426,7 +430,21 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
         urls.push(await uploadPublicImage(pages[i], 'role'));
       }
       const name = file.name.replace(/\.pdf$/i, '');
-      insert(q, `\n\n${urls.map((u, i) => `![${name}${urls.length > 1 ? ` - trang ${i + 1}` : ''}](${u})`).join('\n\n')}\n\n`);
+      // File gốc để diễn viên bấm "Tải PDF" về in
+      setPdfProgress({ id: q.id, text: 'Đang lưu file PDF gốc…' });
+      let pdfUrl: string | null = null;
+      try {
+        pdfUrl = await uploadBriefPdf(file);
+      } catch (e) {
+        console.error(e);
+      }
+      if (pdfUrl) {
+        // Khung tài liệu: [Tên.pdf](link PDF "pdf-pages:ảnh trang 1|ảnh trang 2…")
+        insert(q, `\n\n[${name.replace(/[[\]"]/g, ' ')}.pdf](${pdfUrl} "pdf-pages:${urls.join('|')}")\n\n`);
+      } else {
+        insert(q, `\n\n${urls.map((u, i) => `![${name}${urls.length > 1 ? ` - trang ${i + 1}` : ''}](${u})`).join('\n\n')}\n\n`);
+        window.alert('Đã chèn các trang PDF dạng ảnh, nhưng chưa lưu được file PDF gốc nên chưa có nút Tải PDF.');
+      }
     } catch (e) {
       console.error(e);
       window.alert('Không đọc được file PDF này. Hãy thử xuất lại PDF hoặc tải ảnh lên.');
@@ -447,6 +465,7 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
           </button>
         )}
       </div>
+      {viewer}
       {requests.map((q, i) => (
         <div key={q.id} className="rounded-lg border p-3 space-y-2 bg-muted/20">
           <div className="flex items-center gap-2">
@@ -525,7 +544,9 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
           </div>
           {pdfProgress?.id === q.id && <p className="text-[11px] font-semibold text-sky-700">{pdfProgress.text}</p>}
           {preview === q.id ? (
-            <div className="rounded-lg border bg-white p-4 text-sm">{q.brief.trim() ? <AcademyMarkdown content={q.brief} /> : <p className="text-muted-foreground">Chưa có mô tả.</p>}</div>
+            <div className="rounded-lg border bg-white p-4 text-sm">
+              {q.brief.trim() ? <AcademyMarkdown content={q.brief} overrides={overrides} /> : <p className="text-muted-foreground">Chưa có mô tả.</p>}
+            </div>
           ) : (
             <textarea
               ref={el => {

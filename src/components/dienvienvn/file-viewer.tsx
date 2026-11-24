@@ -2,14 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ExternalLink, X } from 'lucide-react';
+import { Download, ExternalLink, FileText, Maximize2, X } from 'lucide-react';
 import type { Components } from 'react-markdown';
 import { useTx } from './i18n';
 
 // Xem file ngay trên trang (popup toàn màn hình): Google Drive / Docs / Sheets / Slides, PDF, YouTube, ảnh.
 // Không chuyển trang sang Drive; vẫn có nút "Mở tab mới" khi cần.
 
-export type Viewable = { kind: 'frame' | 'image'; src: string; title: string; href: string };
+export type Viewable = { kind: 'frame' | 'image' | 'pages'; src: string; title: string; href: string; pages?: string[]; download?: string };
+
+/** Link tải về (Supabase Storage: ?download= buộc trình duyệt tải file thay vì mở). */
+export const downloadHref = (url: string, name: string) =>
+  /supabase\.co\/storage\//.test(url) ? `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(name)}` : url;
+
+/** Tài liệu PDF trong mô tả: link có title "pdf-pages:ảnh1|ảnh2…" (ảnh từng trang, tạo sẵn khi Admin tải PDF). */
+export function parsePdfLink(href: string | undefined, title: string | undefined | null): { url: string; pages: string[] } | null {
+  if (!href) return null;
+  if (title && title.startsWith('pdf-pages:')) return { url: href, pages: title.slice(10).split('|').filter(Boolean) };
+  return null;
+}
 
 /** Link xem được trong popup → địa chỉ nhúng; link thường → null (mở tab mới như bình thường). */
 export function toViewable(href: string, title = ''): Viewable | null {
@@ -59,15 +70,33 @@ export function FileViewer({ file, onClose }: { file: Viewable; onClose: () => v
     <div data-file-viewer className="fixed inset-0 z-[90] flex flex-col bg-black/85 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label={file.title}>
       <div className="flex items-center gap-3 px-4 py-3 text-white" onClick={e => e.stopPropagation()}>
         <p className="min-w-0 flex-1 truncate text-[15px] font-semibold">{file.title}</p>
-        <a href={file.href} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[13px] hover:bg-white/25">
-          <ExternalLink className="h-4 w-4" /> {tx('Mở tab mới')}
-        </a>
+        {file.download ? (
+          <a href={downloadHref(file.download, file.title)} download={file.title} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-semibold text-[#1d1d1f] hover:bg-white/90">
+            <Download className="h-4 w-4" /> {tx('Tải PDF')}
+          </a>
+        ) : (
+          <a href={file.href} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[13px] hover:bg-white/25">
+            <ExternalLink className="h-4 w-4" /> {tx('Mở tab mới')}
+          </a>
+        )}
         <button type="button" onClick={onClose} aria-label={tx('Đóng')} className="shrink-0 rounded-full bg-white/15 p-2 hover:bg-white/25">
           <X className="h-5 w-5" />
         </button>
       </div>
       <div className="min-h-0 flex-1 px-2 pb-2 sm:px-6 sm:pb-6" onClick={e => e.stopPropagation()}>
-        {file.kind === 'image' ? (
+        {file.kind === 'pages' ? (
+          <div className="mx-auto h-full max-w-[900px] space-y-4 overflow-y-auto pb-6" onClick={onClose}>
+            {(file.pages || []).map((u, i) => (
+              <figure key={u} className="relative" onClick={e => e.stopPropagation()}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={u} alt={`${file.title} – trang ${i + 1}`} loading={i < 2 ? 'eager' : 'lazy'} className="w-full rounded-[6px] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.35)]" />
+                <figcaption className="mt-1.5 text-center text-[12px] text-white/60">
+                  {i + 1} / {(file.pages || []).length}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        ) : file.kind === 'image' ? (
           <div className="flex h-full items-center justify-center overflow-auto" onClick={onClose}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={file.src} alt={file.title} className="max-h-full max-w-full rounded-[10px] object-contain" onClick={e => e.stopPropagation()} />
@@ -81,12 +110,54 @@ export function FileViewer({ file, onClose }: { file: Viewable; onClose: () => v
   );
 }
 
+/**
+ * Khung tài liệu PDF trong mô tả: tên file, số trang, các trang xem ngay (cuộn), nút Toàn màn hình và Tải PDF.
+ * Toàn bộ là thẻ inline (span) để nằm hợp lệ trong đoạn văn Markdown.
+ */
+export function PdfDocBlock({ name, url, pages, onOpen }: { name: string; url: string; pages: string[]; onOpen: (v: Viewable) => void }) {
+  const tx = useTx();
+  const fileName = /\.pdf$/i.test(name) ? name : `${name}.pdf`;
+  const open = () => onOpen({ kind: 'pages', src: url, href: url, title: fileName, pages, download: url });
+  return (
+    <span className="not-prose my-4 block overflow-hidden rounded-[16px] border border-[#e5e5ea] bg-[#f5f5f7]">
+      <span className="flex items-center gap-3 border-b border-[#e5e5ea] bg-white px-4 py-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#fdecea] text-[#d93025]">
+          <FileText className="h-[18px] w-[18px]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold text-[#1d1d1f]">{fileName}</span>
+          <span className="block text-[12px] text-[#86868b]">{tx(`PDF · ${pages.length} trang`)}</span>
+        </span>
+        <button type="button" onClick={open} title={tx('Xem toàn màn hình')} aria-label={tx('Xem toàn màn hình')} className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#1d1d1f] hover:bg-[#f0f0f2] sm:inline-flex">
+          <Maximize2 className="h-4 w-4" />
+        </button>
+        <a href={downloadHref(url, fileName)} download={fileName} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[#1d1d1f] px-4 text-[13px] font-semibold !text-white !no-underline hover:bg-black">
+          <Download className="h-4 w-4" /> {tx('Tải PDF')}
+        </a>
+      </span>
+      <span className="block max-h-[420px] space-y-3 overflow-y-auto p-3 sm:p-4">
+        {pages.map((u, i) => (
+          <button key={u} type="button" onClick={open} className="block w-full cursor-zoom-in" aria-label={tx(`Xem trang ${i + 1}`)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={u} alt={`${fileName} – trang ${i + 1}`} loading={i < 2 ? 'eager' : 'lazy'} className="!m-0 block w-full rounded-[6px] bg-white shadow-[0_1px_6px_rgba(0,0,0,0.12)]" />
+          </button>
+        ))}
+      </span>
+      <button type="button" onClick={open} className="block w-full border-t border-[#e5e5ea] bg-white py-2.5 text-center text-[13px] font-semibold text-[#1d1d1f] hover:bg-[#fafafa] sm:hidden">
+        {tx('Xem toàn màn hình')}
+      </button>
+    </span>
+  );
+}
+
 /** Link / ảnh trong nội dung Markdown mở bằng popup (dùng với AcademyMarkdown overrides). */
 export function usePopupMarkdown(): { overrides: Partial<Components>; viewer: React.ReactNode } {
   const [file, setFile] = useState<Viewable | null>(null);
   const overrides: Partial<Components> = {
-    a: ({ href, children }) => {
+    a: ({ href, children, title }) => {
       const label = typeof children === 'string' ? children : Array.isArray(children) ? children.filter(c => typeof c === 'string').join('') : '';
+      const pdf = parsePdfLink(href, title);
+      if (pdf) return <PdfDocBlock name={label || 'Tài liệu'} url={pdf.url} pages={pdf.pages} onOpen={setFile} />;
       const v = href ? toViewable(href, label) : null;
       if (!v) {
         return (
