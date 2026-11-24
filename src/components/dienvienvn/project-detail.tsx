@@ -30,7 +30,7 @@ import { Field, TextInput } from './form-fields';
 import { formatVnDate } from './projects-section';
 import { GlobalNav, SiteFooter } from './site-chrome';
 import { RoleTierBadge } from './role-tier';
-import { SelftapeRequestsInfo, SelftapeRequestsInput } from './selftape-requests';
+import { ExtraSelftapes, SelftapeRequestsInfo, SelftapeRequestsInput } from './selftape-requests';
 
 /** Chia sẻ link: điện thoại mở bảng chia sẻ của máy (Zalo, Messenger…); máy tính sao chép link. Trả true khi đã sao chép. */
 async function shareLink(url: string, title: string, copyPrompt = 'Sao chép link:'): Promise<boolean> {
@@ -444,11 +444,12 @@ function ApplySheet({
             </p>
             {requests.length > 0 && (
               <fieldset>
-                <legend className="mb-2 text-[14px] font-semibold">{tx('Self-tape theo yêu cầu của vai')}</legend>
+                <legend className="mb-2 text-[15px] font-semibold">{tx('Self-tape theo yêu cầu của vai')}</legend>
                 <SelftapeRequestsInput requests={requests} library={library} value={items} onChange={setItems} idPrefix="qa-req" />
               </fieldset>
             )}
-            {requests.length > 0 && <p className="pt-2 text-[14px] font-semibold">{tx('Self-tape khác (không bắt buộc)')}</p>}
+            {requests.length > 0 ? (
+              <ExtraSelftapes defaultOpen={false}>
             {library.length > 0 && (
               <fieldset>
                 <legend className="mb-2 text-[14px] font-semibold">
@@ -477,6 +478,39 @@ function ApplySheet({
             >
               <TextInput id="qa-tape" type="url" inputMode="url" placeholder={tx("https://")} value={selftape} onChange={e => setSelftape(e.target.value)} />
             </Field>
+              </ExtraSelftapes>
+            ) : (
+              <>
+            {library.length > 0 && (
+              <fieldset>
+                <legend className="mb-2 text-[14px] font-semibold">
+                  {tx("Chọn self-tape phù hợp với dự án")}{project.selftape_required && !requests.length && <span className="text-[#b00020]"> *</span>}
+                </legend>
+                <ul className="divide-y divide-[#f0f0f2] rounded-[14px] border border-[#e8e8ed]">
+                  {library.map((t, k) => (
+                    <li key={t.url}>
+                      <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
+                        <input type="checkbox" checked={picked.includes(t.url)} onChange={() => togglePick(t.url)} className="h-[18px] w-[18px] shrink-0 accent-[#1d1d1f]" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold">{tx(t.title || `Self-tape ${k + 1}`)}</span>
+                          <span className="block truncate text-[12px] text-[var(--dv-text-tertiary)]">{tx(t.url)}</span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            )}
+            <Field
+              label={library.length > 0 ? 'Hoặc dán link self-tape mới' : 'Link self-tape'}
+              required={project.selftape_required && library.length === 0 && !requests.length}
+              htmlFor="qa-tape"
+              hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
+            >
+              <TextInput id="qa-tape" type="url" inputMode="url" placeholder={tx("https://")} value={selftape} onChange={e => setSelftape(e.target.value)} />
+            </Field>
+              </>
+            )}
             <Field label="Lời nhắn cho đội casting" htmlFor="qa-note">
               <TextInput id="qa-note" placeholder={tx("Không bắt buộc")} value={note} onChange={e => setNote(e.target.value)} />
             </Field>

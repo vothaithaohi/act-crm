@@ -15,7 +15,15 @@ export const partnerRoleSchema = z.object({
   description: text(2000),
   // Yêu cầu self-tape (ACT thêm trong CRM): giữ nguyên khi đối tác sửa dự án
   selftape_requests: z
-    .array(z.object({ id: z.string().trim().min(1).max(64), title: z.string().trim().max(160), brief: z.string().max(10000).default(''), required: z.boolean().default(false) }))
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(64),
+        title: z.string().trim().max(160),
+        brief: z.string().max(10000).default(''),
+        required: z.boolean().default(false),
+        files: z.array(z.object({ name: z.string().max(200), url: z.string().url().max(1000), pages: z.array(z.string().url().max(1000)).max(20) })).max(10).optional()
+      })
+    )
     .max(8)
     .optional()
     .default([]),

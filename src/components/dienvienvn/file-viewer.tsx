@@ -89,7 +89,7 @@ export function FileViewer({ file, onClose }: { file: Viewable; onClose: () => v
             {(file.pages || []).map((u, i) => (
               <figure key={u} className="relative" onClick={e => e.stopPropagation()}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={u} alt={`${file.title} – trang ${i + 1}`} loading={i < 2 ? 'eager' : 'lazy'} className="w-full rounded-[6px] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.35)]" />
+                <img src={u} alt={`${file.title} – trang ${i + 1}`} loading={i < 2 ? 'eager' : 'lazy'} decoding="async" className="min-h-[240px] w-full rounded-[6px] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.35)]" />
                 <figcaption className="mt-1.5 text-center text-[12px] text-white/60">
                   {i + 1} / {(file.pages || []).length}
                 </figcaption>
@@ -139,7 +139,7 @@ export function PdfDocBlock({ name, url, pages, onOpen }: { name: string; url: s
         {pages.map((u, i) => (
           <button key={u} type="button" onClick={open} className="block w-full cursor-zoom-in" aria-label={tx(`Xem trang ${i + 1}`)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={u} alt={`${fileName} – trang ${i + 1}`} loading={i < 2 ? 'eager' : 'lazy'} className="!m-0 block w-full rounded-[6px] bg-white shadow-[0_1px_6px_rgba(0,0,0,0.12)]" />
+            <img src={u} alt={`${fileName} – trang ${i + 1}`} loading={i < 1 ? 'eager' : 'lazy'} decoding="async" className="!m-0 block min-h-[200px] w-full rounded-[6px] bg-white shadow-[0_1px_6px_rgba(0,0,0,0.12)]" />
           </button>
         ))}
       </span>
@@ -151,7 +151,7 @@ export function PdfDocBlock({ name, url, pages, onOpen }: { name: string; url: s
 }
 
 /** Link / ảnh trong nội dung Markdown mở bằng popup (dùng với AcademyMarkdown overrides). */
-export function usePopupMarkdown(): { overrides: Partial<Components>; viewer: React.ReactNode } {
+export function usePopupMarkdown(): { overrides: Partial<Components>; viewer: React.ReactNode; open: (v: Viewable) => void } {
   const [file, setFile] = useState<Viewable | null>(null);
   const overrides: Partial<Components> = {
     a: ({ href, children, title }) => {
@@ -180,5 +180,5 @@ export function usePopupMarkdown(): { overrides: Partial<Components>; viewer: Re
         </button>
       ) : null
   };
-  return { overrides, viewer: file ? <FileViewer file={file} onClose={() => setFile(null)} /> : null };
+  return { overrides, viewer: file ? <FileViewer file={file} onClose={() => setFile(null)} /> : null, open: setFile };
 }

@@ -2,12 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, FileText, ImagePlus, Link2, ListPlus, Loader2, Plus, Trash2, X } from 'lucide-react';
-import { MAX_SELFTAPE_REQUESTS, ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGender, RoleTier, SelftapeRequest, genderLabel, roleTierLabel } from '@/lib/projects/types';
+import { BriefFile, MAX_SELFTAPE_REQUESTS, ProjectRole, ROLE_MAX_IMAGES, ROLE_TIERS, RoleGender, RoleTier, SelftapeRequest, genderLabel, roleTierLabel } from '@/lib/projects/types';
 import { AcademyMarkdown } from '@/components/dienvienvn/academy-markdown';
 import { uploadPublicImage } from '@/components/dienvienvn/form-fields';
 import { PDF_MAX_PAGES, pdfToImages } from '@/lib/pdf-to-images';
 import { uploadBriefPdf } from '@/lib/upload-brief-pdf';
-import { usePopupMarkdown } from '@/components/dienvienvn/file-viewer';
+import { PdfDocBlock, usePopupMarkdown } from '@/components/dienvienvn/file-viewer';
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-foreground transition-colors';
 const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1';
@@ -385,7 +385,7 @@ function RoleImagesField({ images, onChange, disabled }: { images: string[]; onC
 function SelftapeRequestsField({ requests, onChange, disabled }: { requests: SelftapeRequest[]; onChange: (v: SelftapeRequest[]) => void; disabled: boolean }) {
   const [preview, setPreview] = useState<string | null>(null);
   // Xem trước giống trang diễn viên (khung PDF, popup xem file)
-  const { overrides, viewer } = usePopupMarkdown();
+  const { overrides, viewer, open: openFile } = usePopupMarkdown();
   const [uploading, setUploading] = useState<string | null>(null);
   const [pdfProgress, setPdfProgress] = useState<{ id: string; text: string } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
@@ -419,7 +419,26 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
     }
   };
   /** PDF (kịch bản, hướng dẫn…) → ảnh từng trang, tải lên rồi chèn vào mô tả */
-  const uploadPdf = async (q: SelftapeRequest, file: File) => {
+  // Bản cũ chèn PDF thành dòng link dài trong mô tả: chuyển sang thẻ file gọn (q.files)
+  useEffect(() => {
+    if (!requests.some(q => /\]\(\S+ "pdf-pages:/.test(q.brief))) return;
+    onChange(
+      requests.map(q => {
+        const files: BriefFile[] = [...(q.files || [])];
+        const brief = q.brief
+          .replace(/\n*\[([^\]]*)\]\((\S+) "pdf-pages:([^"]*)"\)\n*/g, (_m, name: string, url: string, pages: string) => {
+            files.push({ name: /\.pdf$/i.test(name) ? name : `${name}.pdf`, url, pages: pages.split('|').filter(Boolean) });
+            return '\n\n';
+          })
+          .trim();
+        return files.length !== (q.files || []).length ? { ...q, brief, files } : q;
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
+
+  /** replaceIndex: đổi file thứ i (không truyền = thêm file mới) */
+  const uploadPdf = async (q: SelftapeRequest, file: File, replaceIndex?: number) => {
     if (file.size > 30 * 1024 * 1024) return void window.alert('File PDF quá lớn (tối đa 30MB).');
     setPdfProgress({ id: q.id, text: 'Đang đọc PDF…' });
     try {
@@ -439,8 +458,12 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
         console.error(e);
       }
       if (pdfUrl) {
-        // Khung tài liệu: [Tên.pdf](link PDF "pdf-pages:ảnh trang 1|ảnh trang 2…")
-        insert(q, `\n\n[${name.replace(/[[\]"]/g, ' ')}.pdf](${pdfUrl} "pdf-pages:${urls.join('|')}")\n\n`);
+        // Thẻ file gọn bên dưới mô tả (diễn viên thấy khung tài liệu + nút Tải PDF)
+        const f: BriefFile = { name: `${name}.pdf`, url: pdfUrl, pages: urls };
+        const list = [...(q.files || [])];
+        if (replaceIndex !== undefined) list[replaceIndex] = f;
+        else list.push(f);
+        set(q.id, { files: list });
       } else {
         insert(q, `\n\n${urls.map((u, i) => `![${name}${urls.length > 1 ? ` - trang ${i + 1}` : ''}](${u})`).join('\n\n')}\n\n`);
         window.alert('Đã chèn các trang PDF dạng ảnh, nhưng chưa lưu được file PDF gốc nên chưa có nút Tải PDF.');
@@ -515,7 +538,7 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
                     <input type="file" accept="image/*" className="sr-only" onChange={e => e.target.files?.[0] && uploadImage(q, e.target.files[0])} />
                   </label>
                   <label
-                    title={`Tải file PDF: tự chuyển thành ảnh từng trang (tối đa ${PDF_MAX_PAGES} trang) rồi chèn vào mô tả`}
+                    title={`Đính kèm file PDF (kịch bản, hướng dẫn…): diễn viên xem ngay từng trang và tải về được (tối đa ${PDF_MAX_PAGES} trang)`}
                     className="h-7 px-2 inline-flex cursor-pointer items-center gap-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted"
                   >
                     {pdfProgress?.id === q.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} PDF
@@ -545,7 +568,11 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
           {pdfProgress?.id === q.id && <p className="text-[11px] font-semibold text-sky-700">{pdfProgress.text}</p>}
           {preview === q.id ? (
             <div className="rounded-lg border bg-white p-4 text-sm">
-              {q.brief.trim() ? <AcademyMarkdown content={q.brief} overrides={overrides} /> : <p className="text-muted-foreground">Chưa có mô tả.</p>}
+              {q.brief.trim() && <AcademyMarkdown content={q.brief} overrides={overrides} />}
+              {(q.files || []).map(f => (
+                <PdfDocBlock key={f.url} name={f.name} url={f.url} pages={f.pages} onOpen={openFile} />
+              ))}
+              {!q.brief.trim() && !q.files?.length && <p className="text-muted-foreground">Chưa có mô tả.</p>}
             </div>
           ) : (
             <textarea
@@ -560,6 +587,53 @@ function SelftapeRequestsField({ requests, onChange, disabled }: { requests: Sel
               disabled={disabled}
               onChange={e => set(q.id, { brief: e.target.value })}
             />
+          )}
+          {preview !== q.id && (q.files || []).length > 0 && (
+            <ul className="space-y-1.5">
+              {(q.files || []).map((f, k) => (
+                <li key={f.url} className="flex items-center gap-2.5 rounded-lg border bg-white px-3 py-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-rose-50 text-rose-600">
+                    <FileText className="w-4 h-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold">{f.name}</span>
+                    <span className="block text-[11px] text-muted-foreground">PDF · {f.pages.length} trang · diễn viên xem ngay và tải về được</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openFile({ kind: 'pages', src: f.url, href: f.url, title: f.name, pages: f.pages, download: f.url })}
+                    className="h-7 px-2 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+                  >
+                    Xem
+                  </button>
+                  {!disabled && (
+                    <>
+                      <label className="h-7 px-2 inline-flex cursor-pointer items-center rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted">
+                        Đổi file
+                        <input
+                          type="file"
+                          accept="application/pdf,.pdf"
+                          className="sr-only"
+                          disabled={!!pdfProgress}
+                          onChange={e => {
+                            const nf = e.target.files?.[0];
+                            e.target.value = '';
+                            if (nf) void uploadPdf(q, nf, k);
+                          }}
+                        />
+                      </label>
+                      <IconBtn
+                        title="Xoá file"
+                        danger
+                        onClick={() => window.confirm(`Xoá file ${f.name} khỏi yêu cầu này?`) && set(q.id, { files: (q.files || []).filter((_, j) => j !== k) })}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </IconBtn>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       ))}

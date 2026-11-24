@@ -9,7 +9,7 @@ import { AlertCircle, Check, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LogOu
 import { actorClient, actorFetch, getImpersonation, isNetworkError, signOutActor, useActorSession } from '@/lib/dienvienvn/actor-auth';
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { PublicProject, SelftapeItem, SelftapeRequest, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
-import { SelftapeRequestsInput } from './selftape-requests';
+import { ExtraSelftapes, SelftapeRequestsInput } from './selftape-requests';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
@@ -615,11 +615,12 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
         <div className="mt-3 space-y-4 rounded-[14px] bg-[var(--dv-bg-alt)] p-4">
           {requests.length > 0 && (
             <div>
-              <p className="mb-2 text-[14px] font-semibold">{tx('Self-tape theo yêu cầu của vai')}</p>
+              <p className="mb-2 text-[15px] font-semibold">{tx('Self-tape theo yêu cầu của vai')}</p>
               <SelftapeRequestsInput requests={requests} library={library} value={draftItems} onChange={setDraftItems} idPrefix={`req-${app.id}`} />
             </div>
           )}
-          {requests.length > 0 && <p className="text-[14px] font-semibold">{tx('Self-tape khác (không bắt buộc)')}</p>}
+          {requests.length > 0 ? (
+            <ExtraSelftapes defaultOpen={picked.length > 0 || !!link}>
           {library.length > 0 && (
             <fieldset>
               <legend className="mb-2 text-[14px] font-semibold">
@@ -653,6 +654,44 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
           >
             <TextInput id={`tape-${app.id}`} type="url" inputMode="url" placeholder="https://" value={link} onChange={e => setLink(e.target.value)} />
           </Field>
+            </ExtraSelftapes>
+          ) : (
+            <>
+          {library.length > 0 && (
+            <fieldset>
+              <legend className="mb-2 text-[14px] font-semibold">
+                {tx('Chọn self-tape phù hợp với dự án')}
+                {app.selftape_required && !requests.length && <span className="text-[#b00020]"> *</span>}
+              </legend>
+              <ul className="divide-y divide-[#f0f0f2] rounded-[12px] border border-[#e8e8ed] bg-white">
+                {library.map((t, k) => (
+                  <li key={t.url}>
+                    <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(t.url)}
+                        onChange={() => setPicked(p => (p.includes(t.url) ? p.filter(x => x !== t.url) : [...p, t.url]))}
+                        className="h-[18px] w-[18px] shrink-0 accent-[#1d1d1f]"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-semibold">{tx(t.title || `Self-tape ${k + 1}`)}</span>
+                        <span className="block truncate text-[12px] text-[var(--dv-text-tertiary)]">{t.url}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          )}
+          <Field
+            label={library.length > 0 ? 'Hoặc dán link self-tape mới' : 'Link self-tape'}
+            htmlFor={`tape-${app.id}`}
+            hint="YouTube (không công khai), Google Drive… Nhớ bật quyền xem cho người có link; không để SĐT, email trong tên video."
+          >
+            <TextInput id={`tape-${app.id}`} type="url" inputMode="url" placeholder="https://" value={link} onChange={e => setLink(e.target.value)} />
+          </Field>
+            </>
+          )}
           <Field label="Lời nhắn cho đội casting" htmlFor={`note-${app.id}`}>
             <TextInput id={`note-${app.id}`} placeholder={tx('Không bắt buộc')} value={note} onChange={e => setNote(e.target.value)} />
           </Field>

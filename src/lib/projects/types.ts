@@ -34,6 +34,13 @@ export interface SelftapeRequest {
   title: string;
   brief: string;
   required: boolean;
+  /** File PDF đính kèm (kịch bản, hướng dẫn): file gốc để tải + ảnh từng trang để xem nhanh */
+  files?: BriefFile[];
+}
+export interface BriefFile {
+  name: string;
+  url: string;
+  pages: string[];
 }
 /** Self-tape diễn viên nộp cho 1 yêu cầu. */
 export interface SelftapeItem {
@@ -44,6 +51,9 @@ export const MAX_SELFTAPE_REQUESTS = 8;
 
 export const roleSelftapeRequests = (r?: Pick<ProjectRole, 'selftape_requests'> | null): SelftapeRequest[] =>
   Array.isArray(r?.selftape_requests) ? r!.selftape_requests.filter(q => q && q.id && (q.title || '').trim()) : [];
+
+/** Yêu cầu có phần mô tả / file để xem không. */
+export const hasBrief = (q: Pick<SelftapeRequest, 'brief' | 'files'>) => !!((q.brief || '').trim() || q.files?.length);
 
 /** Yêu cầu bắt buộc chưa nộp → câu báo lỗi; đủ → null. */
 export function missingRequiredSelftape(role: Pick<ProjectRole, 'selftape_requests'>, items: SelftapeItem[]): string | null {
