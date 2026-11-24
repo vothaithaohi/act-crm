@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { ArrowLeft, Printer } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { TalentProfile } from '@/lib/types/crm';
 
 // Deck hồ sơ diễn viên theo mẫu "Actor Profile Template": mỗi diễn viên 1 trang ngang 16:9.
@@ -55,9 +56,9 @@ function photos(t: TalentProfile): string[] {
 }
 
 /** Ô chữ gõ trực tiếp (để trống thì hiện [text] như mẫu). */
-function Edit({ value, className = '' }: { value?: string; className?: string }) {
+function Edit({ value, className = '', field }: { value?: string; className?: string; field: string }) {
   return (
-    <span contentEditable suppressContentEditableWarning className={`deck-edit outline-none ${className}`} data-ph="[text]">
+    <span contentEditable suppressContentEditableWarning data-field={field} className={`deck-edit outline-none ${className}`} data-ph="[text]">
       {value || ''}
     </span>
   );
@@ -79,36 +80,36 @@ function Slot({ src }: { src?: string }) {
 function Page({ t }: { t: TalentProfile }) {
   const ph = photos(t);
   return (
-    <section className="deck-page relative mx-auto bg-white text-[#111]" style={{ width: 1000, height: 562.5 }}>
+    <section data-tid={t.id} className="deck-page relative mx-auto bg-white text-[#111]" style={{ width: 1000, height: 562.5 }}>
       {/* Thông tin */}
       <div className="absolute left-[27px] top-[18px] w-[620px]">
         <h1 className="text-[28px] font-extrabold leading-tight tracking-[-0.01em]">{t.full_name}</h1>
         <p className="mt-1 text-[12.5px]">
-          <b>Age:</b> <Edit value={ageOf(t.dob)} /> <span className="mx-1">|</span> <b>Height:</b> <Edit value={heightText(t.height_cm)} /> <span className="mx-1">|</span>{' '}
-          <b>Weight:</b> <Edit value={t.weight_kg ? `${t.weight_kg}kg` : ''} />
+          <b>Age:</b> <Edit field="age" value={ageOf(t.dob)} /> <span className="mx-1">|</span> <b>Height:</b> <Edit field="height" value={heightText(t.height_cm)} /> <span className="mx-1">|</span>{' '}
+          <b>Weight:</b> <Edit field="weight" value={t.weight_kg ? `${t.weight_kg}kg` : ''} />
         </p>
         <div className="mt-1.5 border-t border-[#ccc] pt-1.5 text-[11px] leading-[1.45] text-[#444]">
-          <b>Achievements, Credits:</b> <Edit value={credits(t)} />
+          <b>Achievements, Credits:</b> <Edit field="credits" value={credits(t)} />
         </div>
       </div>
       <div className="absolute left-[27px] top-[148px] flex w-[620px] text-[11px] leading-[1.7]">
         <div className="w-1/2 border-r border-[#ccc] pr-3 text-[#444]">
           <p>
-            <b>Occupation:</b> <Edit className="font-semibold text-[#111]" />
+            <b>Occupation:</b> <Edit field="occupation" className="font-semibold text-[#111]" />
           </p>
           <p>
-            <b>English Proficiency:</b> <Edit className="font-semibold text-[#111]" value={english(t)} />
+            <b>English Proficiency:</b> <Edit field="english" className="font-semibold text-[#111]" value={english(t)} />
           </p>
           <p>
-            <b>Personality Traits:</b> <Edit className="font-semibold text-[#111]" />
+            <b>Personality Traits:</b> <Edit field="personality" className="font-semibold text-[#111]" />
           </p>
         </div>
         <div className="w-1/2 pl-3">
           <p className="font-semibold text-[#444]">Rating (character compatibility)</p>
           <p>
-            <b>English:</b> <Edit />
-            /3 <span className="text-[#bbb]">|</span> <b>Personality:</b> <Edit />
-            /3 <span className="text-[#bbb]">|</span> <b>Look:</b> <Edit />
+            <b>English:</b> <Edit field="rEnglish" />
+            /3 <span className="text-[#bbb]">|</span> <b>Personality:</b> <Edit field="rPersonality" />
+            /3 <span className="text-[#bbb]">|</span> <b>Look:</b> <Edit field="rLook" />
             /3
           </p>
         </div>
@@ -127,8 +128,98 @@ function Page({ t }: { t: TalentProfile }) {
   );
 }
 
+/* ---------------- Xuất PowerPoint (.pptx): mở bằng PowerPoint hoặc Google Slides ---------------- */
+
+/** Ảnh → cắt đúng khung (giống object-cover) → dữ liệu JPEG; không tải được thì null (để khung xám). */
+async function croppedImage(url: string, w: number, h: number): Promise<string | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) return null;
+    const bmp = await createImageBitmap(await res.blob());
+    const W = Math.round(w * 200);
+    const H = Math.round(h * 200);
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const scale = Math.max(W / bmp.width, H / bmp.height);
+    const dw = bmp.width * scale;
+    const dh = bmp.height * scale;
+    ctx.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    return canvas.toDataURL('image/jpeg', 0.86);
+  } catch {
+    return null;
+  }
+}
+
+async function exportPptx(talents: TalentProfile[], title: string) {
+  const { default: PptxGenJS } = await import('pptxgenjs');
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_16x9'; // 10 x 5.625 in (trang deck 1000 x 562,5 px → chia 100)
+  const font = 'Arial';
+  for (const t of talents) {
+    const root = document.querySelector(`[data-tid="${t.id}"]`);
+    const v = (k: string) => (root?.querySelector(`[data-field="${k}"]`)?.textContent || '').trim() || '[text]';
+    const s = pptx.addSlide();
+    s.background = { color: 'FFFFFF' };
+    s.addText(t.full_name, { x: 0.22, y: 0.12, w: 6.3, h: 0.5, fontFace: font, fontSize: 24, bold: true, color: '111111', margin: 0 });
+    const lab = (text: string) => ({ text, options: { bold: true } });
+    s.addText([lab('Age: '), { text: v('age') }, { text: '  |  ' }, lab('Height: '), { text: v('height') }, { text: '  |  ' }, lab('Weight: '), { text: v('weight') }], {
+      x: 0.22, y: 0.62, w: 6.3, h: 0.26, fontFace: font, fontSize: 10, color: '111111', margin: 0
+    });
+    s.addShape(pptx.ShapeType.line, { x: 0.27, y: 0.92, w: 6.2, h: 0, line: { color: 'CCCCCC', width: 0.75 } });
+    s.addText([lab('Achievements, Credits: '), { text: v('credits') }], { x: 0.22, y: 0.96, w: 6.3, h: 0.5, fontFace: font, fontSize: 8.5, color: '444444', valign: 'top', margin: 0 });
+    s.addText(
+      [
+        lab('Occupation: '), { text: v('occupation'), options: { breakLine: true } },
+        lab('English Proficiency: '), { text: v('english'), options: { breakLine: true } },
+        lab('Personality Traits: '), { text: v('personality') }
+      ],
+      { x: 0.22, y: 1.5, w: 3.0, h: 0.62, fontFace: font, fontSize: 8.5, color: '333333', valign: 'top', margin: 0, lineSpacingMultiple: 1.2 }
+    );
+    s.addShape(pptx.ShapeType.line, { x: 3.37, y: 1.5, w: 0, h: 0.65, line: { color: 'CCCCCC', width: 0.75 } });
+    s.addText(
+      [
+        { text: 'Rating (character compatibility)', options: { bold: true, color: '444444', breakLine: true } },
+        lab('English: '), { text: `${v('rEnglish')}/3  |  ` }, lab('Personality: '), { text: `${v('rPersonality')}/3  |  ` }, lab('Look: '), { text: `${v('rLook')}/3` }
+      ],
+      { x: 3.5, y: 1.5, w: 3.0, h: 0.62, fontFace: font, fontSize: 8.5, color: '111111', valign: 'top', margin: 0, lineSpacingMultiple: 1.2 }
+    );
+    // 2 ô ảnh trên phải + 6 ô hàng dưới (giống mẫu)
+    const slots = [
+      { x: 6.7, y: 0.08 }, { x: 8.32, y: 0.08 },
+      ...[0, 1, 2, 3, 4, 5].map(i => ({ x: 0.12 + i * 1.632, y: 2.45 }))
+    ];
+    const ph = photos(t);
+    const imgs = await Promise.all(slots.map((_, i) => (ph[i] ? croppedImage(ph[i], 1.54, 2.26) : Promise.resolve(null))));
+    slots.forEach((p, i) => {
+      if (imgs[i]) s.addImage({ data: imgs[i] as string, x: p.x, y: p.y, w: 1.54, h: 2.26 });
+      else {
+        s.addShape(pptx.ShapeType.rect, { x: p.x, y: p.y, w: 1.54, h: 2.26, fill: { color: 'D9D9D9' }, line: { color: 'B5B5B5', width: 0.75 } });
+        s.addText('[Photo]', { x: p.x, y: p.y, w: 1.54, h: 2.26, align: 'center', valign: 'middle', fontFace: font, fontSize: 9, color: '777777' });
+      }
+    });
+  }
+  const safe = title.replace(/[\\/:*?"<>|]/g, ' ').trim() || 'Du an';
+  await pptx.writeFile({ fileName: `Deck ho so - ${safe}.pptx`, compression: true });
+}
+
 export function ActorDeck({ talents, title, onBack }: { talents: TalentProfile[]; title: string; onBack: () => void }) {
   const pages = useMemo(() => talents.filter(Boolean), [talents]);
+  const [busy, setBusy] = useState(false);
+  const download = async () => {
+    setBusy(true);
+    try {
+      await exportPptx(pages, title);
+      toast.success('Đã tải file PowerPoint', { description: 'Mở bằng PowerPoint, hoặc tải lên Google Drive rồi mở bằng Google Slides.' });
+    } catch (e) {
+      console.error(e);
+      toast.error('Không tạo được file PowerPoint. Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="deck-root">
       <style>{`
@@ -154,11 +245,11 @@ export function ActorDeck({ talents, title, onBack }: { talents: TalentProfile[]
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">Deck hồ sơ · {title}</p>
           <p className="text-[11px] text-muted-foreground">
-            {pages.length} diễn viên. Bấm vào chữ trên trang để sửa / điền (Occupation, Personality, Rating…). Xong bấm In / Lưu PDF, chọn &ldquo;Lưu dưới dạng PDF&rdquo;, bật &ldquo;Đồ hoạ nền&rdquo;.
+            {pages.length} diễn viên. Có thể bấm vào chữ trên trang để sửa / điền trước (Occupation, Personality, Rating…), rồi bấm Tải PowerPoint. Mở file bằng PowerPoint, hoặc tải lên Google Drive → Mở bằng Google Trang trình bày.
           </p>
         </div>
-        <button onClick={() => window.print()} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1d1d1f] px-4 text-xs font-semibold text-white hover:bg-black">
-          <Printer className="h-4 w-4" /> In / Lưu PDF
+        <button onClick={download} disabled={busy || !pages.length} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1d1d1f] px-4 text-xs font-semibold text-white hover:bg-black disabled:opacity-50">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {busy ? 'Đang tạo file…' : 'Tải PowerPoint (.pptx)'}
         </button>
       </div>
       {pages.length === 0 ? (
