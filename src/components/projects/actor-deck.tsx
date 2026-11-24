@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TalentProfile } from '@/lib/types/crm';
 
@@ -77,7 +77,13 @@ function Slot({ src }: { src?: string }) {
   );
 }
 
-function Page({ t }: { t: TalentProfile }) {
+/** Self-tape diễn viên nộp cho dự án: theo tên yêu cầu (url trống = yêu cầu bắt buộc chưa gửi). */
+export type TapeLink = { label: string; url?: string };
+/** Ô gõ tay giữ lại khi bấm Làm mới */
+const MANUAL_FIELDS = ['occupation', 'personality', 'rEnglish', 'rPersonality', 'rLook'] as const;
+type Manual = Partial<Record<(typeof MANUAL_FIELDS)[number], string>>;
+
+function Page({ t, tapes, manual }: { t: TalentProfile; tapes: TapeLink[]; manual: Manual }) {
   const ph = photos(t);
   return (
     <section data-tid={t.id} className="deck-page relative mx-auto bg-white text-[#111]" style={{ width: 1000, height: 562.5 }}>
@@ -95,25 +101,45 @@ function Page({ t }: { t: TalentProfile }) {
       <div className="absolute left-[27px] top-[148px] flex w-[620px] text-[11px] leading-[1.7]">
         <div className="w-1/2 border-r border-[#ccc] pr-3 text-[#444]">
           <p>
-            <b>Occupation:</b> <Edit field="occupation" className="font-semibold text-[#111]" />
+            <b>Occupation:</b> <Edit field="occupation" className="font-semibold text-[#111]" value={manual.occupation} />
           </p>
           <p>
             <b>English Proficiency:</b> <Edit field="english" className="font-semibold text-[#111]" value={english(t)} />
           </p>
           <p>
-            <b>Personality Traits:</b> <Edit field="personality" className="font-semibold text-[#111]" />
+            <b>Personality Traits:</b> <Edit field="personality" className="font-semibold text-[#111]" value={manual.personality} />
           </p>
         </div>
         <div className="w-1/2 pl-3">
           <p className="font-semibold text-[#444]">Rating (character compatibility)</p>
           <p>
-            <b>English:</b> <Edit field="rEnglish" />
-            /3 <span className="text-[#bbb]">|</span> <b>Personality:</b> <Edit field="rPersonality" />
-            /3 <span className="text-[#bbb]">|</span> <b>Look:</b> <Edit field="rLook" />
+            <b>English:</b> <Edit field="rEnglish" value={manual.rEnglish} />
+            /3 <span className="text-[#bbb]">|</span> <b>Personality:</b> <Edit field="rPersonality" value={manual.rPersonality} />
+            /3 <span className="text-[#bbb]">|</span> <b>Look:</b> <Edit field="rLook" value={manual.rLook} />
             /3
           </p>
         </div>
       </div>
+      {/* Self-tape đã nộp cho dự án (bấm mở video) */}
+      <p className="absolute left-[27px] top-[217px] w-[620px] truncate text-[10.5px] text-[#444]">
+        <b className="text-[#111]">Self-tape:</b>{' '}
+        {tapes.length === 0 ? (
+          <span className="text-[#888]">chưa gửi</span>
+        ) : (
+          tapes.map((x, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <span className="mx-1 text-[#bbb]">·</span>}
+              {x.url ? (
+                <a href={x.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0b57d0] underline underline-offset-2">
+                  {x.label}
+                </a>
+              ) : (
+                <span className="text-[#b00020]">{x.label}: chưa gửi</span>
+              )}
+            </React.Fragment>
+          ))
+        )}
+      </p>
       {/* Ảnh: 2 ô trên phải + 6 ô hàng dưới */}
       <div className="absolute left-[670px] top-[8px] grid h-[226px] w-[316px] grid-cols-2 gap-[8px]">
         <Slot src={ph[0]} />
@@ -153,7 +179,7 @@ async function croppedImage(url: string, w: number, h: number): Promise<string |
   }
 }
 
-async function exportPptx(talents: TalentProfile[], title: string) {
+async function exportPptx(talents: TalentProfile[], title: string, tapesOf: (id: string) => TapeLink[]) {
   const { default: PptxGenJS } = await import('pptxgenjs');
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16x9'; // 10 x 5.625 in (trang deck 1000 x 562,5 px → chia 100)
@@ -186,6 +212,22 @@ async function exportPptx(talents: TalentProfile[], title: string) {
       ],
       { x: 3.5, y: 1.5, w: 3.0, h: 0.62, fontFace: font, fontSize: 8.5, color: '111111', valign: 'top', margin: 0, lineSpacingMultiple: 1.2 }
     );
+    // Self-tape: tên từng yêu cầu là link bấm được
+    const tapes = tapesOf(t.id);
+    s.addText(
+      [
+        lab('Self-tape: '),
+        ...(tapes.length
+          ? tapes.flatMap((x, i) => [
+              ...(i ? [{ text: '  ·  ', options: { color: 'BBBBBB' } }] : []),
+              x.url
+                ? { text: x.label, options: { hyperlink: { url: x.url }, color: '0B57D0', underline: { style: 'sng' as const } } }
+                : { text: `${x.label}: chưa gửi`, options: { color: 'B00020' } }
+            ])
+          : [{ text: 'chưa gửi', options: { color: '888888' } }])
+      ],
+      { x: 0.22, y: 2.13, w: 6.3, h: 0.26, fontFace: font, fontSize: 8.5, color: '444444', margin: 0, valign: 'middle' }
+    );
     // 2 ô ảnh trên phải + 6 ô hàng dưới (giống mẫu)
     const slots = [
       { x: 6.7, y: 0.08 }, { x: 8.32, y: 0.08 },
@@ -205,13 +247,54 @@ async function exportPptx(talents: TalentProfile[], title: string) {
   await pptx.writeFile({ fileName: `Deck ho so - ${safe}.pptx`, compression: true });
 }
 
-export function ActorDeck({ talents, title, onBack }: { talents: TalentProfile[]; title: string; onBack: () => void }) {
+export function ActorDeck({
+  talents,
+  title,
+  onBack,
+  tapesOf,
+  onRefresh
+}: {
+  talents: TalentProfile[];
+  title: string;
+  onBack: () => void;
+  tapesOf: (talentId: string) => TapeLink[];
+  /** Tải lại hồ sơ + đơn ứng tuyển mới nhất */
+  onRefresh: () => Promise<void>;
+}) {
   const pages = useMemo(() => talents.filter(Boolean), [talents]);
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(() => new Date());
+  const [round, setRound] = useState(0);
+  const [manual, setManual] = useState<Record<string, Manual>>({});
+  /** Làm mới: giữ các ô gõ tay, lấy lại self-tape / ảnh / thông tin mới nhất */
+  const refresh = async () => {
+    const keep: Record<string, Manual> = {};
+    document.querySelectorAll<HTMLElement>('[data-tid]').forEach(root => {
+      const m: Manual = {};
+      MANUAL_FIELDS.forEach(f => {
+        const txt = (root.querySelector(`[data-field="${f}"]`)?.textContent || '').trim();
+        if (txt) m[f] = txt;
+      });
+      keep[root.dataset.tid as string] = m;
+    });
+    setRefreshing(true);
+    try {
+      await onRefresh();
+      setManual(keep);
+      setRound(r => r + 1); // dựng lại trang với dữ liệu mới
+      setUpdatedAt(new Date());
+      toast.success('Đã cập nhật self-tape và hồ sơ mới nhất');
+    } catch {
+      toast.error('Không tải lại được. Vui lòng thử lại.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const download = async () => {
     setBusy(true);
     try {
-      await exportPptx(pages, title);
+      await exportPptx(pages, title, tapesOf);
       toast.success('Đã tải file PowerPoint', { description: 'Mở bằng PowerPoint, hoặc tải lên Google Drive rồi mở bằng Google Slides.' });
     } catch (e) {
       console.error(e);
@@ -245,10 +328,18 @@ export function ActorDeck({ talents, title, onBack }: { talents: TalentProfile[]
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">Deck hồ sơ · {title}</p>
           <p className="text-[11px] text-muted-foreground">
-            {pages.length} diễn viên. Có thể bấm vào chữ trên trang để sửa / điền trước (Occupation, Personality, Rating…), rồi bấm Tải PowerPoint. Mở file bằng PowerPoint, hoặc tải lên Google Drive → Mở bằng Google Trang trình bày.
+            Cập nhật lúc {updatedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {pages.length} diễn viên. Có thể bấm vào chữ trên trang để sửa / điền trước (Occupation, Personality, Rating…), rồi bấm Tải PowerPoint. Mở file bằng PowerPoint, hoặc tải lên Google Drive → Mở bằng Google Trang trình bày.
           </p>
         </div>
-        <button onClick={download} disabled={busy || !pages.length} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1d1d1f] px-4 text-xs font-semibold text-white hover:bg-black disabled:opacity-50">
+        <button
+          onClick={refresh}
+          disabled={refreshing || busy}
+          title="Tải lại self-tape, ảnh, thông tin mới nhất (giữ nguyên các ô đã gõ tay)"
+          className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Đang làm mới…' : 'Làm mới'}
+        </button>
+        <button onClick={download} disabled={busy || refreshing || !pages.length} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1d1d1f] px-4 text-xs font-semibold text-white hover:bg-black disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {busy ? 'Đang tạo file…' : 'Tải PowerPoint (.pptx)'}
         </button>
       </div>
@@ -257,8 +348,8 @@ export function ActorDeck({ talents, title, onBack }: { talents: TalentProfile[]
       ) : (
         <div className="deck-list space-y-6 overflow-x-auto pb-10">
           {pages.map(t => (
-            <div key={t.id} className="w-[1000px] mx-auto shadow-[0_2px_16px_rgba(0,0,0,0.12)]">
-              <Page t={t} />
+            <div key={`${t.id}-${round}`} className="w-[1000px] mx-auto shadow-[0_2px_16px_rgba(0,0,0,0.12)]">
+              <Page t={t} tapes={tapesOf(t.id)} manual={manual[t.id] || {}} />
             </div>
           ))}
         </div>
