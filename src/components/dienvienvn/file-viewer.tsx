@@ -151,7 +151,57 @@ export function PdfDocBlock({ name, url, pages, onOpen }: { name: string; url: s
 }
 
 /** Link / ảnh trong nội dung Markdown mở bằng popup (dùng với AcademyMarkdown overrides). */
-export function usePopupMarkdown(): { overrides: Partial<Components>; viewer: React.ReactNode; open: (v: Viewable) => void } {
+/** Link tải về của file Google Drive (để diễn viên tải kịch bản về in). */
+function driveDownload(href: string): string | null {
+  try {
+    const u = new URL(href);
+    if (u.hostname.replace(/^www\./, '') !== 'drive.google.com') return null;
+    const id = u.pathname.match(/\/file\/d\/([^/]+)/)?.[1] || u.searchParams.get('id');
+    return id ? `https://drive.google.com/uc?export=download&id=${id}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Nội dung file nhúng thẳng trong trang (Drive, Docs, PDF, YouTube): xem ngay, có Toàn màn hình / Tải về. */
+function InlineEmbed({ v, onOpen }: { v: Viewable; onOpen: (v: Viewable) => void }) {
+  const tx = useTx();
+  const video = /youtube\.com\/embed\//.test(v.src);
+  const dl = driveDownload(v.href);
+  return (
+    <span className="not-prose my-4 block overflow-hidden rounded-[16px] border border-[#e5e5ea] bg-[#f5f5f7]">
+      <span className="flex items-center gap-3 border-b border-[#e5e5ea] bg-white px-4 py-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#eef3fd] text-[#0b57d0]">
+          <FileText className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[#1d1d1f]">{v.title}</span>
+        <button type="button" onClick={() => onOpen(v)} title={tx('Xem toàn màn hình')} aria-label={tx('Xem toàn màn hình')} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#1d1d1f] hover:bg-[#f0f0f2]">
+          <Maximize2 className="h-4 w-4" />
+        </button>
+        {dl ? (
+          <a href={dl} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3.5 text-[13px] font-semibold !text-white !no-underline hover:bg-black">
+            <Download className="h-4 w-4" /> {tx('Tải về')}
+          </a>
+        ) : (
+          <a href={v.href} target="_blank" rel="noopener noreferrer" title={tx('Mở tab mới')} aria-label={tx('Mở tab mới')} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#1d1d1f] hover:bg-[#f0f0f2]">
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
+      </span>
+      <iframe
+        src={v.src}
+        title={v.title}
+        loading="lazy"
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        className={`block w-full bg-white ${video ? 'aspect-video' : 'h-[60vh] min-h-[360px]'}`}
+      />
+    </span>
+  );
+}
+
+/** inline: link xem được (Drive, Docs, PDF, YouTube) hiện thẳng nội dung thay vì chữ phải bấm thêm. */
+export function usePopupMarkdown({ inline = false }: { inline?: boolean } = {}): { overrides: Partial<Components>; viewer: React.ReactNode; open: (v: Viewable) => void } {
   const [file, setFile] = useState<Viewable | null>(null);
   const overrides: Partial<Components> = {
     a: ({ href, children, title }) => {
@@ -159,6 +209,7 @@ export function usePopupMarkdown(): { overrides: Partial<Components>; viewer: Re
       const pdf = parsePdfLink(href, title);
       if (pdf) return <PdfDocBlock name={label || 'Tài liệu'} url={pdf.url} pages={pdf.pages} onOpen={setFile} />;
       const v = href ? toViewable(href, label) : null;
+      if (v && inline && v.kind === 'frame') return <InlineEmbed v={v} onOpen={setFile} />;
       if (!v) {
         return (
           <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">

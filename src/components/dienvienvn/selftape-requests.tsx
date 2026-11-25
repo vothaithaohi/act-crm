@@ -17,7 +17,7 @@ const isUrl = (u: string) => /^https?:\/\/\S+$/i.test(u.trim());
 function BriefDialog({ q, onClose }: { q: SelftapeRequest; onClose: () => void }) {
   const tx = useTx();
   // Link kịch bản (Drive, Docs, PDF), video YouTube, ảnh trong mô tả: mở popup xem file, không chuyển trang
-  const { overrides, viewer, open } = usePopupMarkdown();
+  const { overrides, viewer, open } = usePopupMarkdown({ inline: true });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('[data-file-viewer]') && onClose();
     document.addEventListener('keydown', onKey);

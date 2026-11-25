@@ -385,7 +385,7 @@ function RoleImagesField({ images, onChange, disabled }: { images: string[]; onC
 function SelftapeRequestsField({ requests, onChange, disabled }: { requests: SelftapeRequest[]; onChange: (v: SelftapeRequest[]) => void; disabled: boolean }) {
   const [preview, setPreview] = useState<string | null>(null);
   // Xem trước giống trang diễn viên (khung PDF, popup xem file)
-  const { overrides, viewer, open: openFile } = usePopupMarkdown();
+  const { overrides, viewer, open: openFile } = usePopupMarkdown({ inline: true });
   const [uploading, setUploading] = useState<string | null>(null);
   const [pdfProgress, setPdfProgress] = useState<{ id: string; text: string } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
