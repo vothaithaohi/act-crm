@@ -8,6 +8,7 @@ import { SITE_URL } from '@/lib/dienvienvn/hosts';
 import { TalentDrawerProvider } from '@/components/dienvienvn/talent-drawer';
 import { ImpersonationBar } from '@/components/dienvienvn/impersonation-bar';
 import { CommunityPrompt } from '@/components/dienvienvn/community-prompt';
+import { ClientGuard } from '@/components/dienvienvn/client-guard';
 import './dienvienvn.css';
 import { localizeMetadata } from '@/lib/dienvienvn/i18n/server';
 
@@ -58,6 +59,7 @@ export default async function DienVienVNLayout({ children }: { children: React.R
         <TalentDrawerProvider>{children}</TalentDrawerProvider>
         <ImpersonationBar />
         <CommunityPrompt />
+        <ClientGuard />
       </div>
       {onPublicDomain && GA_ID && (
         <>
