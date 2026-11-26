@@ -126,6 +126,18 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
   const [draftSaved, setDraftSaved] = useState<'idle' | 'saved' | 'failed'>('idle');
   const [hydrated, setHydrated] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  // Ô "Ai giới thiệu bạn" (không bắt buộc): tự điền tên người giới thiệu khi khách vào từ link ?ref=
+  const [referralNote, setReferralNote] = useState('');
+  useEffect(() => {
+    if (editing) return;
+    fetch('/api/dienvienvn/referrer')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const v = d?.name || d?.code;
+        if (v) setReferralNote(prev => prev || v);
+      })
+      .catch(() => {});
+  }, [editing]);
   const [target, setTarget] = useState<ApplyTarget | null>(null);
   const [targetNotice, setTargetNotice] = useState('');
   const searchParams = useSearchParams();
@@ -389,6 +401,7 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
         body: JSON.stringify({
           draft,
           website: honeypot,
+          referral_note: referralNote,
           application: target
             ? { project_id: target.project.id, role_id: target.role.id, selftape_url: draft.selftape_url.trim() }
             : null
@@ -763,6 +776,23 @@ export function CastingApplication({ mode = 'create' }: { mode?: 'create' | 'edi
                       />
                     </div>
                   </div>
+
+                  {!editing && (
+                    <div className="mt-5 border-t border-[#f0f0f2] pt-5">
+                      <label htmlFor="dv-referral" className="dv-field-label">
+                        {tx('Ai giới thiệu bạn đến DienVienVN?')}
+                      </label>
+                      <input
+                        id="dv-referral"
+                        type="text"
+                        maxLength={120}
+                        value={referralNote}
+                        onChange={e => setReferralNote(e.target.value)}
+                        placeholder={tx('Không bắt buộc. VD: tên người giới thiệu, nhóm Facebook…')}
+                        className="dv-input mt-1.5"
+                      />
+                    </div>
+                  )}
 
                   <div ref={consentRef} className={`mt-5 border-t border-[#f0f0f2] pt-5 ${editing ? 'hidden' : ''}`}>
                     <button

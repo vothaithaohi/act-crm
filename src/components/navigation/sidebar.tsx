@@ -21,7 +21,7 @@ import {
   BriefcaseBusiness,
   UsersRound,
   Library,
-  Newspaper
+  Newspaper, Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCRM } from '@/lib/store/crm-context';
@@ -98,6 +98,13 @@ export function Sidebar() {
       title: 'Tài khoản đối tác',
       href: '/admin/partners',
       icon: Handshake,
+      badge: null,
+      visible: can('talents:export')
+    },
+    {
+      title: 'Giới thiệu (Referral)',
+      href: '/referrals',
+      icon: Share2,
       badge: null,
       visible: can('talents:export')
     },

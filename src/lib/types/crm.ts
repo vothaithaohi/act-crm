@@ -323,6 +323,13 @@ export interface TalentProfile {
   review_status?: TalentReviewStatus | null;
   review_notes?: string | null;
   submitted_at?: string | null;
+  /** Nguồn giới thiệu: mã từ link ?ref= (người giới thiệu đầu tiên, nhớ 30 ngày), ô tự khai, utm quảng cáo. */
+  referral_code?: string | null;
+  referral_note?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  referred_at?: string | null;
   /** Tài khoản đăng nhập DienVienVN (Supabase Auth) của diễn viên sở hữu hồ sơ. */
   auth_user_id?: string | null;
   /** Đường dẫn riêng: dienvienvn.com/<username>, admin.dienvienvn.com/<username>. */
@@ -595,6 +602,8 @@ export interface CastingFilterCriteria {
   tattoos?: 'all' | 'none' | 'has_tattoo';
   reviewStatus?: 'all' | TalentReviewStatus;
   source?: 'all' | TalentSubmissionSource;
+  /** Nguồn giới thiệu: 'all' | '__any' (có người giới thiệu) | '__none' | mã giới thiệu */
+  referral?: string;
   trainingSchools?: string[];
 }
 

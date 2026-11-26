@@ -50,6 +50,8 @@ export function actorBrevoExtra(t: Partial<TalentProfile>, apps: Application[], 
   if (langs.length) out.NGOAI_NGU = langs.join(', ');
   out.TRANG_THAI_HO_SO = REVIEW[getReviewStatus(t as TalentProfile)] || 'Chờ duyệt';
   out.HIEN_CONG_KHAI = t.public_profile && !t.public_locked && t.username ? 'Có' : 'Không';
+  const ref = t.referral_code || t.referral_note || (t.utm_source ? `utm:${t.utm_source}` : '');
+  if (ref) out.NGUON_GIOI_THIEU = ref;
   out.NGUON_HO_SO = t.submission_source === 'dienvienvn' ? 'Tự nộp trên web' : t.submission_source === 'ai' ? 'AI tạo' : 'ACT nhập';
 
   // Dự án / vai đã ứng tuyển: "DV-07 Dragon Back (HCM) | DV-08 …" và "DV-07: Cậu bé anh cả - Trung | …"
@@ -103,10 +105,13 @@ export async function loadActorBrevoContacts(db: SupabaseClient): Promise<{ cont
     }
     return out;
   };
+  // Cột nguồn giới thiệu chỉ có sau migration 20261203_referrals.sql
+  const { error: refMissing } = await db.from('talent_profiles').select('referral_code, referral_note, utm_source').limit(1);
   const [talents, apps, projects] = await Promise.all([
     page<TalentProfile>(
       'talent_profiles',
-      'id, email, full_name, phone, gender, dob, province, city, height_cm, acting_experience, academic_profile, vietnamese_accents, languages, review_status, public_profile, public_locked, username, submission_source'
+      'id, email, full_name, phone, gender, dob, province, city, height_cm, acting_experience, academic_profile, vietnamese_accents, languages, review_status, public_profile, public_locked, username, submission_source' +
+        (refMissing ? '' : ', referral_code, referral_note, utm_source')
     ),
     page<Application>('project_applications', 'talent_id, project_id, role_id'),
     page<Project>('casting_projects', 'id, code, title, roles')

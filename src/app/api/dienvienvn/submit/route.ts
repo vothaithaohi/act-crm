@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { syncActorToBrevo } from '@/lib/dienvienvn/brevo-actor';
 import { z } from 'zod';
 import { normalizeLink } from '@/lib/dienvienvn/social-link';
+import { referralColumns } from '@/lib/dienvienvn/referral';
 import { castingDraftSchema, describeDraftIssue } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
@@ -73,6 +74,8 @@ export async function POST(req: NextRequest) {
     public_profile: true,
     id: crypto.randomUUID(),
     submission_source: 'dienvienvn' as const,
+    // Nguồn giới thiệu: mã từ link ?ref= (nhớ 30 ngày) + ô "Ai giới thiệu bạn" + utm quảng cáo
+    ...referralColumns(req.cookies, (body as Record<string, unknown>)?.referral_note),
     review_status: 'pending' as const,
     review_notes: null,
     submitted_at: now,

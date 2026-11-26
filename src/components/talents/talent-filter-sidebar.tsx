@@ -20,6 +20,7 @@ import { ACT_ACADEMY_SCHOOL, ART_SCHOOLS } from '@/lib/dienvienvn/schools';
 
 export function TalentFilterSidebar() {
   const { filterCriteria, setFilterCriteria, resetFilters, filteredTalents, talents } = useCRM();
+  const referralCodes = Array.from(new Set(talents.map(t => t.referral_code).filter((c): c is string => !!c))).sort();
 
   const toggleArrayItem = (key: 'accents' | 'languages' | 'instruments' | 'martialArts' | 'danceStyles' | 'sports' | 'roleWillingness' | 'cities', value: string) => {
     setFilterCriteria(prev => {
@@ -64,6 +65,7 @@ export function TalentFilterSidebar() {
     (filterCriteria.tattoos && filterCriteria.tattoos !== 'all') ||
     (filterCriteria.reviewStatus && filterCriteria.reviewStatus !== 'all') ||
     (filterCriteria.source && filterCriteria.source !== 'all') ||
+    (filterCriteria.referral && filterCriteria.referral !== 'all') ||
     Boolean(filterCriteria.trainingSchools && filterCriteria.trainingSchools.length > 0);
 
   return (
@@ -144,6 +146,27 @@ export function TalentFilterSidebar() {
             </select>
           </div>
         </div>
+
+        {/* Nguồn giới thiệu (link ?ref=) */}
+        {talents.some(t => t.referral_code || t.referral_note) && (
+          <div>
+            <label className="block font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1.5">
+              Nguồn giới thiệu
+            </label>
+            <select
+              value={filterCriteria.referral || 'all'}
+              onChange={(e) => setFilterCriteria(p => ({ ...p, referral: e.target.value }))}
+              className="w-full px-2.5 py-1.5 rounded-lg border bg-background focus:border-brand-500 outline-none"
+            >
+              <option value="all">Tất cả</option>
+              <option value="__any">Có người giới thiệu</option>
+              <option value="__none">Không có</option>
+              {referralCodes.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Nơi đào tạo diễn xuất */}
         <div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CRM_HOST, PUBLIC_HOSTS, SITE_URL } from '@/lib/dienvienvn/hosts';
 import { LANG_COOKIE, LANG_HEADER } from '@/lib/dienvienvn/i18n/core';
+import { REF_COOKIE, REF_MAX_AGE, UTM_COOKIE, encodeRef, encodeUtm, readTouch } from '@/lib/dienvienvn/referral';
 
 // Trên tên miền DienVienVN, toàn bộ đường dẫn được phục vụ từ /dienvienvn và CRM không bị lộ ra ngoài.
 
@@ -18,7 +19,7 @@ export function middleware(req: NextRequest) {
     if (p === '/dienvienvn' || p.startsWith('/dienvienvn/')) {
       const headers = new Headers(req.headers);
       headers.set(LANG_HEADER, 'vi');
-      return NextResponse.next({ request: { headers } });
+      return rememberReferral(req, NextResponse.next({ request: { headers } }));
     }
     return NextResponse.next();
   }
@@ -61,6 +62,16 @@ function rewriteWithLang(req: NextRequest, url: URL, base: string, lang: 'vi' | 
     const p = publicPath === '/' ? '' : publicPath;
     res.headers.set('Link', `<${SITE_URL}${p || '/'}>; rel="alternate"; hreflang="vi", <${SITE_URL}/en${p}>; rel="alternate"; hreflang="en", <${SITE_URL}${p || '/'}>; rel="alternate"; hreflang="x-default"`);
   }
+  return rememberReferral(req, res);
+}
+
+/** ?ref= / ?utm_*: nhớ 30 ngày. Đã có thì giữ nguyên (tính cho người giới thiệu đầu tiên). */
+function rememberReferral(req: NextRequest, res: NextResponse) {
+  const { ref, utm } = readTouch(req.nextUrl.searchParams);
+  const at = new Date().toISOString();
+  const opts = { path: '/', maxAge: REF_MAX_AGE, sameSite: 'lax' as const, httpOnly: true, secure: req.nextUrl.protocol === 'https:' };
+  if (ref && !req.cookies.get(REF_COOKIE)) res.cookies.set(REF_COOKIE, encodeRef({ code: ref, at }), opts);
+  if (utm && !req.cookies.get(UTM_COOKIE)) res.cookies.set(UTM_COOKIE, encodeUtm({ ...utm, at }), opts);
   return res;
 }
 

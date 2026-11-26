@@ -65,6 +65,7 @@ export const ACTOR_BREVO_ATTRIBUTES: Record<string, 'text' | 'float'> = {
   TRANG_THAI_HO_SO: 'text',
   HIEN_CONG_KHAI: 'text',
   NGUON_HO_SO: 'text',
+  NGUON_GIOI_THIEU: 'text',
   SO_LAN_UNG_TUYEN: 'float',
   DU_AN_UNG_TUYEN: 'text',
   VAI_UNG_TUYEN: 'text'

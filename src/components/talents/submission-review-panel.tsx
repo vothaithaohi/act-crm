@@ -45,6 +45,18 @@ export function SubmissionReviewPanel({ talent }: { talent: TalentProfile }) {
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground">{talent.submission_source === 'ai' ? 'Tạo lúc' : 'Nộp lúc'} {submittedLabel} (giờ VN)</p>
+          {(talent.referral_code || talent.referral_note || talent.utm_source) && (
+            <p className="text-[11px] text-foreground">
+              <span className="text-muted-foreground">Nguồn giới thiệu: </span>
+              {[
+                talent.referral_code && <span key="c" className="font-bold">{talent.referral_code}</span>,
+                talent.referral_note && <span key="n">tự khai “{talent.referral_note}”</span>,
+                talent.utm_source && <span key="u">quảng cáo {[talent.utm_source, talent.utm_campaign].filter(Boolean).join(' / ')}</span>
+              ]
+                .filter(Boolean)
+                .flatMap((el, i) => (i ? [<span key={`s${i}`}> · </span>, el] : [el]))}
+            </p>
+          )}
         </div>
       </div>
 

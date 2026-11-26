@@ -1087,6 +1087,12 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       if ((talent.submission_source || 'crm') !== filterCriteria.source) return false;
     }
 
+    if (filterCriteria.referral && filterCriteria.referral !== 'all') {
+      const code = talent.referral_code || '';
+      const has = !!(code || talent.referral_note);
+      if (filterCriteria.referral === '__any' ? !has : filterCriteria.referral === '__none' ? has : code !== filterCriteria.referral) return false;
+    }
+
     if (filterCriteria.trainingSchools && filterCriteria.trainingSchools.length > 0) {
       const schools = new Set<string>([
         ...((talent.academic_profile?.enrollments || []).length > 0 ? ['ACT Academy'] : []),
