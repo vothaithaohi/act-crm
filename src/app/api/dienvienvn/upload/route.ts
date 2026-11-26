@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
 const MAX_BYTES = 8 * 1024 * 1024;
+// Kho ảnh phản hồi chậm vẫn đủ thời gian (tránh trả trang lỗi hết thời gian)
+export const maxDuration = 60;
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      console.error('[dienvienvn] Upload ảnh thất bại:', error);
+      console.error('[dienvienvn] Upload ảnh thất bại:', error?.message || error, { size: file.size, kind });
       return NextResponse.json({ error: 'Không tải được ảnh lên. Vui lòng thử lại.' }, { status: 500 });
     }
 

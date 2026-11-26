@@ -156,28 +156,56 @@ async function resizeImage(file: File, maxEdge = 1600, quality = 0.86): Promise<
   }
 }
 
-function uploadWithProgress(blob: Blob, kind: string, onProgress: (pct: number) => void): Promise<string> {
-  return new Promise((resolve, reject) => {
+type UploadTry = { ok: true; url: string } | { ok: false; message: string; retry: boolean; status: number; body: string };
+
+function uploadOnce(blob: Blob, kind: string, onProgress: (pct: number) => void): Promise<UploadTry> {
+  return new Promise(resolve => {
     const form = new FormData();
     form.append('file', new File([blob], `${kind}.jpg`, { type: 'image/jpeg' }));
     form.append('kind', kind);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/dienvienvn/upload');
+    xhr.timeout = 90_000;
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () => {
+      let data: { url?: string; error?: string } | null = null;
       try {
-        const data = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300 && data.url) resolve(data.url);
-        else reject(new Error(data.error || 'Không tải được ảnh lên.'));
+        data = JSON.parse(xhr.responseText);
       } catch {
-        reject(new Error('Không tải được ảnh lên.'));
+        /* máy chủ trả trang lỗi (hết thời gian, file quá lớn…) */
       }
+      if (xhr.status >= 200 && xhr.status < 300 && data?.url) return resolve({ ok: true, url: data.url });
+      const message =
+        data?.error ||
+        (xhr.status === 413 ? 'Ảnh quá lớn. Hãy thử ảnh khác hoặc chụp lại.' : `Không tải được ảnh lên (mã ${xhr.status || 0}). Vui lòng thử lại.`);
+      // Lỗi tạm thời phía máy chủ → thử lại
+      resolve({ ok: false, message, retry: xhr.status >= 500 || xhr.status === 0 || xhr.status === 429 || !data, status: xhr.status, body: xhr.responseText.slice(0, 300) });
     };
-    xhr.onerror = () => reject(new Error('Mất kết nối mạng. Vui lòng thử lại.'));
+    xhr.onerror = () => resolve({ ok: false, message: 'Mất kết nối mạng. Vui lòng thử lại.', retry: true, status: 0, body: '' });
+    xhr.ontimeout = () => resolve({ ok: false, message: 'Mạng chậm, chưa tải được ảnh. Vui lòng thử lại.', retry: true, status: 0, body: 'timeout' });
     xhr.send(form);
   });
+}
+
+/** Tải ảnh lên, tự thử lại tối đa 3 lần khi lỗi tạm thời; lỗi cuối cùng được ghi về log máy chủ để tìm nguyên nhân. */
+async function uploadWithProgress(blob: Blob, kind: string, onProgress: (pct: number) => void): Promise<string> {
+  let last: UploadTry | null = null;
+  for (let i = 0; i < 3; i++) {
+    if (i) await new Promise(r => setTimeout(r, 1200 * i));
+    last = await uploadOnce(blob, kind, onProgress);
+    if (last.ok) return last.url;
+    if (!last.retry) break;
+  }
+  const fail = last as Exclude<UploadTry, { ok: true }>;
+  try {
+    const body = JSON.stringify({ message: `Upload ảnh lỗi: ${fail.status} ${fail.message}`, stack: `size=${blob.size} kind=${kind} body=${fail.body}`, url: window.location.href });
+    navigator.sendBeacon?.('/api/dienvienvn/client-error', new Blob([body], { type: 'application/json' }));
+  } catch {
+    /* bỏ qua */
+  }
+  throw new Error(fail.message);
 }
 
 /** Thu nhỏ + tải 1 ảnh lên kho ảnh công khai, trả link ảnh (dùng cho ảnh tham khảo của vai). */
