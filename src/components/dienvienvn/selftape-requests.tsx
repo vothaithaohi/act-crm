@@ -8,10 +8,12 @@ import type { SelfTape } from '@/lib/dienvienvn/selftapes';
 import { AcademyMarkdown } from './academy-markdown';
 import { PdfDocBlock, usePopupMarkdown } from './file-viewer';
 import { useTx } from './i18n';
+import { normalizeLink } from '@/lib/dienvienvn/social-link';
 
 // Yêu cầu self-tape theo vai: xem mô tả chuẩn (chữ, ảnh, link, PDF) trong popup và nộp mỗi yêu cầu 1 link.
 
-const isUrl = (u: string) => /^https?:\/\/\S+$/i.test(u.trim());
+// Đã có link dùng được (tự thêm https:// nếu thiếu)
+const isUrl = (u: string) => !!normalizeLink(u);
 
 /** Popup "Xem yêu cầu": tên, Bắt buộc / Không bắt buộc, mô tả và file PDF đính kèm. */
 function BriefDialog({ q, onClose }: { q: SelftapeRequest; onClose: () => void }) {
@@ -143,7 +145,7 @@ function TapeField({
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
-  const bad = !!value.trim() && !isUrl(value);
+  const bad = !!value.trim() && normalizeLink(value) === null;
   return (
     <div ref={box} className="relative mt-3">
       <div className={`flex items-center rounded-[12px] border bg-white transition-colors focus-within:border-[#1d1d1f] ${bad ? 'border-[#b00020]' : 'border-[#d2d2d7]'}`}>
@@ -153,6 +155,13 @@ function TapeField({
           inputMode="url"
           value={value}
           onChange={e => onChange(e.target.value)}
+          onBlur={() => {
+            const n = normalizeLink(value);
+            if (n !== null && n !== value) onChange(n);
+          }}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder={tx('Dán link YouTube / Google Drive…')}
           aria-label={label}
           className="h-11 min-w-0 flex-1 rounded-[12px] bg-transparent px-3.5 text-[15px] outline-none placeholder:text-[var(--dv-text-tertiary)]"
@@ -173,7 +182,7 @@ function TapeField({
           </button>
         )}
       </div>
-      {bad && <p className="mt-1 text-[12px] text-[#b00020]">{tx('Link cần bắt đầu bằng https://')}</p>}
+      {bad && <p className="mt-1 text-[12px] text-[#b00020]">{tx('Chưa nhận ra link này. Hãy dán link YouTube / Google Drive.')}</p>}
       {open && (
         <ul className="absolute inset-x-0 top-full z-20 mt-1.5 max-h-[240px] overflow-y-auto rounded-[14px] border border-[#e8e8ed] bg-white py-1 shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
           <li className="px-3.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--dv-text-tertiary)]">{tx('Kho self-tape của bạn')}</li>

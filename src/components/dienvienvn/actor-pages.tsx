@@ -10,6 +10,7 @@ import { actorClient, actorFetch, getImpersonation, isNetworkError, signOutActor
 import { fetchPublicProjects } from '@/lib/projects/public-client';
 import { PublicProject, SelftapeItem, SelftapeRequest, isDeadlinePassed, projectPathName, projectTypeLabel } from '@/lib/projects/types';
 import { ExtraSelftapes, SelftapeRequestsInput } from './selftape-requests';
+import { normalizeLink } from '@/lib/dienvienvn/social-link';
 import { provinceLabel } from '@/lib/dienvienvn/provinces';
 import { useDvvnHref } from './base-path';
 import { Field, TextInput } from './form-fields';
@@ -532,11 +533,12 @@ function AppliedRoleItem({ app, library, onSaved }: { app: AppliedRole; library:
     setEditing(true);
   };
   const save = async () => {
-    const extra = link.trim();
-    if (extra && !/^https?:\/\//i.test(extra)) return setError('Link self-tape cần bắt đầu bằng https://');
-    const filled = draftItems.map(i => ({ ...i, url: i.url.trim() })).filter(i => i.url);
-    const bad = filled.find(i => !/^https?:\/\//i.test(i.url));
-    if (bad) return setError('Link self-tape cần bắt đầu bằng https://');
+    // Tự thêm https:// khi thiếu; không nhận ra là link thì báo
+    const extra = normalizeLink(link);
+    if (extra === null) return setError('Link self-tape chưa đúng. Hãy dán link YouTube / Google Drive.');
+    const norm = draftItems.map(i => ({ ...i, url: normalizeLink(i.url) }));
+    if (norm.some(i => i.url === null)) return setError('Link self-tape chưa đúng. Hãy dán link YouTube / Google Drive.');
+    const filled = norm.filter((i): i is SelftapeItem => !!i.url);
     const miss = requests.filter(q => q.required && !filled.some(i => i.request_id === q.id));
     if (miss.length) return setError(`Vui lòng gửi self-tape: ${miss.map(q => q.title).join(', ')}.`);
     if (app.selftape_required && !filled.length && !picked.length && !extra) return setError('Dự án này bắt buộc gửi link self-tape (YouTube, Google Drive…).');

@@ -2,6 +2,7 @@
 
 
 import { SelftapeRequestsInfo } from './selftape-requests';
+import { LinkKind, normalizeLink } from '@/lib/dienvienvn/social-link';
 import type { SelftapeRequest } from '@/lib/projects/types';
 import { useTx } from './i18n';
 import { useState } from 'react';
@@ -597,12 +598,13 @@ export function StepWillingness({ draft, update }: StepProps) {
 /* ---------------- Bước 6 ---------------- */
 export function StepMedia({ draft, update, errors, application }: StepProps) {
   const tx = useTx();
-  const socials: { key: keyof CastingDraft['social_links']; label: string; ph: string }[] = [
-    { key: 'facebook', label: 'Facebook', ph: 'facebook.com/…' },
-    { key: 'instagram', label: 'Instagram', ph: 'instagram.com/…' },
-    { key: 'tiktok', label: 'TikTok', ph: 'tiktok.com/@…' },
-    { key: 'showreel_url', label: 'Showreel (YouTube / Drive)', ph: 'Link YouTube / Drive' }
+  const socials: { key: keyof CastingDraft['social_links']; kind: LinkKind; label: string; ph: string }[] = [
+    { key: 'facebook', kind: 'facebook', label: 'Facebook', ph: 'Link hoặc tên tài khoản' },
+    { key: 'instagram', kind: 'instagram', label: 'Instagram', ph: 'Link hoặc @tên tài khoản' },
+    { key: 'tiktok', kind: 'tiktok', label: 'TikTok', ph: 'Link hoặc @tên tài khoản' },
+    { key: 'showreel_url', kind: 'showreel', label: 'Showreel (YouTube / Drive)', ph: 'Link YouTube / Drive' }
   ];
+  const setSocial = (key: keyof CastingDraft['social_links'], value: string) => update({ social_links: { ...draft.social_links, [key]: value } });
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5">
@@ -658,18 +660,30 @@ export function StepMedia({ draft, update, errors, application }: StepProps) {
       <Divider />
       <SectionTitle title={tx("Mạng xã hội & Showreel")} desc="Giúp đạo diễn xem thêm hình ảnh và khả năng diễn xuất của bạn." />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {socials.map(s => (
-          <Field key={s.key} label={s.label} htmlFor={`social-${s.key}`}>
-            <TextInput
-              id={`social-${s.key}`}
-              type="url"
-              inputMode="url"
-              placeholder={tx(s.ph)}
-              value={draft.social_links[s.key]}
-              onChange={e => update({ social_links: { ...draft.social_links, [s.key]: e.target.value } })}
-            />
-          </Field>
-        ))}
+        {socials.map(s => {
+          const v = draft.social_links[s.key];
+          // Gõ xong (rời ô): tự thêm https://, đổi @tên thành link, "không sử dụng" → để trống. Không hiểu được thì chỉ nhắc, không chặn.
+          const unclear = !!v.trim() && normalizeLink(v, s.kind) === null;
+          return (
+            <Field key={s.key} label={s.label} htmlFor={`social-${s.key}`} hint={unclear ? 'Chưa nhận ra link này. Không có thì để trống.' : 'Không bắt buộc'}>
+              <TextInput
+                id={`social-${s.key}`}
+                type="text"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder={tx(s.ph)}
+                value={v}
+                onChange={e => setSocial(s.key, e.target.value)}
+                onBlur={() => {
+                  const n = normalizeLink(v, s.kind);
+                  if (n !== null && n !== v) setSocial(s.key, n);
+                }}
+              />
+            </Field>
+          );
+        })}
       </div>
     </div>
   );

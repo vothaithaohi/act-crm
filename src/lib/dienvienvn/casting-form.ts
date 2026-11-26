@@ -1,6 +1,7 @@
 // Cấu hình & logic dùng chung cho form nộp hồ sơ diễn viên trên dienvienvn.com.
 // Các giá trị lựa chọn khớp 1-1 với form "Thêm Hồ Sơ Casting" và bộ lọc Casting Matching của CRM.
 
+import { LinkKind, cleanLink, normalizeLink } from './social-link';
 import {
   ACTCourseEnrollment,
   ACTCourseLevel,
@@ -321,7 +322,7 @@ export function validateStep(step: number, d: CastingDraft, ctx: { selftapeRequi
   if (step === 6) {
     if (!d.headshot_url) e.headshot_url = 'Vui lòng tải lên ảnh chân dung';
     if (!d.fullbody_url) e.fullbody_url = 'Vui lòng tải lên ảnh toàn thân';
-    const tape = (d.selftape_url || '').trim();
+    const tape = normalizeLink(d.selftape_url) ?? (d.selftape_url || '').trim();
     if (ctx.selftapeRequired && !tape) e.selftape_url = 'Dự án này bắt buộc gửi link self-tape';
     else if (ctx.selftapeRequired !== undefined && ctx.selftapeRequired !== null && tape && !/^https?:\/\/\S+\.\S+/i.test(tape)) {
       e.selftape_url = 'Link self-tape cần bắt đầu bằng https://';
@@ -459,10 +460,7 @@ function buildExperience(exp: CastingDraft['experience']): ActingExperience {
  * id / created_at / review_status được server gán lại khi lưu.
  */
 /** "facebook.com/abc" → "https://facebook.com/abc" (link mạng xã hội luôn mở được). */
-const withHttps = (v: string) => {
-  const t = v.trim();
-  return t && !/^https?:\/\//i.test(t) ? `https://${t}` : t;
-};
+const withHttps = (v: string, kind: LinkKind = 'generic') => cleanLink(v, kind);
 
 export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'> {
   const phone = normalizePhone(d.phone);
@@ -493,10 +491,10 @@ export function draftToTalentProfile(d: CastingDraft): Omit<TalentProfile, 'id'>
     acting_genres: [],
     role_willingness: d.role_willingness,
     social_links: {
-      facebook: withHttps(d.social_links.facebook),
-      instagram: withHttps(d.social_links.instagram),
-      tiktok: withHttps(d.social_links.tiktok),
-      showreel_url: withHttps(d.social_links.showreel_url)
+      facebook: withHttps(d.social_links.facebook, 'facebook'),
+      instagram: withHttps(d.social_links.instagram, 'instagram'),
+      tiktok: withHttps(d.social_links.tiktok, 'tiktok'),
+      showreel_url: withHttps(d.social_links.showreel_url, 'showreel')
     },
     languages: [
       { language: 'Tiếng Việt', level: 'Bản ngữ' },

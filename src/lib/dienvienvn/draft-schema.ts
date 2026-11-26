@@ -1,5 +1,6 @@
 // Schema kiểm tra dữ liệu hồ sơ diễn viên gửi lên server (chặn dữ liệu sai kiểu / quá dài).
 import { z } from 'zod';
+import { LinkKind, cleanLink, normalizeLink } from './social-link';
 
 const str = (max: number) => z.string().trim().max(max).default('');
 const media = z
@@ -11,8 +12,12 @@ const url = z
   .string()
   .trim()
   .max(500)
+  // Tự thêm https:// khi thiếu ("youtu.be/…" → "https://youtu.be/…")
+  .transform(v => normalizeLink(v) ?? v)
   .refine(v => v === '' || /^https?:\/\//i.test(v), 'Đường dẫn phải bắt đầu bằng http(s)://')
   .default('');
+/** Ô mạng xã hội (không bắt buộc): tự sửa link / tên tài khoản; không hiểu được thì bỏ trống, không chặn nộp hồ sơ */
+const social = (kind: LinkKind) => z.string().max(500).transform(v => cleanLink(v, kind)).default('');
 const tags = (max = 20) => z.array(z.string().trim().max(60)).max(max).default([]);
 
 const experienceEntry = z.object({
@@ -80,10 +85,10 @@ export const castingDraftSchema = z.object({
     .optional()
     .default([]),
   social_links: z.object({
-    facebook: url,
-    instagram: url,
-    tiktok: url,
-    showreel_url: url
+    facebook: social('facebook'),
+    instagram: social('instagram'),
+    tiktok: social('tiktok'),
+    showreel_url: social('showreel')
   }),
   trainings: z.array(trainingEntry).max(20).default([]),
   selftape_url: url,

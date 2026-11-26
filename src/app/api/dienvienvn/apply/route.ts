@@ -6,6 +6,7 @@ import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
 import { getServiceDb, MISCONFIGURED_MESSAGE } from '@/lib/projects/server';
 import { CastingProject, NEW_APPLICATION_STATUS, SelftapeItem, checkApplication, missingRequiredSelftape, roleSelftapeRequests, visibleRoles } from '@/lib/projects/types';
 import { selfTapeUrl } from '@/lib/dienvienvn/selftapes';
+import { normalizeLink } from '@/lib/dienvienvn/social-link';
 
 const schema = z.object({
   project_id: z.string().uuid(),
@@ -21,7 +22,8 @@ const isUrl = (u: string) => /^https?:\/\/\S+$/i.test(u);
 /** Self-tape theo yêu cầu của vai (bỏ yêu cầu không có / link trống) + các link khác; trả lỗi nếu link sai. */
 function collectTapes(role: CastingProject['roles'][number], items: SelftapeItem[], extra: string[]): { items: SelftapeItem[]; urls: string[]; error?: string } {
   const ids = new Set(roleSelftapeRequests(role).map(q => q.id));
-  const clean = items.map(i => ({ request_id: i.request_id, url: (i.url || '').trim() })).filter(i => ids.has(i.request_id) && i.url);
+  const clean = items.map(i => ({ request_id: i.request_id, url: normalizeLink(i.url) ?? (i.url || '').trim() })).filter(i => ids.has(i.request_id) && i.url);
+  extra = extra.map(u => normalizeLink(u) ?? (u || '').trim());
   const bad = [...clean.map(i => i.url), ...extra].find(u => !isUrl(u));
   if (bad) return { items: [], urls: [], error: 'Link self-tape không hợp lệ (cần bắt đầu bằng http:// hoặc https://).' };
   const urls = Array.from(new Set([...clean.map(i => i.url), ...extra.map(u => u.trim()).filter(Boolean)]));

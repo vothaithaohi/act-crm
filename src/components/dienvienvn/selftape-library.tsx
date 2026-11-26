@@ -1,6 +1,7 @@
 'use client';
 
 
+import { normalizeLink } from '@/lib/dienvienvn/social-link';
 import { useTx } from './i18n';
 import { useState } from 'react';
 import { Loader2, Plus, Star, Trash2, Video } from 'lucide-react';
@@ -38,8 +39,9 @@ export function SelftapeLibrary({ initial, onChange }: { initial: SelfTape[]; on
   };
 
   const add = async () => {
-    const u = url.trim();
-    if (!/^https?:\/\/\S+\.\S+/i.test(u)) return setError('Link self-tape cần bắt đầu bằng https://');
+    // Tự thêm https:// khi thiếu
+    const u = normalizeLink(url) || '';
+    if (!/^https?:\/\/\S+\.\S+/i.test(u)) return setError('Link self-tape chưa đúng. Hãy dán link YouTube / Google Drive.');
     if (list.some(x => x.url === u)) return setError('Self-tape này đã có trong danh sách.');
     if (await save([...list, { url: u, title: title.trim(), highlight: highlights < MAX_HIGHLIGHTS }])) {
       setUrl('');

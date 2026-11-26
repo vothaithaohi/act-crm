@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { syncActorToBrevo } from '@/lib/dienvienvn/brevo-actor';
 import { z } from 'zod';
+import { normalizeLink } from '@/lib/dienvienvn/social-link';
 import { castingDraftSchema, describeDraftIssue } from '@/lib/dienvienvn/draft-schema';
 import { CASTING_STEPS, CastingDraft, draftToTalentProfile, validateStep } from '@/lib/dienvienvn/casting-form';
 import { clientIp, isRateLimited } from '@/lib/dienvienvn/rate-limit';
@@ -14,7 +15,8 @@ const applicationSchema = z
   .object({
     project_id: z.string().uuid(),
     role_id: z.string().min(1).max(64),
-    selftape_url: z.string().trim().max(500).optional().default('')
+    // Tự thêm https:// khi thiếu
+    selftape_url: z.string().trim().max(500).optional().default('').transform(v => normalizeLink(v) ?? v)
   })
   .optional()
   .nullable();

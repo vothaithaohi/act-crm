@@ -1,6 +1,7 @@
 // Thư viện self-tape của diễn viên: thêm tuỳ ý, chọn tối đa 3 video nổi bật hiện trên trang hồ sơ công khai.
 // Khi ứng tuyển, diễn viên tick các self-tape phù hợp với dự án.
 import { z } from 'zod';
+import { normalizeLink } from './social-link';
 
 export interface SelfTape {
   url: string;
@@ -15,7 +16,9 @@ export const selfTapeUrl = z
   .string()
   .trim()
   .max(500)
-  .regex(/^https?:\/\/\S+\.\S+/i, 'Link self-tape cần bắt đầu bằng https://');
+  // Tự thêm https:// khi thiếu ("youtu.be/…" → "https://youtu.be/…")
+  .transform(v => normalizeLink(v) ?? v)
+  .pipe(z.string().regex(/^https?:\/\/\S+\.\S+/i, 'Link self-tape cần bắt đầu bằng https://'));
 
 export const selfTapesSchema = z
   .array(z.object({ url: selfTapeUrl, title: z.string().trim().max(120).optional().default(''), highlight: z.boolean().optional().default(false) }))
