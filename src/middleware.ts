@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CRM_HOST, PUBLIC_HOSTS, SITE_URL } from '@/lib/dienvienvn/hosts';
+import { CRM_HOST, PUBLIC_HOSTS, RECAP_HOSTS, SITE_URL } from '@/lib/dienvienvn/hosts';
 import { LANG_COOKIE, LANG_HEADER } from '@/lib/dienvienvn/i18n/core';
 import { REF_COOKIE, REF_MAX_AGE, UTM_COOKIE, encodeRef, encodeUtm, readTouch } from '@/lib/dienvienvn/referral';
 
@@ -7,6 +7,14 @@ import { REF_COOKIE, REF_MAX_AGE, UTM_COOKIE, encodeRef, encodeUtm, readTouch } 
 
 export function middleware(req: NextRequest) {
   const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').split(':')[0].toLowerCase();
+  // recap.dienvienvn.com: chỉ phục vụ các trang Recap cuộc họp
+  if (RECAP_HOSTS.includes(host)) {
+    const p = req.nextUrl.pathname;
+    if (p === '/recap' || p.startsWith('/recap/')) return NextResponse.redirect(new URL(p.slice(6) || '/', req.url), 308);
+    const url = req.nextUrl.clone();
+    url.pathname = `/recap${p === '/' ? '' : p}`;
+    return NextResponse.rewrite(url);
+  }
   if (!PUBLIC_HOSTS.includes(host)) {
     // Ngoài tên miền chính (CRM, bản xem trước): /dienvienvn/en/... = bản tiếng Anh
     const p = req.nextUrl.pathname;

@@ -52,3 +52,9 @@ export const RESERVED_USERNAMES = new Set([
 
 /** Tên miền riêng của CRM; dienvienvn.com/admin chuyển hướng tới đây. */
 export const CRM_HOST = (process.env.CRM_HOST || 'admin.dienvienvn.com').trim().toLowerCase();
+
+/** Tên miền Recap cuộc họp nội bộ (recap.dienvienvn.com → các trang /recap). */
+export const RECAP_HOSTS = (process.env.RECAP_HOSTS || 'recap.dienvienvn.com')
+  .split(',')
+  .map(h => h.trim().toLowerCase())
+  .filter(Boolean);
